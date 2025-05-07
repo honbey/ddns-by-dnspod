@@ -43,13 +43,13 @@ class DNSPodAPI:
         finally:
             log.info("Initial DNSPodAPI end.")
 
-    def info(self, **kargs):
+    def info(self, **kwargs):
         # data = {
-        #    "Domain": kargs["domain"] if kargs["domain"] else first(self.args.domain)
+        #    "Domain": kwargs["domain"] if kargs["domain"] else first(self.args.domain)
         # }
-        data = {"Domain": getv(kargs, self.args, "domain")}
-        if kargs.get("subdomain", False):
-            data.update({"Subdomain": kargs["subdomain"]})
+        data = {"Domain": getv(kwargs, self.args, "domain")}
+        if kwargs.get("subdomain", False):
+            data.update({"Subdomain": kwargs["subdomain"]})
         elif self.args.subdomain != "@":
             data.update({"Subdomain": first(self.args.subdomain)})
         log.debug(data)
@@ -63,15 +63,15 @@ class DNSPodAPI:
             log.error("cannot get record id")
         return resp
 
-    def add_record(self, **kargs):
+    def add_record(self, **kwargs):
         data = {
-            "Domain": getv(kargs, self.args, "domain"),
-            "Value": getv(kargs, self.args, "ip"),
-            "RecordType": getv(kargs, self.args, "type"),
-            "RecordLine": getv(kargs, self.args, "line"),
+            "Domain": getv(kwargs, self.args, "domain"),
+            "Value": getv(kwargs, self.args, "ip"),
+            "RecordType": getv(kwargs, self.args, "type"),
+            "RecordLine": getv(kwargs, self.args, "line"),
         }
-        if kargs.get("subdomain", False):
-            data.update({"SubDomain": kargs["subdomain"]})
+        if kwargs.get("subdomain", False):
+            data.update({"SubDomain": kwargs["subdomain"]})
         elif self.args.subdomain != "@":
             data.update({"SubDomain": first(self.args.subdomain)})
         log.debug(data)
@@ -80,9 +80,9 @@ class DNSPodAPI:
         else:
             log.error("wrong IP address")
 
-    def del_record(self, **kargs):
-        domain = getv(kargs, self.args, "domain")
-        subdomain = getv(kargs, self.args, "subdomain")
+    def del_record(self, **kwargs):
+        domain = getv(kwargs, self.args, "domain")
+        subdomain = getv(kwargs, self.args, "subdomain")
         self.info(domain=domain, subdomain=subdomain)
         if isinstance(self.id, int) and self.id != -1:
             data = {"Domain": domain, "RecordId": self.id}
@@ -91,21 +91,21 @@ class DNSPodAPI:
         else:
             log.error("delete record failure")
 
-    def mod_record(self, ddns: bool = False, **kargs):
-        domain = getv(kargs, self.args, "domain")
-        subdomain = getv(kargs, self.args, "subdomain")
+    def mod_record(self, ddns: bool = False, **kwargs):
+        domain = getv(kwargs, self.args, "domain")
+        subdomain = getv(kwargs, self.args, "subdomain")
         data = {
             "Domain": domain,
             "SubDomain": subdomain,
-            "RecordLine": getv(kargs, self.args, "line"),
+            "RecordLine": getv(kwargs, self.args, "line"),
         }
         if ddns:
             action = "ModifyDynamicDNS"
         else:
             data.update(
                 {
-                    "Value": getv(kargs, self.args, "ip"),
-                    "RecordType": getv(kargs, self.args, "type"),
+                    "Value": getv(kwargs, self.args, "ip"),
+                    "RecordType": getv(kwargs, self.args, "type"),
                 }
             )
             action = "ModifyRecord"
@@ -117,9 +117,9 @@ class DNSPodAPI:
         else:
             log.error(f"{action} failure")
 
-    def ddns(self, **kargs):
-        domain = getv(kargs, self.args, "domain")
-        subdomain = getv(kargs, self.args, "subdomain")
+    def ddns(self, **kwargs):
+        domain = getv(kwargs, self.args, "domain")
+        subdomain = getv(kwargs, self.args, "subdomain")
         resp = self.info(domain=domain, subdomain=subdomain)
         if isinstance(resp, dict):
             record_ip = str(

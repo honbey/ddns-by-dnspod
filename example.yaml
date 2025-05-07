@@ -1,0 +1,7 @@
+enable: true
+domain: 'example.com'
+subdomain:
+  - '@'
+  - www
+log_level: info
+frequency: 180

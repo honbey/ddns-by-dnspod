@@ -1,0 +1,6 @@
+dnspython
+loguru
+pyyaml
+requests
+tencentcloud-sdk-python
+tencentcloud-sdk-python-common

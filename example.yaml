@@ -1,10 +1,13 @@
-ddns: true
-domain: 'example.com'
+ddns: false
+domain: "example.com"
 subdomain:
-  - '@'
+  - "@"
   - www
-log_level: info
 tc_key_id: "***"
 tc_prikey: "***"
-log_level: info
+debug: true
+log_file: ./ddns.log
+log_level: INFO
+log_size: 10
 #frequency: 180
+gotify: false

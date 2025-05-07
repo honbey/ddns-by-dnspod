@@ -4,6 +4,7 @@
 import os
 import argparse
 import yaml
+import requests
 
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import (
     TencentCloudSDKException,
@@ -16,6 +17,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-v", "--version", action="version", version="DDNS by DNSPod API v0.2.0"
     )
+    # api args
     parser.add_argument(
         "--domain", type=str, nargs=1, help="specify main domain", dest="domain"
     )
@@ -34,8 +36,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--line", nargs=1, type=str, help="record line", dest="line", default="默认"
     )
+    # log args
+    parser.add_argument("--debug", action="store_true", help="debug mode", dest="debug")
+    parser.add_argument(
+        "--log-file", nargs=1, type=str, help="log file", dest="log_file"
+    )
+    parser.add_argument(
+        "--log-level", nargs=1, type=str, help="log level", dest="log_level"
+    )
+    parser.add_argument(
+        "--log-size", nargs=1, type=str, help="log size", dest="log_size"
+    )
+    # operation args
     # fmt: off
-    # TODO: get config from file and operate
     parser.add_argument(
         "-c", "--config", type=str, nargs=1, help="specify config file(yaml)", dest="config"
     )
@@ -60,22 +73,31 @@ if __name__ == "__main__":
         if args.config:
             with open(args.config[0], "r") as f:
                 config = yaml.safe_load(f)
-                dnspod = DNSPodAPI(
-                    config["tc_key_id"],
-                    config["tc_prikey"],
-                    argparse.Namespace(**config),
-                )
+                key_id = config["tc_key_id"]
+                prikey = config["tc_prikey"]
+                args = argparse.Namespace(**config)
+                args.add, args.info, args.modify, args.remove = [None, None, None, None]
         else:
-            dnspod = DNSPodAPI(
-                os.environ.get("TENCENT_API_PUB_KEY"),
-                os.environ.get("TENCENT_API_PRI_KEY"),
-                args,
-            )
+            key_id = os.environ.get("TENCENT_API_PUB_KEY")
+            prikey = os.environ.get("TENCENT_API_PRI_KEY")
+
+        dnspod = DNSPodAPI(key_id, prikey, args)
 
         if args.add:
             dnspod.add_record()
         elif args.ddns:
-            dnspod.ddns()
+            msg = dnspod.ddns()
+            # gotify only enable with a yaml config
+            if len(msg) > 3 and args.gotify:
+                data = {
+                    "title": "DDNS by DNSPod",
+                    "message": msg,
+                    "priority": args.gotify["priority"],
+                }
+                requests.post(
+                    f"{args.gotify['url']}/message?token={args.gotify['token']}",
+                    data=data,
+                )
         elif args.info:
             dnspod.info()
         elif args.modify:

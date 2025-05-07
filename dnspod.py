@@ -10,6 +10,7 @@ from iptools import judgeIp, getIp, getIpFromDNS
 API_VERSION = "2021-03-23"
 LOG_LEVEL = "DEBUG"
 
+# TODO: log can be changed
 logger.add(
     "ddns_dev.log",
     level=LOG_LEVEL,

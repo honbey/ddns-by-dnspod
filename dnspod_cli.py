@@ -1,5 +1,6 @@
 import os
 import argparse
+import yaml
 
 from tencentcloud.common.exception.tencent_cloud_sdk_exception import (
     TencentCloudSDKException,
@@ -10,7 +11,7 @@ from dnspod import DNSPodAPI
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-v", "--version", action="version", version="DDNS by DNSPod API v0.1.0"
+        "-v", "--version", action="version", version="DDNS by DNSPod API v0.2.0"
     )
     parser.add_argument(
         "--domain", type=str, nargs=1, help="specify main domain", dest="domain"
@@ -53,11 +54,20 @@ if __name__ == "__main__":
     # fmt: on
     args = parser.parse_args()
     try:
-        dnspod = DNSPodAPI(
-            os.environ.get("TENCENT_API_PUB_KEY"),
-            os.environ.get("TENCENT_API_PRI_KEY"),
-            args,
-        )
+        if args.config:
+            with open(args.config[0], "r") as f:
+                config = yaml.safe_load(f)
+                dnspod = DNSPodAPI(
+                    config["tc_key_id"],
+                    config["tc_prikey"],
+                    argparse.Namespace(**config),
+                )
+        else:
+            dnspod = DNSPodAPI(
+                os.environ.get("TENCENT_API_PUB_KEY"),
+                os.environ.get("TENCENT_API_PRI_KEY"),
+                args,
+            )
 
         if args.add:
             dnspod.add_record()

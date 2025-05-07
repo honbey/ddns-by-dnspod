@@ -1,7 +1,10 @@
-enable: true
+ddns: true
 domain: 'example.com'
 subdomain:
   - '@'
   - www
 log_level: info
-frequency: 180
+tc_key_id: "***"
+tc_prikey: "***"
+log_level: info
+#frequency: 180

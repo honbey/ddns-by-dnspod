@@ -1,0 +1,31 @@
+# Those APIs only return a string of IP address
+ip_api:
+  - http://ip.gs
+  - http://ip.sb
+  - https://api-ipv4.ip.sb/ip
+# Those APIs return a JSON contains IP address
+# Reference: https://blog.csdn.net/wangerrong/article/details/136850901
+ip_api_json:
+  - url: https://www.ip.cn/api/index?ip&type=0
+    path:
+      - ip
+  - url: https://whois.pconline.com.cn/ipJson.jsp?ip=&json=true
+    path:
+      - ip
+  - url: https://www.ipplus360.com/getIP
+    path:
+      - data
+  - url: https://ipapi.co/
+    path:
+      - ipinfo
+      - text
+# Reference: https://dnsdaquan.com/
+dns_server:
+  # DNSPod DNS+
+  - 119.29.29.29
+  - 182.254.116.116
+  # 114DNS
+  - 114.114.114.114
+  - 114.114.115.115
+  # Baidu
+  - 180.76.76.76

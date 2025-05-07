@@ -145,13 +145,11 @@ class DNSPodAPI:
         dns_ip = str(getIpFromDNS(dns_domain))
         self.log.info(f"url IP: [{url_ip}], dns IP: [{dns_ip}]")
         if judgeIp(url_ip) and url_ip == dns_ip:
-            self.log.info(
-                f"url IP[{url_ip}] is equal record IP[{dns_ip}], skipping ddns"
-            )
+            self.log.info(f"url IP[{url_ip}] is equal dns IP[{dns_ip}], skipping ddns")
             return ""
         elif judgeIp(url_ip) and url_ip == record_ip:
             self.log.info(
-                f"dns IP[{url_ip}] is equal record IP[{record_ip}], skipping ddns"
+                f"url IP[{url_ip}] is equal record IP[{record_ip}], skipping ddns"
             )
             return ""
         else:

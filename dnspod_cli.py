@@ -15,7 +15,7 @@ from dnspod import DNSPodAPI
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-v", "--version", action="version", version="DDNS by DNSPod API v0.2.0"
+        "-v", "--version", action="version", version="DDNS by DNSPod API v0.2.1"
     )
     # api args
     parser.add_argument(

@@ -7,27 +7,19 @@ from dns import resolver
 import yaml
 
 # https://stackoverflow.com/a/50044152
-old_getaddrinfo = socket.getaddrinfo
+__old_getaddrinfo = socket.getaddrinfo
 
 
-def new_getaddrinfo(*args, **kwargs):
-    responses = old_getaddrinfo(*args, **kwargs)
+def __new_getaddrinfo(*args, **kwargs):
+    responses = __old_getaddrinfo(*args, **kwargs)
     return [response for response in responses if response[0] == socket.AF_INET]
 
 
-socket.getaddrinfo = new_getaddrinfo
+socket.getaddrinfo = __new_getaddrinfo
 
 
-user_agent = "curl/8.5.0"
-timeout = (15, 15)
-
-dns = resolver.Resolver()
-
-with open("ip.yaml", "r") as f:
-    config = yaml.safe_load(f)
-    common_api_pool = config["ip_api"]
-    json_api_pool = config["ip_api_json"]
-    dns.nameservers = config["dns_server"]
+USER_AGENT = "curl/8.5.0"
+TIMEOUT = (15, 15)
 
 
 def judgeIp(ip: str) -> bool:
@@ -37,56 +29,63 @@ def judgeIp(ip: str) -> bool:
         return False
 
 
-def getIpCommon():
-    for url in common_api_pool:
-        resp = requests.get(
-            url=url,
-            headers={"User-Agent": user_agent, "Accept": "*/*"},
-            timeout=timeout,
-        )
-        resp.encoding = "UTF-8"
-        ip = resp.text.replace("\n", "")
-        if judgeIp(ip):
-            return ip
-        else:
-            continue
-    return False
+class IpInfo:
+    def __init__(self) -> None:
+        with open("ip.yaml", "r") as f:
+            config = yaml.safe_load(f)
+            self.common_api_pool = config["ip_api"]
+            self.json_api_pool = config["ip_api_json"]
 
+            self.dns = resolver.Resolver()
+            self.dns.nameservers = config["dns_server"]
 
-def getIpFromJSON():
-    for api in json_api_pool:
-        try:
+    def _get_ip_common(self):
+        for url in self.common_api_pool:
             resp = requests.get(
-                url=api["url"],
-                headers={"User-Agent": user_agent, "Accept": "*/*"},
-                timeout=timeout,
+                url=url,
+                headers={"User-Agent": USER_AGENT, "Accept": "*/*"},
+                timeout=TIMEOUT,
             )
             resp.encoding = "UTF-8"
-            ip = resp.json()
-            for key in api["path"]:
-                ip = ip.get(key)
+            ip = resp.text.replace("\n", "")
             if judgeIp(ip):
                 return ip
             else:
                 continue
-        except Exception:
-            continue
-    return False
-
-
-def getIpFromDNS(domain: str, type="A"):
-    ip = dns.resolve(domain, type)
-    if judgeIp(str(ip[0])):
-        return ip[0]
-    else:
         return False
 
+    def _get_ip_from_json(self):
+        for api in self.json_api_pool:
+            try:
+                resp = requests.get(
+                    url=api["url"],
+                    headers={"User-Agent": USER_AGENT, "Accept": "*/*"},
+                    timeout=TIMEOUT,
+                )
+                resp.encoding = "UTF-8"
+                ip = resp.json()
+                for key in api["path"]:
+                    ip = ip.get(key)
+                if judgeIp(ip):
+                    return ip
+                else:
+                    continue
+            except Exception:
+                continue
+        return False
 
-def getIp():
-    return getIpCommon() if getIpCommon() else getIpFromJSON()
+    def dns_resolve(self, domain: str, type="A"):
+        ip = self.dns.resolve(domain, type)
+        if judgeIp(str(ip[0])):
+            return ip[0]
+        else:
+            return False
+
+    def get_ip(self):
+        return self._get_ip_common() if self._get_ip_common else self._get_ip_from_json
 
 
 if __name__ == "__main__":
-    # print(config)
-    print(getIp())
-    print(getIpFromDNS("example.com"))
+    tool = IpInfo()
+    print(tool.get_ip())
+    print(tool.dns_resolve("example.com"))

@@ -4,7 +4,7 @@ Using [Tencent Cloud SDK for python](https://docs.dnspod.cn/api/api3/) to DDNS.
 
 ## Common SDK
 
-For the purpose of script lightweighting, I chose to call the API using the common SDK.
+For the purpose of packages lightweighting, I chose to call the API using the common SDK.
 
 ### A Example not using common SDK
 

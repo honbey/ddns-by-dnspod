@@ -235,3 +235,4 @@ cython_debug/
 *.yaml
 !example.yaml
 !ip.yaml
+*.dat

@@ -6,7 +6,7 @@ from tencentcloud.common import credential
 
 from loguru import logger
 
-from iptools import judgeIp, getIp, getIpFromDNS
+from iptools import judgeIp, IpInfo
 
 API_VERSION = "2021-03-23"
 
@@ -75,7 +75,7 @@ class DNSPodAPI:
     def add_record(self, **kwargs):
         data = {
             "Domain": getv(kwargs, self.args, "domain"),
-            "Value": getv(kwargs, self.args, "ip"),
+            "Value": getv(kwargs, self.args, "value"),
             "RecordType": getv(kwargs, self.args, "type"),
             "RecordLine": getv(kwargs, self.args, "line"),
         }
@@ -84,15 +84,19 @@ class DNSPodAPI:
         elif self.args.subdomain != "@":
             data.update({"SubDomain": first(self.args.subdomain)})
         self.log.debug(data)
-        if judgeIp(data["Value"]):
-            self.req("CreateRecord", data)
-        else:
+        if data["RecordType"] == "A" and not judgeIp(data["Value"]):
             self.log.error("wrong IP address")
+            return False
+        else:
+            return self.req("CreateRecord", data)
 
     def del_record(self, **kwargs):
         domain = getv(kwargs, self.args, "domain")
-        subdomain = getv(kwargs, self.args, "subdomain")
-        self.info(domain=domain, subdomain=subdomain)
+        if kwargs["record_id"] is not None:
+            self.id = kwargs["record_id"]
+        else:
+            subdomain = getv(kwargs, self.args, "subdomain")
+            self.info(domain=domain, subdomain=subdomain)
         if isinstance(self.id, int) and self.id != -1:
             data = {"Domain": domain, "RecordId": self.id}
             self.log.debug(data)
@@ -141,8 +145,9 @@ class DNSPodAPI:
             self.log.error("cannot get record value")
             return ""
         dns_domain = domain if subdomain == "@" else subdomain + "." + domain
-        url_ip = str(getIp())
-        dns_ip = str(getIpFromDNS(dns_domain))
+        info = IpInfo()
+        url_ip = str(info.get_ip())
+        dns_ip = str(info.dns_resolve(dns_domain))
         self.log.info(
             f"URL IP: [{url_ip}], DNS IP: [{dns_ip}], record IP: [{record_ip}]"
         )

@@ -29,7 +29,9 @@ if __name__ == "__main__":
         help="specify subdomain(s)",
         dest="subdomain",
     )
-    parser.add_argument("--ip", nargs=1, type=str, help="ip address", dest="ip")
+    parser.add_argument(
+        "--value", "--ip", nargs=1, type=str, help="record value", dest="value"
+    )
     parser.add_argument(
         "--type", nargs=1, type=str, help="record type", dest="type", default="A"
     )

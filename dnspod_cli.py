@@ -77,8 +77,9 @@ if __name__ == "__main__":
                 config = yaml.safe_load(f)
                 key_id = config["tc_key_id"]
                 prikey = config["tc_prikey"]
-                args = argparse.Namespace(**config)
-                args.add, args.info, args.modify, args.remove = [None, None, None, None]
+                new_args = vars(args)
+                new_args.update(config)
+                args = argparse.Namespace(**new_args)
         else:
             key_id = os.environ.get("TENCENT_API_PUB_KEY")
             prikey = os.environ.get("TENCENT_API_PRI_KEY")

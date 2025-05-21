@@ -1,0 +1,23 @@
+CREATE TABLE dnspod_record(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    domain_id INTEGER NOT NULL,
+    record_id INTEGER NOT NULL,
+    subdomain VARCHAR(100) NOT NULL,
+    type VARCHAR(20) NOT NULL,
+    value VARCHAR(2000) NOT NULL,
+    line VARCHAR(20) NOT NULL,
+    line_id VARCHAR(20),
+    mx INTEGER,
+    ttl INTEGER,
+    weight INTEGER,
+    status VARCHAR(8),
+    remark TEXT,
+    default_ns BOOLEAN,
+    updated_on DATETIME,
+    monitor_status VARCHAR(8),
+    group_id INTEGER DEFAULT 0,
+    enable BOOLEAN DEFAULT TRUE,
+    comment TEXT NULL,
+    FOREIGN KEY(domain_id) REFERENCES dnspod_domain(domain_id),
+    FOREIGN KEY(group_id) REFERENCES dnspod_record_group(group_id)
+);

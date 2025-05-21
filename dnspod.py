@@ -1,187 +1,137 @@
 import sys
 import json
 
-from tencentcloud.common.common_client import CommonClient
+from tencentcloud.dnspod.v20210323 import dnspod_client, models
 from tencentcloud.common import credential
-
-from loguru import logger
-
-from iptools import judgeIp, IpInfo
-
-API_VERSION = "2021-03-23"
-
-
-def first(n):
-    return n[0] if isinstance(n, list) else n
-
-
-def getv(d: dict, c: object, kw: str = ""):
-    return d[kw] if d.get(kw, None) else first(getattr(c, kw, None))
+from tencentcloud.common.exception.tencent_cloud_sdk_exception import (
+    TencentCloudSDKException,
+)
 
 
 class DNSPodAPI:
-    def __init__(self, kid, key, args):
+    def __init__(self, key: tuple[str, str]):
         try:
-            self.args = args
-            self.log = self.logger()
-            self.log.debug("Initial DNSPodAPI begin.")
-            self.cred = credential.Credential(kid, key)
-            self.common_client = CommonClient(
-                "dnspod", API_VERSION, self.cred, "ap-shanghai"
-            )
-            self.log.debug(self.args)
+            cred = credential.Credential(key[0], key[1])
+            self.client = dnspod_client.DnspodClient(cred, "ap-shanghai")
+        except TencentCloudSDKException as e:
+            print(e)
         except Exception as e:
-            self.log.error(e)
+            print(e)
+
+    def describe_domain_list(self, data: dict):
+        rst = models.DescribeDomainListResponse()
+        try:
+            req = models.DescribeDomainListRequest()
+            req._deserialize(data)
+            rst = self.client.DescribeDomainList(req)
+        except TencentCloudSDKException as e:
+            print(e)
+        except Exception as e:
+            print(e)
         finally:
-            self.log.debug("Initial DNSPodAPI end.")
+            return rst
 
-    def logger(self, **kwargs):
-        if not getv(kwargs, self.args, "debug"):
-            logger.remove(handler_id=None)
-        file = getv(kwargs, self.args, "log_file")
-        level = getv(kwargs, self.args, "log_level") or "INFO"
-        size = getv(kwargs, self.args, "log_size") or 10
-        if isinstance(file, str):
-            logger.add(
-                file,
-                level=level,
-                rotation=f"{size} MB",
-                compression="gz",  # serialize=True
-            )
-        else:
-            logger.add(sys.stdout, level=level)
-        return logger.bind(module_name="DDNS by DNSPod")
-
-    def info(self, **kwargs):
-        # data = {
-        #    "Domain": kwargs["domain"] if kargs["domain"] else first(self.args.domain)
-        # }
-        data = {"Domain": getv(kwargs, self.args, "domain")}
-        if kwargs.get("subdomain", False):
-            data.update({"Subdomain": kwargs["subdomain"]})
-        elif self.args.subdomain != "@":
-            data.update({"Subdomain": first(self.args.subdomain)})
-        self.log.debug(data)
-        resp = self.req("DescribeRecordList", data)
-        if isinstance(resp, dict):
-            self.id = (
-                resp.get("Response", {}).get("RecordList", [{}])[0].get("RecordId", 0)
-            )
-        else:
-            self.id = -1
-            self.log.error("cannot get record id")
-        return resp
-
-    def add_record(self, **kwargs):
-        data = {
-            "Domain": getv(kwargs, self.args, "domain"),
-            "Value": getv(kwargs, self.args, "value"),
-            "RecordType": getv(kwargs, self.args, "type"),
-            "RecordLine": getv(kwargs, self.args, "line"),
-        }
-        if kwargs.get("subdomain", False):
-            data.update({"SubDomain": kwargs["subdomain"]})
-        elif self.args.subdomain != "@":
-            data.update({"SubDomain": first(self.args.subdomain)})
-        self.log.debug(data)
-        if data["RecordType"] == "A" and not judgeIp(data["Value"]):
-            self.log.error("wrong IP address")
-            return False
-        else:
-            return self.req("CreateRecord", data)
-
-    def del_record(self, **kwargs):
-        domain = getv(kwargs, self.args, "domain")
-        if kwargs["record_id"] is not None:
-            self.id = kwargs["record_id"]
-        else:
-            subdomain = getv(kwargs, self.args, "subdomain")
-            self.info(domain=domain, subdomain=subdomain)
-        if isinstance(self.id, int) and self.id != -1:
-            data = {"Domain": domain, "RecordId": self.id}
-            self.log.debug(data)
-            self.req("DeleteRecord", data)
-        else:
-            self.log.error("delete record failure")
-
-    def mod_record(self, ddns: bool = False, **kwargs):
-        domain = getv(kwargs, self.args, "domain")
-        subdomain = getv(kwargs, self.args, "subdomain")
-        data = {
-            "Domain": domain,
-            "SubDomain": subdomain,
-            "RecordLine": getv(kwargs, self.args, "line"),
-        }
-        if ddns:
-            action = "ModifyDynamicDNS"
-        else:
-            data.update(
-                {
-                    "Value": getv(kwargs, self.args, "ip"),
-                    "RecordType": getv(kwargs, self.args, "type"),
-                }
-            )
-            action = "ModifyRecord"
-        self.info(domain=domain, subdomain=subdomain)
-        if isinstance(self.id, int) and self.id != -1:
-            data.update({"RecordId": self.id})
-            self.log.debug(data)
-            self.req(action, data)
-        else:
-            self.log.error(f"{action} failure")
-
-    def ddns(self, **kwargs) -> str:
-        domain = getv(kwargs, self.args, "domain")
-        subdomain = getv(kwargs, self.args, "subdomain")
-        resp = self.info(domain=domain, subdomain=subdomain)
-        if isinstance(resp, dict):
-            record_ip = str(
-                resp.get("Response", {}).get("RecordList", [{}])[0].get("Value", "-1")
-            )
-        else:
-            record_ip = "-1"
-            self.log.error("cannot get record value")
-        if not judgeIp(record_ip):
-            self.log.error("cannot get record value")
-            return ""
-        dns_domain = domain if subdomain == "@" else subdomain + "." + domain
-        info = IpInfo()
-        url_ip = str(info.get_ip())
-        dns_ip = str(info.dns_resolve(dns_domain))
-        self.log.info(
-            f"URL IP: [{url_ip}], DNS IP: [{dns_ip}], record IP: [{record_ip}]"
-        )
-        if judgeIp(url_ip) and url_ip == dns_ip:
-            self.log.info(
-                f"URL IP[{url_ip}] is equal to DNS IP[{dns_ip}], skipping ddns"
-            )
-            return ""
-        elif judgeIp(url_ip) and url_ip == record_ip:
-            self.log.info(
-                f"URL IP[{url_ip}] is equal to record IP[{record_ip}], skipping ddns"
-            )
-            return ""
-        else:
-            if isinstance(self.args.subdomain, list):
-                subdomain_list = self.args.subdomain
-                for sd in subdomain_list:
-                    self.mod_record(ddns=True, domain=domain, subdomain=sd)
-                    self.log.info(
-                        f"updating record IP to [{url_ip}] for {sd + '.' + domain}"
-                    )
-            else:
-                self.mod_record(ddns=True, domain=domain, subdomain=subdomain)
-                self.log.info(
-                    f"updating record IP to [{url_ip}] for {subdomain + '.' + domain}"
-                )
-            return f"Successfully updated {record_ip} to {url_ip}."
-
-    def req(self, action, data):
+    def describe_record_list(self, data: dict):
+        rst = models.DescribeRecordListResponse()
         try:
-            self.log.debug(data)
-            resp = self.common_client.call_json(action, data)
-            self.log.debug(json.dumps(resp))
-            return resp
+            req = models.DescribeRecordListRequest()
+            req._deserialize(data)
+            rst = self.client.DescribeRecordList(req)
+        except TencentCloudSDKException as e:
+            print(e)
         except Exception as e:
-            self.log.error(e)
-            return False
+            print(e)
+        finally:
+            return rst
+
+    def describe_record_filter_list(self, data: dict):
+        rst = models.DescribeRecordFilterListResponse()
+        try:
+            req = models.DescribeRecordFilterListRequest()
+            req._deserialize(data)
+            rst = self.client.DescribeRecordFilterList(req)
+        except TencentCloudSDKException as e:
+            print(e)
+        except Exception as e:
+            print(e)
+        finally:
+            return rst
+
+    def describe_record_group_list(self, data: dict):
+        rst = models.DescribeRecordGroupListResponse()
+        try:
+            req = models.DescribeRecordGroupListRequest()
+            req._deserialize(data)
+            rst = self.client.DescribeRecordGroupList(req)
+        except TencentCloudSDKException as e:
+            print(e)
+        except Exception as e:
+            print(e)
+        finally:
+            return rst
+
+    def create_record(self, data: dict):
+        rst = models.CreateRecordResponse()
+        try:
+            req = models.CreateRecordRequest()
+            req._deserialize(data)
+            rst = self.client.CreateRecord(req)
+        except TencentCloudSDKException as e:
+            print(e)
+        except Exception as e:
+            print(e)
+        finally:
+            return rst
+
+    def delete_record(self, data: dict):
+        rst = models.DeleteRecordResponse()
+        try:
+            req = models.DeleteRecordRequest()
+            req._deserialize(data)
+            rst = self.client.DeleteRecord(req)
+        except TencentCloudSDKException as e:
+            print(e)
+        except Exception as e:
+            print(e)
+        finally:
+            return rst
+
+    def describe_record(self, data: dict):
+        rst = models.DescribeRecordResponse
+        try:
+            req = models.DescribeRecordRequest()
+            req._deserialize(data)
+            rst = self.client.DescribeRecord(req)
+        except TencentCloudSDKException as e:
+            print(e)
+        except Exception as e:
+            print(e)
+        finally:
+            return rst
+
+    def modify_record(self, data: dict):
+        rst = models.ModifyRecordResponse()
+        try:
+            req = models.ModifyRecordRequest()
+            req._deserialize(data)
+            rst = self.client.ModifyRecord(req)
+        except TencentCloudSDKException as e:
+            print(e)
+        except Exception as e:
+            print(e)
+        finally:
+            return rst
+
+    def modify_ddns_record(self, data: dict):
+        rst = models.ModifyDynamicDNSResponse()
+        try:
+            req = models.ModifyDynamicDNSRequest()
+            req._deserialize(data)
+            print(data)
+            rst = self.client.ModifyDynamicDNS(req)
+        except TencentCloudSDKException as e:
+            print(e)
+        except Exception as e:
+            print(e)
+        finally:
+            return rst

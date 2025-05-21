@@ -47,7 +47,8 @@ $RECYCLE.BIN/
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -236,3 +237,5 @@ cython_debug/
 !example.yaml
 !ip.yaml
 *.dat
+*.db
+*tmp*

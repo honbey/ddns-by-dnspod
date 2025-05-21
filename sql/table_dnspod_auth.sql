@@ -1,0 +1,7 @@
+CREATE TABLE dnspod_auth (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    pub_key VARCHAR(100) NOT NULL,
+    pri_key VARCHAR(100) NOT NULL,
+    enable BOOLEAN DEFAULT TRUE,
+    comment TEXT NULL
+);

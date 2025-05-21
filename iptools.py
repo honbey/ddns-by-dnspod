@@ -6,6 +6,7 @@ from dns import resolver
 
 import yaml
 
+# Force IPv4
 # https://stackoverflow.com/a/50044152
 __old_getaddrinfo = socket.getaddrinfo
 
@@ -22,13 +23,6 @@ USER_AGENT = "curl/8.5.0"
 TIMEOUT = (15, 15)
 
 
-def judgeIp(ip: str) -> bool:
-    try:
-        return ipaddress.ip_address(ip).is_global
-    except ValueError:
-        return False
-
-
 class IpInfo:
     def __init__(self) -> None:
         with open("ip.yaml", "r") as f:
@@ -39,6 +33,13 @@ class IpInfo:
             self.dns = resolver.Resolver()
             self.dns.nameservers = config["dns_server"]
 
+    @staticmethod
+    def judge_ip(ip):
+        try:
+            return ipaddress.ip_address(ip).is_global
+        except ValueError:
+            return False
+
     def _get_ip_common(self):
         for url in self.common_api_pool:
             resp = requests.get(
@@ -48,7 +49,7 @@ class IpInfo:
             )
             resp.encoding = "UTF-8"
             ip = resp.text.replace("\n", "")
-            if judgeIp(ip):
+            if self.judge_ip(ip):
                 return ip
             else:
                 continue
@@ -66,7 +67,7 @@ class IpInfo:
                 ip = resp.json()
                 for key in api["path"]:
                     ip = ip.get(key)
-                if judgeIp(ip):
+                if self.judge_ip(ip):
                     return ip
                 else:
                     continue
@@ -76,7 +77,7 @@ class IpInfo:
 
     def dns_resolve(self, domain: str, type="A"):
         ip = self.dns.resolve(domain, type)
-        if judgeIp(str(ip[0])):
+        if self.judge_ip(str(ip[0])):
             return ip[0]
         else:
             return False

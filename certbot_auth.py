@@ -12,7 +12,10 @@ from dnspod import DNSPodAPI
 tld_file_path = "file:///opt/data/workspace/ddns-by-dnspod/public_suffix_list.dat"
 extractor = tldextract.TLDExtract(cache_dir=None, suffix_list_urls=[tld_file_path])
 
-domain = extractor(os.getenv("CERTBOT_DOMAIN"))
+if os.getenv("CERTBOT_DOMAIN") is None:
+    exit(-1)
+else:
+    domain = extractor(os.getenv("CERTBOT_DOMAIN")) # type: ignore
 MAIN_DOMAIN = f"{domain.domain}.{domain.suffix}"
 SUBDOMAIN = domain.subdomain
 if SUBDOMAIN == "":
@@ -24,7 +27,7 @@ CERTBOT_VALIDATION = os.getenv("CERTBOT_VALIDATION")
 RECORD_PATH = f"/tmp/CERTBOT_{MAIN_DOMAIN}"
 RECORD_FILE = f"{RECORD_PATH}/RECORD_ID_{CERTBOT_VALIDATION}"
 
-config = {
+data = {
     "domain": MAIN_DOMAIN,
     "subdomain": TXTHOST,
     "value": CERTBOT_VALIDATION,
@@ -44,25 +47,22 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     dnspod = DNSPodAPI(
-        os.getenv("TENCENT_API_PUB_KEY"),
-        os.getenv("TENCENT_API_PRI_KEY"),
-        argparse.Namespace(**config),
+        (os.getenv("TENCENT_API_PUB_KEY"), os.getenv("TENCENT_API_PRI_KEY")) # type: ignore
     )
 
-    print(config)
+    print(data)
 
     if args.clean:
         with open(RECORD_FILE) as f:
             record_id = int(f.readline())
-        dnspod.del_record(record_id=record_id)
+        dnspod.delete_record({
+            "RecordId": record_id
+        })
         os.remove(RECORD_FILE)
         print("_acme-challenge record has been _deleted_")
     else:
-        resp = dnspod.add_record()
-        if resp:
-            record_id = resp.get("Response", {}).get("RecordId", -1)
-        else:
-            record_id = -1
+        resp = dnspod.create_record(data)
+        record_id = resp.RequestId
         if not os.path.exists(RECORD_PATH):
             os.makedirs(RECORD_PATH, 0o700)
         with open(RECORD_FILE, "w") as f:

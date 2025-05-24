@@ -2,9 +2,11 @@
 # _*_ coding:utf-8 _*_
 #
 
+import argparse
+import json
 import os
 import time
-import argparse
+
 import tldextract
 
 from dnspod import DNSPodAPI
@@ -15,7 +17,7 @@ extractor = tldextract.TLDExtract(cache_dir=None, suffix_list_urls=[tld_file_pat
 if os.getenv("CERTBOT_DOMAIN") is None:
     exit(-1)
 else:
-    domain = extractor(os.getenv("CERTBOT_DOMAIN")) # type: ignore
+    domain = extractor(os.getenv("CERTBOT_DOMAIN"))  # type: ignore
 MAIN_DOMAIN = f"{domain.domain}.{domain.suffix}"
 SUBDOMAIN = domain.subdomain
 if SUBDOMAIN == "":
@@ -28,11 +30,11 @@ RECORD_PATH = f"/tmp/CERTBOT_{MAIN_DOMAIN}"
 RECORD_FILE = f"{RECORD_PATH}/RECORD_ID_{CERTBOT_VALIDATION}"
 
 data = {
-    "domain": MAIN_DOMAIN,
-    "subdomain": TXTHOST,
-    "value": CERTBOT_VALIDATION,
-    "type": "TXT",
-    "line": "默认",
+    "Domain": MAIN_DOMAIN,
+    "SubDomain": TXTHOST,
+    "Value": CERTBOT_VALIDATION,
+    "RecordLine": "默认",
+    # "RecordType": "TXT",
 }
 
 if __name__ == "__main__":
@@ -47,22 +49,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     dnspod = DNSPodAPI(
-        (os.getenv("TENCENT_API_PUB_KEY"), os.getenv("TENCENT_API_PRI_KEY")) # type: ignore
+        (os.getenv("TENCENTCLOUD_API_PUB_KEY"), os.getenv("TENCENTCLOUD_API_PRI_KEY"))  # type: ignore
     )
 
-    print(data)
+    print(json.dumps(data))
 
     if args.clean:
         with open(RECORD_FILE) as f:
             record_id = int(f.readline())
-        dnspod.delete_record({
-            "RecordId": record_id
-        })
+        dnspod.delete_record({"Domain": MAIN_DOMAIN, "RecordId": record_id})
         os.remove(RECORD_FILE)
         print("_acme-challenge record has been _deleted_")
     else:
-        resp = dnspod.create_record(data)
-        record_id = resp.RequestId
+        resp = dnspod.create_txt_record(data)
+        record_id = resp.RecordId
         if not os.path.exists(RECORD_PATH):
             os.makedirs(RECORD_PATH, 0o700)
         with open(RECORD_FILE, "w") as f:

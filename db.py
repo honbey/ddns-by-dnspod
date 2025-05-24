@@ -1,11 +1,19 @@
+import logging
 import os
 import sqlite3
 
 from dnspod import DNSPodAPI
+from utils import Logger
 
 
 class DomainDatabase:
-    def __init__(self, key: tuple[str, str] | None = None, db="./data.db"):
+    def __init__(
+        self,
+        key: tuple[str, str] | None = None,
+        db="./data.db",
+        log_level: int = logging.INFO,
+    ):
+        self.logger = Logger("DomainDatabase", level=log_level)
         self.db = sqlite3.connect(db)
         self.db.row_factory = sqlite3.Row
         if key is not None:
@@ -20,16 +28,23 @@ class DomainDatabase:
     def check_db(self):
         cur = self.db.cursor()
         rst = []
-        for table in ["dnspod_auth", "dnspod_domain", "dnspod_record"]:
+        for table in [
+            "dnspod_auth",
+            "dnspod_domain",
+            "dnspod_record",
+            "dnspod_record_group",
+        ]:
             cur.execute(
                 "SELECT name FROM sqlite_master WHERE type=? AND name=?;",
                 ("table", table),
             )
             rst.append(cur.fetchone() is not None)
         cur.close()
+        self.logger.debug(f"Check result: {rst}")
         return all(rst)  # (all(rst), rst)
 
     def init_db(self):
+        self.logger.debug("Creating database...")
         cur = self.db.cursor()
         for i in [
             "./sql/table_dnspod_auth.sql",
@@ -37,13 +52,16 @@ class DomainDatabase:
             "./sql/table_dnspod_record.sql",
             "./sql/table_dnspod_record_group.sql",
         ]:
+            self.logger.debug(f"Creating table - [{i}] ...")
             with open(i) as f:
                 cur.execute(f.read())
 
         self.db.commit()
+        self.logger.debug("Database has been created.")
         cur.close()
 
     def init_tbl(self):
+        self.logger.debug("Creating tables...")
         cur = self.db.cursor()
         # dnspod_auth
         _ = self._init_tbl_auth(cur, self.key)
@@ -54,6 +72,7 @@ class DomainDatabase:
         # dnspod_record_group
         _ = self._init_tbl_record_group(cur, domain_id)
         self.db.commit()
+        self.logger.debug("Tables have been created.")
         cur.close()
 
     def _init_tbl_auth(self, cur: sqlite3.Cursor, key: tuple[str, str]):
@@ -78,10 +97,7 @@ class DomainDatabase:
                         domain_id, domain, created_on,
                         updated_on, grade
                     )
-                    VALUES(
-                        ?, ?, ?,
-                        ?, ?
-                    );
+                    VALUES(?, ?, ?, ?, ?);
                 """,
                     (
                         domain.DomainId,
@@ -116,13 +132,7 @@ class DomainDatabase:
                             weight, status, remark,
                             default_ns, updated_on, monitor_status
                         )
-                        VALUES(
-                            ?, ?, ?,
-                            ?, ?, ?,
-                            ?, ?, ?,
-                            ?, ?, ?,
-                            ?, ?, ?
-                        );
+                        VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     """,
                         (
                             d_id,
@@ -160,9 +170,7 @@ class DomainDatabase:
                         INSERT INTO dnspod_record_group(
                             domain_id, group_id, name, type
                         )
-                        VALUES(
-                            ?, ?, ?, ?
-                        );
+                        VALUES(?, ?, ?, ?);
                     """,
                         (d_id, group.GroupId, group.GroupName, group.GroupType),
                     )
@@ -209,8 +217,7 @@ class DomainDatabase:
                             SET
                                 group_id = ?, comment = ?
                             WHERE
-                                domain_id = ? AND record_id = ?
-                            ;
+                                domain_id = ? AND record_id = ?;
                         """,
                             (
                                 d.get("group_id"),
@@ -231,10 +238,11 @@ class DomainDatabase:
                 value = ?,
                 updated_on = datetime('now', 'localtime')
             WHERE
-                record_id = ?
+                record_id = ?;
         """,
             (value, record_id),
         )
+        self.db.commit()
         cur.close()
 
 

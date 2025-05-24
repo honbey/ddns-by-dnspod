@@ -24,8 +24,8 @@ TIMEOUT = (15, 15)
 
 
 class IpInfo:
-    def __init__(self) -> None:
-        with open("ip.yaml", "r") as f:
+    def __init__(self, config="ip.yaml") -> None:
+        with open(config, "r") as f:
             config = yaml.safe_load(f)
             self.common_api_pool = config["ip_api"]
             self.json_api_pool = config["ip_api_json"]

@@ -59,7 +59,7 @@ if __name__ == "__main__":
             record_id = int(f.readline())
         dnspod.delete_record({"Domain": MAIN_DOMAIN, "RecordId": record_id})
         os.remove(RECORD_FILE)
-        print("_acme-challenge record has been _deleted_")
+        print("_acme-challenge record has been _deleted_.")
     else:
         resp = dnspod.create_txt_record(data)
         record_id = resp.RecordId
@@ -67,6 +67,6 @@ if __name__ == "__main__":
             os.makedirs(RECORD_PATH, 0o700)
         with open(RECORD_FILE, "w") as f:
             f.write(str(record_id))
-        print("_acme-challenge record has been *created*")
+        print("_acme-challenge record has been *created*.")
 
         time.sleep(20)

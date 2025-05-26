@@ -18,8 +18,9 @@ def Logger(
     else:
         fmt = "%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(funcName)s() - %(message)s"
     logging.basicConfig(
-        level=level,
         format=fmt,
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    return logging.getLogger(name)
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    return logger

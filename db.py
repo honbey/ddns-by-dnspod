@@ -17,13 +17,17 @@ class DomainDatabase:
         self.db = sqlite3.connect(db)
         self.db.row_factory = sqlite3.Row
         if key is not None:
-            self.key = key
+            self._key = key
         else:
             cur = self.db.cursor()
             cur.execute("SELECT * FROM dnspod_auth WHERE enable = ?;", (True,))
             auth = dict(cur.fetchone())
-            self.key = (auth.get("pub_key", ""), auth.get("pri_key", ""))
-        self.dnspod = DNSPodAPI(self.key)
+            self._key = (auth.get("pub_key", ""), auth.get("pri_key", ""))
+        self.dnspod = DNSPodAPI(self._key)
+
+    @property
+    def key(self):
+        return self._key
 
     def check_db(self):
         cur = self.db.cursor()

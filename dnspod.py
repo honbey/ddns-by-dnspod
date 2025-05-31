@@ -31,7 +31,7 @@ class DNSPodAPI:
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
-            self.logger.debug(f"data: {data}, response: {rst}")
+            self.logger.debug(f"data: {data}, response: {rst._serialize()}")
             return rst
 
     def describe_record_list(self, data: dict):
@@ -45,7 +45,7 @@ class DNSPodAPI:
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
-            self.logger.debug(f"data: {data}, response: {rst}")
+            self.logger.debug(f"data: {data}, response: {rst._serialize()}")
             return rst
 
     def describe_record_filter_list(self, data: dict):
@@ -59,7 +59,7 @@ class DNSPodAPI:
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
-            self.logger.debug(f"data: {data}, response: {rst}")
+            self.logger.debug(f"data: {data}, response: {rst._serialize()}")
             return rst
 
     def describe_record_group_list(self, data: dict):
@@ -73,7 +73,7 @@ class DNSPodAPI:
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
-            self.logger.debug(f"data: {data}, response: {rst}")
+            self.logger.debug(f"data: {data}, response: {rst._serialize()}")
             return rst
 
     def create_txt_record(self, data: dict):
@@ -87,7 +87,7 @@ class DNSPodAPI:
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
-            self.logger.debug(f"data: {data}, response: {rst}")
+            self.logger.debug(f"data: {data}, response: {rst._serialize()}")
             return rst
 
     def create_record(self, data: dict):
@@ -101,7 +101,7 @@ class DNSPodAPI:
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
-            self.logger.debug(f"data: {data}, response: {rst}")
+            self.logger.debug(f"data: {data}, response: {rst._serialize()}")
             return rst
 
     def delete_record(self, data: dict):
@@ -115,11 +115,11 @@ class DNSPodAPI:
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
-            self.logger.debug(f"data: {data}, response: {rst}")
+            self.logger.debug(f"data: {data}, response: {rst._serialize()}")
             return rst
 
     def describe_record(self, data: dict):
-        rst = models.DescribeRecordResponse
+        rst = models.DescribeRecordResponse()
         try:
             req = models.DescribeRecordRequest()
             req._deserialize(data)
@@ -129,7 +129,7 @@ class DNSPodAPI:
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
-            self.logger.debug(f"data: {data}, response: {rst}")
+            self.logger.debug(f"data: {data}, response: {rst._serialize()}")
             return rst
 
     def modify_record(self, data: dict):
@@ -143,7 +143,7 @@ class DNSPodAPI:
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
-            self.logger.debug(f"data: {data}, response: {rst}")
+            self.logger.debug(f"data: {data}, response: {rst._serialize()}")
             return rst
 
     def modify_ddns_record(self, data: dict):
@@ -151,12 +151,11 @@ class DNSPodAPI:
         try:
             req = models.ModifyDynamicDNSRequest()
             req._deserialize(data)
-            print(data)
             rst = self.client.ModifyDynamicDNS(req)
         except TencentCloudSDKException as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
-            self.logger.debug(f"data: {data}, response: {rst}")
+            self.logger.debug(f"data: {data}, response: {rst._serialize()}")
             return rst

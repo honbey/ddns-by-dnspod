@@ -1,13 +1,5 @@
-ddns: false
-domain: "example.com"
-subdomain:
-  - "@"
-  - www
-tc_key_id: "***"
-tc_prikey: "***"
-debug: true
-log_file: ./ddns.log
-log_level: INFO
-log_size: 10
-#frequency: 180
-gotify: false
+database: ./data.db
+ip_config: ./ip.yaml
+gotify:
+  url: https://gotify.example.com
+  token: XXXXXX-XXXXXXXX

@@ -58,7 +58,9 @@ def ddns(config: str, force_update: bool = False) -> bool:
             msg = f"Successfully updated {record_ip} to {url_ip} for {fulldomain}."
             logger.info(msg)
             db.update_record_value(record.get("record_id", 0), url_ip)
-        push2gotify("DDNS by DNSPod", msg, gotify.get("url"), gotify.get("token"))
+        push2gotify(
+            "DDNS by DNSPod", msg, gotify.get("url"), gotify.get("token"), priority=2
+        )
         return True
 
 
@@ -66,4 +68,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("config", type=str, help="The path of config file")
     args = parser.parse_args()
-    ddns(args.config, force_update=True)
+    ddns(args.config, force_update=False)

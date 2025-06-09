@@ -42,7 +42,6 @@ def ddns(config: str, force_update: bool = False) -> bool:
         return False
     else:
         dnspod = DNSPodAPI(db.key, log_level=log_level)
-        msg = ""
         for record in record_list:
             subdomain = record.get("subdomain", "@")
             record_id = record.get("record_id", 0)
@@ -59,7 +58,11 @@ def ddns(config: str, force_update: bool = False) -> bool:
             logger.info(msg)
             db.update_record_value(record.get("record_id", 0), url_ip)
         push2gotify(
-            "DDNS by DNSPod", msg, gotify.get("url"), gotify.get("token"), priority=2
+            "DDNS by DNSPod",
+            f"Old IP: {record_ip}, New IP: {url_ip}",
+            gotify.get("url"),
+            gotify.get("token"),
+            priority=2,
         )
         return True
 

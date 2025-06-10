@@ -13,7 +13,7 @@ from iptools import IpInfo
 from utils import Logger, push2gotify
 
 
-def ddns(config: str, force_update: bool = False) -> bool:
+def ddns(config: str, force_update: bool = False, verbose: bool = False) -> bool:
     with open(config, "r") as f:
         cfg = yaml.safe_load(f)
         database = cfg.get("database")
@@ -32,13 +32,15 @@ def ddns(config: str, force_update: bool = False) -> bool:
     url_ip = str(info.get_ip())
     dns_ip = str(info.dns_resolve(fulldomain))
     if force_update:
-        record_ip, dns_ip = ["", ""]
-    logger.info(f"URL IP: [{url_ip}], DNS IP: [{dns_ip}], record IP: [{record_ip}]")
-    if IpInfo.judge_ip(url_ip) and url_ip == dns_ip:
-        logger.info("URL IP is equal to DNS IP, skipping DDNS.")
-        return False
-    elif IpInfo.judge_ip(url_ip) and url_ip == record_ip:
-        logger.info("URL IP is equal to record IP, skipping DDNS.")
+        record_ip, dns_ip = "", ""
+    if (IpInfo.judge_ip(url_ip) and url_ip == dns_ip) or (
+        IpInfo.judge_ip(url_ip) and url_ip == record_ip
+    ):
+        if verbose:
+            logger.info(
+                f"URL IP: [{url_ip}], DNS IP: [{dns_ip}], record IP: [{record_ip}]"
+            )
+            logger.info("URL IP is equal to DNS/record IP, skipping DDNS.")
         return False
     else:
         dnspod = DNSPodAPI(db.key, log_level=log_level)

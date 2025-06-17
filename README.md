@@ -22,3 +22,19 @@ certbot certonly -d "test.example.com" \
   --work-dir /opt/data/etc/letsencrypt \
   --logs-dir /opt/data/log/letsencrypt --dry-run
 ```
+
+## Force IPv4 for `requests`
+
+```python
+# Force IPv4
+# https://stackoverflow.com/a/50044152
+__old_getaddrinfo = socket.getaddrinfo
+
+
+def __new_getaddrinfo(*args, **kwargs):
+    responses = __old_getaddrinfo(*args, **kwargs)
+    return [response for response in responses if response[0] == socket.AF_INET]
+
+
+socket.getaddrinfo = __new_getaddrinfo
+```

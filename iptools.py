@@ -6,29 +6,23 @@ from dns import resolver
 
 import yaml
 
-# Force IPv4
-# https://stackoverflow.com/a/50044152
-__old_getaddrinfo = socket.getaddrinfo
-
-
-def __new_getaddrinfo(*args, **kwargs):
-    responses = __old_getaddrinfo(*args, **kwargs)
-    return [response for response in responses if response[0] == socket.AF_INET]
-
-
-socket.getaddrinfo = __new_getaddrinfo
-
 
 USER_AGENT = "curl/8.5.0"
 TIMEOUT = (15, 15)
 
 
 class IpInfo:
-    def __init__(self, config="ip.yaml") -> None:
+    def __init__(self, config="ip.yaml", version: int = 4) -> None:
         with open(config, "r") as f:
             config = yaml.safe_load(f)
-            self.common_api_pool = config["ip_api"]
-            self.json_api_pool = config["ip_api_json"]
+            if version == 4:
+                self.common_api_pool = config["ipv4_api"]
+                self.json_api_pool = config["ipv4_api_json"]
+            elif version == 6:
+                self.common_api_pool = config["ipv6_api"]
+                self.json_api_pool = config["ipv6_api_json"]
+            else:
+                pass
 
             self.dns = resolver.Resolver()
             self.dns.nameservers = config["dns_server"]

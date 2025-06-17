@@ -1,24 +1,24 @@
 # Those APIs only return a string of IP address
-ip_api:
-  - http://ip.gs
-  - http://ip.sb
-  - https://api-ipv4.ip.sb/ip
+ipv4_api:
+  - http://ipv4.ip.sb # http://api-ipv4.ip.sb
+  - https://v4.ident.me
+  - https://v4.tnedi.me
+  - https://ipv4.icanhazip.com
+ipv6_api:
+  - http://ipv6.ip.sb
+  - https://v6.ident.me
+  - https://v6.tnedi.me
+  - https://ipv6.icanhazip.com
+  - https://api6.ipify.org # blocked CN IPv4
 # Those APIs return a JSON contains IP address
-# Reference: https://blog.csdn.net/wangerrong/article/details/136850901
-ip_api_json:
-  - url: https://www.ip.cn/api/index?ip&type=0
+ipv4_api_json:
+  - url: https://ipv4.jsonip.com
     path:
       - ip
-  - url: https://whois.pconline.com.cn/ipJson.jsp?ip=&json=true
+ipv6_api_json:
+  - url: https://ipv6.jsonip.com
     path:
       - ip
-  - url: https://www.ipplus360.com/getIP
-    path:
-      - data
-  - url: https://ipapi.co/
-    path:
-      - ipinfo
-      - text
 # Reference: https://dnsdaquan.com/
 dns_server:
   # DNSPod DNS+

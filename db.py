@@ -4,6 +4,7 @@ import os
 import sqlite3
 
 from datetime import datetime
+from typing import ParamSpecKwargs
 
 from dnspod import DNSPodAPI
 from utils import Logger
@@ -246,13 +247,13 @@ class DomainDatabase:
 
     def insert_ddns_record(self, ipv4: str, ipv6: str = "::1"):
         cur = self._db.cursor()
-        cur.execute("SELECT id, updated_on FROM ddns_record ORDER BY id;")
-        records = cur.fetchall()
+        cur.execute("SELECT id, updated_on FROM ddns_record ORDER BY id DESC;")
+        record = cur.fetchone()
         curr_time = datetime.now()
-        if len(records) <= 1:
+        if record is None:
             duration = 1
         else:
-            _, prev_time = records[-1]
+            _, prev_time = record
             prev_time = datetime.strptime(prev_time, "%Y-%m-%d %H:%M:%S")
             duration = int((curr_time - prev_time).total_seconds())
         cur.execute(

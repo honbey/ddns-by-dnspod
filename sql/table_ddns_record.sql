@@ -3,6 +3,6 @@ CREATE TABLE IF NOT EXISTS ddns_record (
     updated_on DATETIME NOT NULL,
     ipv4_addr VARCHAR(15) NOT NULL,
     ipv6_addr VARCHAR(39) NOT NULL DEFAULT '::1',
-    duration INTEGER DEFAULT 0
+    duration INTEGER DEFAULT 0,
     comment TEXT NULL
 );

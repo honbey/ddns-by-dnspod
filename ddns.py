@@ -58,7 +58,7 @@ def ddns(config: str, force_update: bool = False, verbose: bool = False) -> bool
             )
             msg = f"Successfully updated {record_ip} to {url_ip} for {fulldomain}."
             logger.info(msg)
-            db.update_record_value(record.get("record_id", 0), url_ip)
+            db.update_dnspod_record(record.get("record_id", 0), url_ip)
         push2gotify(
             "DDNS by DNSPod",
             f"Old IP: {record_ip}, New IP: {url_ip}",

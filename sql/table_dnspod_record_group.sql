@@ -1,4 +1,4 @@
-CREATE TABLE dnspod_record_group (
+CREATE TABLE IF NOT EXISTS dnspod_record_group (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     domain_id INTEGER NOT NULL,
     group_id INTEGER NOT NULL,

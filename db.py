@@ -1,6 +1,9 @@
+import glob
 import logging
 import os
 import sqlite3
+
+from datetime import datetime
 
 from dnspod import DNSPodAPI
 from utils import Logger
@@ -9,64 +12,52 @@ from utils import Logger
 class DomainDatabase:
     def __init__(
         self,
-        key: tuple[str, str] | None = None,
-        db="./data.db",
+        db: str = "",
+        key: tuple[str, str] = ("", ""),
         log_level: int = logging.INFO,
     ):
         self.logger = Logger("DomainDatabase", level=log_level)
-        self.db = sqlite3.connect(db)
-        self.db.row_factory = sqlite3.Row
-        if key is not None:
-            self._key = key
+        self._this_dir = os.path.dirname(os.path.abspath(__file__))
+        if db == "":
+            self._db = sqlite3.connect(os.path.join(self._this_dir, "data.db"))
         else:
-            cur = self.db.cursor()
+            self._db = sqlite3.connect(db)
+        self._db.row_factory = sqlite3.Row
+        if any(s == "" for s in key):
+            cur = self._db.cursor()
             cur.execute("SELECT * FROM dnspod_auth WHERE enable = ?;", (True,))
             auth = dict(cur.fetchone())
             self._key = (auth.get("pub_key", ""), auth.get("pri_key", ""))
+        else:
+            self._key = key
+            # TODO: insert key into table if key_id is not exists
         self.dnspod = DNSPodAPI(self._key)
+
+    @property
+    def db(self):
+        return self._db
 
     @property
     def key(self):
         return self._key
 
-    def check_db(self):
-        cur = self.db.cursor()
-        rst = []
-        for table in [
-            "dnspod_auth",
-            "dnspod_domain",
-            "dnspod_record",
-            "dnspod_record_group",
-        ]:
-            cur.execute(
-                "SELECT name FROM sqlite_master WHERE type=? AND name=?;",
-                ("table", table),
-            )
-            rst.append(cur.fetchone() is not None)
-        cur.close()
-        self.logger.debug(f"Check result: {rst}")
-        return all(rst)  # (all(rst), rst)
-
-    def init_db(self):
-        self.logger.debug("Creating database...")
-        cur = self.db.cursor()
-        for i in [
-            "./sql/table_dnspod_auth.sql",
-            "./sql/table_dnspod_domain.sql",
-            "./sql/table_dnspod_record.sql",
-            "./sql/table_dnspod_record_group.sql",
-        ]:
+    def create_tbl(self):
+        self.logger.debug("Creating tables...")
+        sql_dir = os.path.join(self._this_dir, "sql")
+        sql_files = glob.glob(os.path.join(sql_dir, "table_*.sql"))
+        cur = self._db.cursor()
+        for i in sql_files:
             self.logger.debug(f"Creating table - [{i}] ...")
             with open(i) as f:
                 cur.execute(f.read())
 
-        self.db.commit()
-        self.logger.debug("Database has been created.")
+        self._db.commit()
+        self.logger.debug("Tables have been created.")
         cur.close()
 
     def init_tbl(self):
-        self.logger.debug("Creating tables...")
-        cur = self.db.cursor()
+        self.logger.debug("Initializing tables...")
+        cur = self._db.cursor()
         # dnspod_auth
         _ = self._init_tbl_auth(cur, self.key)
         # dnspod_domain
@@ -75,21 +66,23 @@ class DomainDatabase:
         _ = self._init_tbl_record(cur, domain_id)
         # dnspod_record_group
         _ = self._init_tbl_record_group(cur, domain_id)
-        self.db.commit()
-        self.logger.debug("Tables have been created.")
+        self._db.commit()
+        self.logger.debug("Tables have been initialized.")
         cur.close()
 
     def _init_tbl_auth(self, cur: sqlite3.Cursor, key: tuple[str, str]):
+        self.logger.debug("Initializing table - [dnspod_auth] ...")
         cur.execute(
             """
             INSERT INTO dnspod_auth(pub_key, pri_key)
             VALUES(?, ?);
-        """,
+            """,
             key,
         )
         return True
 
     def _init_tbl_domain(self, cur: sqlite3.Cursor):
+        self.logger.debug("Initializing table - [dnspod_domain] ...")
         resp = self.dnspod.describe_domain_list({})
         domain_list = resp.DomainList
         domain_id = []
@@ -102,7 +95,7 @@ class DomainDatabase:
                         updated_on, grade
                     )
                     VALUES(?, ?, ?, ?, ?);
-                """,
+                    """,
                     (
                         domain.DomainId,
                         domain.Name,
@@ -117,6 +110,7 @@ class DomainDatabase:
         return True, domain_id
 
     def _init_tbl_record(self, cur: sqlite3.Cursor, domain_id: list):
+        self.logger.debug("Initializing table - [dnspod_record] ...")
         for d_id in domain_id:
             resp = self.dnspod.describe_record_list(
                 {
@@ -137,7 +131,7 @@ class DomainDatabase:
                             default_ns, updated_on, monitor_status
                         )
                         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-                    """,
+                        """,
                         (
                             d_id,
                             record.RecordId,
@@ -159,6 +153,7 @@ class DomainDatabase:
         return True
 
     def _init_tbl_record_group(self, cur: sqlite3.Cursor, domain_id: list):
+        self.logger.debug("Initializing table - [dnspod_record_group] ...")
         for d_id in domain_id:
             resp = self.dnspod.describe_record_group_list(
                 {
@@ -175,18 +170,18 @@ class DomainDatabase:
                             domain_id, group_id, name, type
                         )
                         VALUES(?, ?, ?, ?);
-                    """,
+                        """,
                         (d_id, group.GroupId, group.GroupName, group.GroupType),
                     )
         return True
 
     def query_record_by_group(self, group_name="默认分组"):
-        cur = self.db.cursor()
+        cur = self._db.cursor()
         cur.execute(
             """
             SELECT group_id FROM dnspod_record_group
             WHERE name = ?;
-        """,
+            """,
             (group_name,),
         )
         row = dict(cur.fetchone())
@@ -194,13 +189,13 @@ class DomainDatabase:
             """
             SELECT a.*, b.domain FROM dnspod_record AS a, dnspod_domain AS b
             WHERE group_id = ? AND a.domain_id = b.domain_id;
-        """,
+            """,
             (row.get("group_id"),),
         )
         return [dict(ctx) for ctx in cur.fetchall()]
 
     def update_record_group(self):
-        cur = self.db.cursor()
+        cur = self._db.cursor()
         cur.execute("SELECT * FROM dnspod_record_group;")
         for i in cur.fetchall():
             d = dict(i)
@@ -222,7 +217,7 @@ class DomainDatabase:
                                 group_id = ?, comment = ?
                             WHERE
                                 domain_id = ? AND record_id = ?;
-                        """,
+                            """,
                             (
                                 d.get("group_id"),
                                 d.get("name"),
@@ -230,11 +225,11 @@ class DomainDatabase:
                                 record.RecordId,
                             ),
                         )
-        self.db.commit()
+        self._db.commit()
         cur.close()
 
-    def update_record_value(self, record_id: int, value: str):
-        cur = self.db.cursor()
+    def update_dnspod_record(self, record_id: int, value: str):
+        cur = self._db.cursor()
         cur.execute(
             """
             UPDATE dnspod_record
@@ -243,10 +238,33 @@ class DomainDatabase:
                 updated_on = datetime('now', 'localtime')
             WHERE
                 record_id = ?;
-        """,
+            """,
             (value, record_id),
         )
-        self.db.commit()
+        self._db.commit()
+        cur.close()
+
+    def insert_ddns_record(self, ipv4: str, ipv6: str = "::1"):
+        cur = self._db.cursor()
+        cur.execute("SELECT id, updated_on FROM ddns_record ORDER BY id;")
+        records = cur.fetchall()
+        curr_time = datetime.now()
+        if len(records) <= 1:
+            duration = 1
+        else:
+            _, prev_time = records[-1]
+            prev_time = datetime.strptime(prev_time, "%Y-%m-%d %H:%M:%S")
+            duration = int((curr_time - prev_time).total_seconds())
+        cur.execute(
+            """
+            INSERT INTO ddns_record(
+                updated_on, ipv4_addr, ipv6_addr, duration
+            )
+            VALUES(?, ?, ?, ?);
+            """,
+            (curr_time.strftime("%Y-%m-%d %H:%M:%S"), ipv4, ipv6, duration),
+        )
+        self._db.commit()
         cur.close()
 
 
@@ -256,10 +274,8 @@ if __name__ == "__main__":
         os.environ.get("TENCENTCLOUD_API_PRI_KEY"),
     )
     if all(isinstance(k, str) for k in key):
-        d = DomainDatabase(key)  # type: ignore
-        if True:
-            d.init_db()
-            d.init_tbl()
-            d.update_record_group()
-        else:
-            print(d.query_record_by_group("DDNS"))
+        d = DomainDatabase()  # type: ignore
+        d.create_tbl()
+        # d.init_tbl()
+        # d.update_record_group()
+        # print(d.query_record_by_group("DDNS"))

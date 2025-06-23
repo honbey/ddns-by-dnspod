@@ -28,7 +28,15 @@ def Logger(
     return logger
 
 
-def push2gotify(title: str, msg: str, url: str, token: str, priority: int = 5):
+def push2gotify(
+    title: str,
+    msg: str,
+    url: str,
+    token: str,
+    headers: dict = {},
+    verify: bool = True,
+    priority: int = 2,
+):
     """
     Push notification to Gotify.
 
@@ -41,13 +49,13 @@ def push2gotify(title: str, msg: str, url: str, token: str, priority: int = 5):
     """
 
     url = f"{url}/message"
-    headers = {"X-Gotify-Key": token, "Content-Type": "application/json"}
+    headers.update({"X-Gotify-Key": token, "Content-Type": "application/json"})
     data = {"title": title, "message": msg, "priority": priority}
 
     logger = Logger("Gotify")
 
     try:
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=data, verify=verify)
         response.raise_for_status()
         logger.info("Push update notification to Gotify...")
     except requests.exceptions.RequestException as e:

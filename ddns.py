@@ -65,6 +65,8 @@ def ddns(config: str, force_update: bool = False, verbose: bool = False) -> bool
             f"Old IP: {record_ip}, New IP: {url_ip}",
             gotify.get("url"),
             gotify.get("token"),
+            gotify.get("headers"),
+            verify=False,
             priority=2,
         )
         return True

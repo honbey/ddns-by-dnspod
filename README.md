@@ -2,6 +2,10 @@
 
 Using [Tencent Cloud SDK for python](https://docs.dnspod.cn/api/api3/) to DDNS.
 
+- Store DNS, DDNS record and token in sqlite database.
+- Get IP from public API.
+- Update SSL/TLS certificates by Certbot from [Let's Encrypt](https://letsencrypt.org/).
+
 ## Manual auth hook of Certbot
 
 `certbot_auth.py` refactored code from [al-one/certbot-auth-dnspod](https://github.com/al-one/certbot-auth-dnspod) by Python.

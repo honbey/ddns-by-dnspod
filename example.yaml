@@ -1,5 +1,6 @@
 database: ./data.db
 ip_config: ./ip.yaml
+log_level: INFO
 gotify:
   url: https://gotify.example.com
   token: XXXXXX-XXXXXXXX

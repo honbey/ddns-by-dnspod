@@ -26,7 +26,6 @@ class JSONFormatter(logging.Formatter):
             "line": record.lineno,
             "thread": record.threadName,
         }
-        # 添加异常信息（如果有）
         if record.exc_info:
             log_record["exception"] = self.formatException(record.exc_info)
         return json.dumps(log_record)
@@ -48,6 +47,23 @@ def Logger(
             datefmt="%Y-%m-%d %H:%M:%S",
         )
     return logger
+
+
+def set_log_level(level: str = "INFO"):
+    if level == "NOTSET":
+        return logging.NOTSET
+    elif level == "DEBUG":
+        return logging.DEBUG
+    elif level == "INFO":
+        return logging.INFO
+    elif level == "WARNING":
+        return logging.WARNING
+    elif level == "ERROR":
+        return logging.ERROR
+    elif level == "CRITICAL":
+        return logging.CRITICAL
+    else:
+        return logging.INFO
 
 
 def push2gotify(

@@ -3,14 +3,13 @@
 #
 
 import argparse
-import logging
 
 import yaml
 
 from db import DomainDatabase
 from dnspod import DNSPodAPI
 from iptools import IpInfo
-from utils import Logger, push2gotify
+from utils import Logger, set_log_level, push2gotify
 
 
 def ddns(config: str, force_update: bool = False, verbose: bool = False) -> bool:
@@ -19,7 +18,8 @@ def ddns(config: str, force_update: bool = False, verbose: bool = False) -> bool
         database = cfg.get("database")
         ip_config = cfg.get("ip_config")
         gotify = cfg.get("gotify")
-    log_level = logging.INFO
+        log_level = cfg.get("log_level", "INFO")
+    log_level = set_log_level(log_level)
     logger = Logger("DDNS by DNSPod", level=log_level)
     db = DomainDatabase(db=database, log_level=log_level)
     record_list = db.query_record_by_group("DDNS")

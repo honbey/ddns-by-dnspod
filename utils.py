@@ -1,4 +1,6 @@
 import logging
+import json
+from datetime import datetime
 from typing import Literal
 
 import requests
@@ -12,19 +14,39 @@ def getv(d: dict, c: object, kw: str = ""):
     return d[kw] if d.get(kw, False) else first(getattr(c, kw, ""))
 
 
+class JSONFormatter(logging.Formatter):
+    def format(self, record):
+        log_record = {
+            "timestamp": datetime.now().isoformat(),
+            "level": record.levelname,
+            "name": record.name,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
+            "thread": record.threadName,
+        }
+        # 添加异常信息（如果有）
+        if record.exc_info:
+            log_record["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_record)
+
+
+# class-like
 def Logger(
     name: str, level: int = logging.INFO, format: Literal["json", "str"] = "json"
 ):
-    if format == "json":
-        fmt = '{"time": "%(asctime)s", "level": "%(levelname)s", "line_number": %(lineno)s, "function_name": "%(funcName)s()", "message": "%(message)s"}'
-    else:
-        fmt = "%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(funcName)s() - %(message)s"
-    logging.basicConfig(
-        format=fmt,
-        datefmt="%Y-%m-%d %H:%M:%S",
-    )
     logger = logging.getLogger(name)
     logger.setLevel(level)
+    if format == "json":
+        handler = logging.StreamHandler()
+        handler.setFormatter(JSONFormatter())
+        logger.addHandler(handler)
+    else:
+        logging.basicConfig(
+            format="%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(funcName)s() - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
     return logger
 
 

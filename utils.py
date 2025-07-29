@@ -1,5 +1,6 @@
-import logging
 import json
+import logging
+import sys
 from datetime import datetime
 from typing import Literal
 
@@ -35,35 +36,22 @@ class JSONFormatter(logging.Formatter):
 def Logger(
     name: str, level: int = logging.INFO, format: Literal["json", "str"] = "json"
 ):
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
     if format == "json":
-        handler = logging.StreamHandler()
-        handler.setFormatter(JSONFormatter())
-        logger.addHandler(handler)
+        formatter = JSONFormatter()
     else:
-        logging.basicConfig(
-            format="%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(funcName)s() - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
+        formatter = logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(funcName)s() - %(message)s"
         )
+    logger = logging.getLogger(name)
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(level)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
     return logger
 
 
-def set_log_level(level: str = "INFO"):
-    if level == "NOTSET":
-        return logging.NOTSET
-    elif level == "DEBUG":
-        return logging.DEBUG
-    elif level == "INFO":
-        return logging.INFO
-    elif level == "WARNING":
-        return logging.WARNING
-    elif level == "ERROR":
-        return logging.ERROR
-    elif level == "CRITICAL":
-        return logging.CRITICAL
-    else:
-        return logging.INFO
+def get_numeric_loglevel(level: str = "INFO") -> int:
+    return getattr(logging, level.upper(), logging.INFO)
 
 
 def push2gotify(

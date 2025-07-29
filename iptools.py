@@ -1,5 +1,4 @@
 import ipaddress
-import socket
 import requests
 
 from dns import resolver
@@ -69,7 +68,7 @@ class IpInfo:
                 continue
         return False
 
-    def dns_resolve(self, domain: str, type="A"):
+    def dns_resolve(self, domain: str, type: str = "A"):
         ip = self.dns.resolve(domain, type)
         if self.judge_ip(str(ip[0])):
             return ip[0]

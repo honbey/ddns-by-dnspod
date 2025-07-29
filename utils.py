@@ -59,9 +59,8 @@ def push2gotify(
     msg: str,
     url: str,
     token: str,
-    headers: dict = {},
-    verify: bool = True,
     priority: int = 2,
+    **kwargs,
 ):
     """
     Push notification to Gotify.
@@ -72,16 +71,22 @@ def push2gotify(
     url (str): Gotify server URL
     token (str): Gotify token
     priority (int): notification priority
+    **kwargs: other params to requests.post() except headers
     """
 
     url = f"{url}/message"
-    headers.update({"X-Gotify-Key": token, "Content-Type": "application/json"})
+    headers = {"X-Gotify-Key": token, "Content-Type": "application/json"}
+    extra_headers = kwargs.get("headers", None)
+    if isinstance(extra_headers, dict):
+        headers.update(extra_headers)
+        kwargs.pop("headers", None)
+
     data = {"title": title, "message": msg, "priority": priority}
 
     logger = Logger("Gotify")
 
     try:
-        response = requests.post(url, headers=headers, json=data, verify=verify)
+        response = requests.post(url, headers=headers, json=data, **kwargs)
         response.raise_for_status()
         logger.info("Push update notification to Gotify...")
     except requests.exceptions.RequestException as e:

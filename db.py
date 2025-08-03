@@ -192,7 +192,7 @@ class DomainDatabase:
             """,
             (row.get("group_id"),),
         )
-        return [dict(ctx) for ctx in cur.fetchall()]
+        return [dict(data) for data in cur.fetchall()]
 
     def update_record_group(self):
         cur = self._db.cursor()

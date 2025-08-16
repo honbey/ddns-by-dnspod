@@ -8,7 +8,11 @@ import requests
 
 
 def first(n):
-    return n[0] if isinstance(n, list) else n
+    return geti(n, 0)
+
+
+def geti(n, idx: int = 0):
+    return n[idx] if isinstance(n, list) or isinstance(n, tuple) else n
 
 
 def getv(d: dict, c: object, kw: str = ""):
@@ -16,7 +20,7 @@ def getv(d: dict, c: object, kw: str = ""):
 
 
 class JSONFormatter(logging.Formatter):
-    def format(self, record):
+    def format(self, record) -> str:
         log_record = {
             "timestamp": datetime.now().isoformat(),
             "level": record.levelname,
@@ -32,9 +36,45 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_record)
 
 
+class Log:
+    def __init__(
+        self,
+        name: str,
+        level: str | int = "INFO",
+        format: Literal["json", "str"] = "json",
+        captureWarnings: bool = False,
+        io=sys.stdout,
+    ) -> None:
+        if format == "json":
+            formatter = JSONFormatter()
+        else:
+            formatter = logging.Formatter(
+                "%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(funcName)s() - %(message)s"
+            )
+        level = level if isinstance(level, int) else self.get_numeric_loglevel(level)
+        handler = logging.StreamHandler(io)
+        handler.setLevel(level)
+        handler.setFormatter(formatter)
+        logging.captureWarnings(captureWarnings)
+
+        self._logger = logging.getLogger(name)
+        self._logger.addHandler(handler)
+
+    @property
+    def logger(self) -> logging.Logger:
+        return self._logger
+
+    @staticmethod
+    def get_numeric_loglevel(level: str = "INFO") -> int:
+        return getattr(logging, level.upper(), logging.INFO)
+
+
 # class-like
 def Logger(
-    name: str, level: int = logging.INFO, format: Literal["json", "str"] = "json"
+    name: str,
+    level: int = logging.INFO,
+    format: Literal["json", "str"] = "json",
+    captureWarnings: bool = False,
 ):
     if format == "json":
         formatter = JSONFormatter()
@@ -47,6 +87,7 @@ def Logger(
     handler.setLevel(level)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
+    logging.captureWarnings(captureWarnings)
     return logger
 
 

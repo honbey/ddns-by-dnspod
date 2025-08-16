@@ -249,12 +249,20 @@ class DomainDatabase:
         cur.execute("SELECT id, updated_on FROM ddns_record ORDER BY id DESC;")
         record = cur.fetchone()
         curr_time = datetime.now()
-        if record is None:
-            duration = 1
-        else:
-            _, prev_time = record
+        if record is not None:
+            id, prev_time = record
             prev_time = datetime.strptime(prev_time, "%Y-%m-%d %H:%M:%S")
             duration = int((curr_time - prev_time).total_seconds())
+            cur.execute(
+                """
+                UPDATE ddns_record
+                SET
+                    duration = ?
+                WHERE
+                    id = ?;
+                """,
+                (duration, id),
+            )
         cur.execute(
             """
             INSERT INTO ddns_record(
@@ -262,7 +270,7 @@ class DomainDatabase:
             )
             VALUES(?, ?, ?, ?);
             """,
-            (curr_time.strftime("%Y-%m-%d %H:%M:%S"), ipv4, ipv6, duration),
+            (curr_time.strftime("%Y-%m-%d %H:%M:%S"), ipv4, ipv6, 999999999),
         )
         self._db.commit()
         cur.close()

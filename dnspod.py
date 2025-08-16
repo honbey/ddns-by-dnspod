@@ -16,7 +16,7 @@ class DNSPodAPI:
             cred = credential.Credential(key[0], key[1])
             self.client = dnspod_client.DnspodClient(cred, "ap-shanghai")
         except TencentCloudSDKException as e:
-            self.logger.error("Error: %s", str(e), exc_info=True)
+            self.logger.error("SDK Error: %s", str(e), exc_info=True)
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
 
@@ -27,7 +27,7 @@ class DNSPodAPI:
             req._deserialize(data)
             rst = self.client.DescribeDomainList(req)
         except TencentCloudSDKException as e:
-            self.logger.error("Error: %s", str(e), exc_info=True)
+            self.logger.error("SDK Error: %s", str(e), exc_info=True)
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
@@ -41,7 +41,7 @@ class DNSPodAPI:
             req._deserialize(data)
             rst = self.client.DescribeRecordList(req)
         except TencentCloudSDKException as e:
-            self.logger.error("Error: %s", str(e), exc_info=True)
+            self.logger.error("SDK Error: %s", str(e), exc_info=True)
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
@@ -55,7 +55,7 @@ class DNSPodAPI:
             req._deserialize(data)
             rst = self.client.DescribeRecordFilterList(req)
         except TencentCloudSDKException as e:
-            self.logger.error("Error: %s", str(e), exc_info=True)
+            self.logger.error("SDK Error: %s", str(e), exc_info=True)
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
@@ -69,7 +69,7 @@ class DNSPodAPI:
             req._deserialize(data)
             rst = self.client.DescribeRecordGroupList(req)
         except TencentCloudSDKException as e:
-            self.logger.error("Error: %s", str(e), exc_info=True)
+            self.logger.error("SDK Error: %s", str(e), exc_info=True)
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
@@ -83,7 +83,7 @@ class DNSPodAPI:
             req._deserialize(data)
             rst = self.client.CreateTXTRecord(req)
         except TencentCloudSDKException as e:
-            self.logger.error("Error: %s", str(e), exc_info=True)
+            self.logger.error("SDK Error: %s", str(e), exc_info=True)
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
@@ -97,7 +97,7 @@ class DNSPodAPI:
             req._deserialize(data)
             rst = self.client.CreateRecord(req)
         except TencentCloudSDKException as e:
-            self.logger.error("Error: %s", str(e), exc_info=True)
+            self.logger.error("SDK Error: %s", str(e), exc_info=True)
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
@@ -111,7 +111,7 @@ class DNSPodAPI:
             req._deserialize(data)
             rst = self.client.DeleteRecord(req)
         except TencentCloudSDKException as e:
-            self.logger.error("Error: %s", str(e), exc_info=True)
+            self.logger.error("SDK Error: %s", str(e), exc_info=True)
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
@@ -125,7 +125,7 @@ class DNSPodAPI:
             req._deserialize(data)
             rst = self.client.DescribeRecord(req)
         except TencentCloudSDKException as e:
-            self.logger.error("Error: %s", str(e), exc_info=True)
+            self.logger.error("SDK Error: %s", str(e), exc_info=True)
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
@@ -139,7 +139,7 @@ class DNSPodAPI:
             req._deserialize(data)
             rst = self.client.ModifyRecord(req)
         except TencentCloudSDKException as e:
-            self.logger.error("Error: %s", str(e), exc_info=True)
+            self.logger.error("SDK Error: %s", str(e), exc_info=True)
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:
@@ -153,7 +153,7 @@ class DNSPodAPI:
             req._deserialize(data)
             rst = self.client.ModifyDynamicDNS(req)
         except TencentCloudSDKException as e:
-            self.logger.error("Error: %s", str(e), exc_info=True)
+            self.logger.error("SDK Error: %s", str(e), exc_info=True)
         except Exception as e:
             self.logger.error("Error: %s", str(e), exc_info=True)
         finally:

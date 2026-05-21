@@ -19,7 +19,7 @@ classifiers = [
 ]
 
 [project.scripts]
-dnspod-ddns = "ddns_by_dnspod.cli:main"
+ddns-by-dnspod = "ddns_by_dnspod.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["ddns_by_dnspod*"]

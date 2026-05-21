@@ -1,7 +1,0 @@
-certbot
-dnspython
-pyyaml
-requests
-tencentcloud-sdk-python-common
-tencentcloud-sdk-python-dnspod
-tldextract

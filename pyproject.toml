@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ddns-by-dnspod"
+version = "1.1.0"
+description = "Dynamic DNS updater using Tencent Cloud DNSPod API v3"
+requires-python = ">=3.10"
+dependencies = [
+    "tencentcloud-sdk-python-dnspod>=3.0.1258",
+    "pyyaml>=6.0",
+    "requests>=2.28",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+dnspod-ddns = "ddns_by_dnspod.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["ddns_by_dnspod*"]

@@ -1,0 +1,39 @@
+# Tencent Cloud API 凭证
+secret_id: "YOUR_SECRET_ID"
+secret_key: "YOUR_SECRET_KEY"
+
+# 域名配置（支持多个主域名，每个主域名可包含多个子域名）
+domains:
+  - domain: "example.com"
+    sub_domain:
+      # 可以是单个字符串或列表
+      - "@"
+      - "www"
+    record_type: "A"
+    record_line: "默认"
+  - domain: "another.org"
+    sub_domain: "home" # 兼容旧格式：单个字符串
+    record_type: "AAAA"
+    record_line: "默认"
+
+# 公网 IP 检测服务（按顺序尝试，直到成功）
+ip_check_urls:
+  - "https://api.ipify.org"
+  - "http://ipv4.ip.sb"
+  - "http://api-ipv4.ip.sb"
+  - "https://v4.ident.me"
+  - "https://v4.tnedi.me"
+  - "https://ipv4.icanhazip.com"
+
+# SQLite 数据库路径
+db_path: "ddns_history.db"
+
+# ntfy 通知配置
+ntfy:
+  enabled: true
+  server: "https://ntfy.sh"
+  topic: "your-ntfy-topic"
+  username: "your-username" # 可选
+  password: "your-password" # 可选
+  priority: 3
+  tags: "ddns,dnspod"

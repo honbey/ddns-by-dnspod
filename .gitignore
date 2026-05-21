@@ -234,8 +234,7 @@ cython_debug/
 # Custom
 *.log
 *.yaml
-!example.yaml
-!ip.yaml
+!config.example.yaml
 *.dat
 *.db
 *tmp*

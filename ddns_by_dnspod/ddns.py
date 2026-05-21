@@ -40,7 +40,7 @@ def _get_public_ip(urls: List[str]) -> Optional[str]:
 
 def _create_dnspod_client(config: AppConfig) -> dnspod_client.DnspodClient:
     """创建腾讯云 DNSPod 客户端。"""
-    cred = credential.Credential(config.secret_id, config.secret_key)
+    cred = credential.Credential(config.api_id, config.api_key)
     return dnspod_client.DnspodClient(cred, "")
 
 

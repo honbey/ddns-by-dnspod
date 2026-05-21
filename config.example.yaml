@@ -1,6 +1,6 @@
 # Tencent Cloud API 凭证
-secret_id: "YOUR_SECRET_ID"
-secret_key: "YOUR_SECRET_KEY"
+api_id: "YOUR_SECRET_ID"
+api_key: "YOUR_SECRET_KEY"
 
 # 域名配置（支持多个主域名，每个主域名可包含多个子域名）
 domains:

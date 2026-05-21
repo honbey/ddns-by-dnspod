@@ -33,8 +33,8 @@ class NtfyConfig:
 class AppConfig:
     """应用全局配置"""
 
-    secret_id: str = ""
-    secret_key: str = ""
+    api_id: str = ""
+    api_key: str = ""
     domains: List[DomainConfig] = field(default_factory=list)
     ip_check_urls: List[str] = field(
         default_factory=lambda: [

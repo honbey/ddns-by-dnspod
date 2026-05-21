@@ -22,15 +22,14 @@ def _normalize_sub_domains(value: Union[str, List[str], None]) -> List[str]:
         # 支持逗号分隔
         parts = [s.strip() for s in value.split(",") if s.strip()]
         return parts if parts else ["@"]
-    return ["@"]
 
 
 def _dict_to_config(data: dict) -> AppConfig:
     """将 YAML 字典转换为 AppConfig 对象。"""
     config = AppConfig()
 
-    config.secret_id = data.get("secret_id", "")
-    config.secret_key = data.get("secret_key", "")
+    config.api_id = data.get("api_id", "")
+    config.api_key = data.get("api_key", "")
     config.db_path = data.get("db_path", "ddns_history.db")
 
     # IP 检测地址列表
@@ -69,10 +68,10 @@ def _dict_to_config(data: dict) -> AppConfig:
 
 def _override_from_args(config: AppConfig, args: argparse.Namespace) -> AppConfig:
     """命令行参数覆盖 YAML 配置（命令行参数优先级更高）。"""
-    if args.secret_id:
-        config.secret_id = args.secret_id
-    if args.secret_key:
-        config.secret_key = args.secret_key
+    if args.api_id:
+        config.api_id = args.api_id
+    if args.api_key:
+        config.api_key = args.api_key
 
     # 域名相关
     if args.domain:
@@ -132,8 +131,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # 腾讯云凭证
-    parser.add_argument("--secret-id", type=str, help="腾讯云 SecretId")
-    parser.add_argument("--secret-key", type=str, help="腾讯云 SecretKey")
+    parser.add_argument("--api-id", type=str, help="腾讯云 API ID")
+    parser.add_argument("--api-key", type=str, help="腾讯云 API KEY")
 
     # 域名配置
     parser.add_argument("-d", "--domain", type=str, help="主域名，如 example.com")
@@ -203,8 +202,8 @@ def load_config(args: argparse.Namespace) -> AppConfig:
     config = _override_from_args(config, args)
 
     # 环境变量兜底（优先级最高）
-    config.secret_id = os.environ.get("TENCENTCLOUD_API_ID", config.secret_id)
-    config.secret_key = os.environ.get("TENCENTCLOUD_API_KEY", config.secret_key)
+    config.api_id = os.environ.get("TENCENTCLOUD_API_ID", config.api_id)
+    config.api_key = os.environ.get("TENCENTCLOUD_API_KEY", config.api_key)
 
     return config
 
@@ -219,13 +218,13 @@ def main() -> None:
     # 校验必要配置
     if not args.show_ip:
         errors = []
-        if not config.secret_id:
+        if not config.api_id:
             errors.append(
-                "缺少 secret_id（可通过 --secret-id、YAML 或环境变量 TENCENTCLOUD_API_ID 提供）"
+                "缺少 api_id（可通过 --api-id、YAML 或环境变量 TENCENTCLOUD_API_ID 提供）"
             )
-        if not config.secret_key:
+        if not config.api_key:
             errors.append(
-                "缺少 secret_key（可通过 --secret-key、YAML 或环境变量 TENCENTCLOUD_API_KEY 提供）"
+                "缺少 api_key（可通过 --api-key、YAML 或环境变量 TENCENTCLOUD_API_KEY 提供）"
             )
         if not config.domains:
             errors.append("缺少域名配置（可通过 --domain、YAML 提供）")

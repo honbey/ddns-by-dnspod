@@ -203,8 +203,8 @@ def load_config(args: argparse.Namespace) -> AppConfig:
     config = _override_from_args(config, args)
 
     # 环境变量兜底（优先级最高）
-    config.secret_id = os.environ.get("TENCENT_SECRET_ID", config.secret_id)
-    config.secret_key = os.environ.get("TENCENT_SECRET_KEY", config.secret_key)
+    config.secret_id = os.environ.get("TENCENTCLOUD_API_ID", config.secret_id)
+    config.secret_key = os.environ.get("TENCENTCLOUD_API_KEY", config.secret_key)
 
     return config
 
@@ -221,11 +221,11 @@ def main() -> None:
         errors = []
         if not config.secret_id:
             errors.append(
-                "缺少 secret_id（可通过 --secret-id、YAML 或环境变量 TENCENT_SECRET_ID 提供）"
+                "缺少 secret_id（可通过 --secret-id、YAML 或环境变量 TENCENTCLOUD_API_ID 提供）"
             )
         if not config.secret_key:
             errors.append(
-                "缺少 secret_key（可通过 --secret-key、YAML 或环境变量 TENCENT_SECRET_KEY 提供）"
+                "缺少 secret_key（可通过 --secret-key、YAML 或环境变量 TENCENTCLOUD_API_KEY 提供）"
             )
         if not config.domains:
             errors.append("缺少域名配置（可通过 --domain、YAML 提供）")

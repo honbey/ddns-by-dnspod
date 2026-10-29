@@ -1,0 +1,108 @@
+name: ci
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          # Same major as the image builder (backend/Dockerfile): the artifact
+          # that ships should be the one CI verified.
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        env:
+          # The lockfile resolves to the mainland mirror (fast for the local
+          # audience); the runner is not in China, so the host is swapped back
+          # at install time instead of during a lockfile regeneration.
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org
+          NPM_CONFIG_REPLACE_REGISTRY_HOST: always
+        run: npm ci
+
+      # The generated types are committed, so a contract change that was never
+      # regenerated shows up here instead of as a mystery type error later.
+      # It runs before the build: prebuild regenerates the file, which would
+      # erase the very drift this is meant to see.
+      - name: API types match the contract
+        working-directory: frontend
+        run: |
+          npm run types
+          git diff --exit-code -- src/api-types.gen.ts
+
+      - name: Lint and formatting
+        working-directory: frontend
+        run: |
+          npm run lint
+          npm run format:check
+
+      # The SPA is embedded in the binary, so it has to be built before the Go
+      # tests: `TestContract` reads backend/openapi.yml, and the embed must hold
+      # a real index.html. prebuild regenerates src/api-types.gen.ts on the way.
+      - name: The version is written once
+        run: |
+          spec=$(sed -n 's/^[[:space:]]*version: *"\([^"]*\)".*/\1/p' backend/openapi.yml)
+          pkg=$(node -p "require('./frontend/package.json').version")
+          echo "openapi.yml=$spec package.json=$pkg"
+          test "$spec" = "$pkg"
+
+      - name: Build the SPA
+        working-directory: frontend
+        run: npm run build
+
+      - name: Go static checks
+        working-directory: backend
+        run: |
+          gofmt -l . | tee /tmp/gofmt.out
+          test ! -s /tmp/gofmt.out
+          go vet ./...
+
+      - name: Go tests (race detector)
+        working-directory: backend
+        run: go test -race ./...
+
+      - name: Frontend type check and unit tests
+        working-directory: frontend
+        run: |
+          npx tsc -b
+          npm test
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests (real sign-in flow)
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Go end-to-end tests (real binary)
+        working-directory: backend
+        run: go test -count=1 -tags=e2e ./e2e/ -v
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The image is what ships, so a broken Dockerfile shipped unnoticed
+      # before. It also runs the contract tests, which is where a handler that
+      # drifted from openapi.yml fails.
+      - name: Build the container image
+        run: docker build -f backend/Dockerfile -t ddns-by-dnspod:ci .
+
+      - name: Validate the compose file
+        run: docker compose config --quiet

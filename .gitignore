@@ -1,59 +1,20 @@
-
-### Linux
+### 操作系统与编辑器
+# Linux
 *~
-
-# temporary files which can be created if a process still has a handle open of a deleted file
+# 进程仍持有已删除文件的句柄时产生
 .fuse_hidden*
-
-# KDE directory preferences
+# KDE 目录偏好
 .directory
-
-# Linux trash folder which might appear on any partition or disk
 .Trash-*
-
-# .nfs files are created when an open file is removed but is still being accessed
 .nfs*
 
-### Windows
-# Windows thumbnail cache files
-Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-
-# Dump file
-*.stackdump
-
-# Folder config file
-[Dd]esktop.ini
-
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
-
-# Windows Installer files
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-
-# Windows shortcuts
-*.lnk
-
-### macOS
-# General
+# macOS
 .DS_Store
 .AppleDouble
 .LSOverride
-
-# Icon must end with two \r
+# macOS 自定义文件夹图标
 Icon
-
-
-# Thumbnails
 ._*
-
-# Files that might appear in the root of a volume
 .DocumentRevisions-V100
 .fseventsd
 .Spotlight-V100
@@ -61,181 +22,95 @@ Icon
 .Trashes
 .VolumeIcon.icns
 .com.apple.timemachine.donotpresent
-
-# Directories potentially created on remote AFP share
 .AppleDB
 .AppleDesktop
 Network Trash Folder
 Temporary Items
 .apdisk
 
-### Python
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
 
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
-
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#pdm.lock
-#   pdm stores project-wide configurations in .pdm.toml, but it is recommended to not include it
-#   in version control.
-#   https://pdm.fming.dev/#use-with-ide
-.pdm.toml
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
+# JetBrains
 .idea/
 
-# Custom
-*.log
+### AI 助手
+# 参考资料只存本地
+.docs/
+.opencode/
+# 项目规则统一写在 AGENTS.md，忽略各家助手的专属文件
+ATOMCODE.md
+CLAUDE.md
+CODEBUDDY.md
+OPENCODE.md
+
+### Python
+# 项目主体是 Go + TypeScript，这里只为偶尔的临时脚本兜底
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.venv/
+venv/
+
+### Go
+bin/
+
+### Node / 前端
+node_modules/
+frontend/dist/
+# 本地运行时配置：postbuild 用它覆盖 public/config.json（含 OIDC 与 authRequired）
+frontend/public/config.local.json
+backend/internal/frontend/dist/config.local.json
+# TanStack Router 的构建缓存
+.tanstack/
+# Playwright 的截图、trace 与报告
+frontend/test-results/
+frontend/playwright-report/
+# 前端构建产物落在 Go 的 embed 目录中。整目录忽略，只保留占位文件：
+# 干净克隆能编译，构建产物不会被误提交（含 postbuild 写入的部署专属 config.json）
+backend/internal/frontend/dist/*
+!backend/internal/frontend/dist/.gitkeep
+
+# 由 backend/openapi.yml 生成，但入库：CI 重新生成后比对 git diff，
+# 契约改了却忘了重新生成时在这里报错，而不是留成将来的类型错误
+
+### 项目配置与运行时数据
+# 忽略所有 yaml/yml，只放行需要入库的配置文件
 *.yaml
-!config.example.yaml
-*.dat
+*.yml
+!docker-compose.yml
+# 带注释的全量模板，README 让用户复制它，必须入库
+!config.example.yml
+# CI 门禁是仓库的一部分，不是本地部署配置
+!.github/workflows/*.yml
+# CNB 云开发环境与仓库设置，属于项目配置而非本地部署
+!.cnb.yml
+!.cnb/*.yml
+# API 契约是载荷形状的唯一来源：契约测试、Docker 门禁和前端类型都由它派生，
+# 不属于"本地部署配置"，必须入库
+!backend/openapi.yml
+# 含真实 IP 与内网网段的本地配置，即使上面通配符规则被调整也保持忽略
+config.local.yml
+
+# SQLite 与加密密钥。`data/` 会命中任意层级，所以把源码目录显式放行--
+# 不放行它，干净检出编译不过
+data/
+!frontend/src/components/layout/data/
 *.db
-*tmp*
+*.dat
+
+# 凭证文件
+.env
+
+*.log
+*.tmp
+tmp/
 crontab.sh

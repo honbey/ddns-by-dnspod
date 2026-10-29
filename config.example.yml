@@ -1,0 +1,226 @@
+server:
+  # Listen address; keep 0.0.0.0 in containers and let nginx front it
+  listen: ":8080"
+  # debug or release
+  mode: "release"
+  # text for a terminal, json for a collector. Both go to stderr, one record
+  # per line.
+  log_format: "text"
+  # Send Strict-Transport-Security. Only correct when TLS terminates in front
+  # of this process; on plain HTTP it locks browsers out of the host.
+  hsts: false
+  # debug, info, warn or error. Debug is what makes a caller walking away from
+  # a request visible; without it honest aborts are indistinguishable from
+  # nothing having happened.
+  log_level: "info"
+  # Whose X-Forwarded-For is believed. The default (loopback only) attributes
+  # every non-loopback request to its TCP peer, so behind a proxy the log shows
+  # the proxy's address until this names the network the proxy sits on.
+  #
+  # THIS IS A DEPLOYMENT DECISION AND MUST BE REVISITED: add the proxy's own
+  # network below, not "everything private" - widening it to 10/8 or
+  # 192.168/16 hands every host in that range the ability to choose the address
+  # this process writes into its log.
+  trusted_proxies:
+    - "127.0.0.0/8"
+    - "::1/128"
+    # Example only: the network of the reverse proxy, when it is one hop away.
+    # - "172.16.0.0/12"
+  # Failed token verifications allowed per source per minute before the answer
+  # becomes 429 instead of 401. Only failures spend the budget, so a valid
+  # token is never turned away; a non-positive value falls back to 30.
+  reject_budget_per_minute: 30
+
+metrics:
+  # Prometheus scrape endpoint at /metrics. Off by default, and unauthenticated
+  # when on: it names every route of this API and how busy each one is, which
+  # is operational detail a public port should not volunteer. Enable it where a
+  # scraper exists, and keep the location off the public proxy - the endpoint
+  # is reachable at the same address as the UI, so a proxy that forwards
+  # everything forwards this too.
+  enabled: false
+
+database:
+  # SQLite file path; put it on a mounted volume in containers
+  path: "data/ddns.db"
+
+history:
+  # How long a change history row is kept, in days. Rows older than this are
+  # pruned at start and once a day; 0 keeps everything.
+  retention_days: 90
+
+oidc:
+  # The backend is a pure resource server: the browser runs authorization code +
+  # PKCE itself (the frontend is a public client) and sends the access token as
+  # Authorization: Bearer on every request. The server only verifies it, so it
+  # keeps no sessions, sets no cookies, and trusts no identity headers.
+  #
+  # Local development only: skips verification and impersonates disabled_sub.
+  # Never enable it in production - it opens the API to anyone who can reach it.
+  disabled: false
+  disabled_sub: "dev-user"
+  # IdP discovery address (Authelia is usually https://auth.example.com).
+  # Required while verification is on; a trailing slash is trimmed.
+  issuer: "https://auth.example.com"
+  # The client the browser signs in with, registered at the IdP as a public
+  # client. Required: the SPA is handed the same value, so it is not only this
+  # process that cannot start a sign in without it.
+  client_id: "ddns-by-dnspod"
+  # Expected aud. Empty means client_id, which is what a provider issuing aud
+  # for the client produces.
+  audience: ""
+  # Accept a token whatever its aud, only when the IdP cannot be made to issue
+  # the right one
+  skip_audience_check: false
+  # Follow the userinfo fallback for opaque (non-JWT) access tokens. Off by
+  # default: a userinfo response proves the token belongs to some user of this
+  # issuer, not that it was issued to this client, so the audience check cannot
+  # be applied to it at all. Turn it on only against an issuer that scopes its
+  # userinfo per client.
+  opaque_tokens: false
+  # Override the jwks_uri from discovery, for IdPs that publish an internal-only address
+  jwks_url: ""
+  # Timeout for calls to the IdP, in milliseconds
+  timeout_ms: 5000
+  # Claim that holds the display name; falls back to
+  # preferred_username / name / email / sub in turn
+  username_claim: "preferred_username"
+  groups_claim: "groups"
+
+frontend:
+  # What the SPA is told at run time. The server answers /config.json itself, so
+  # the image carries no deployment settings: oidc.disabled / oidc.issuer /
+  # oidc.client_id above are handed to the browser directly, and only the fields
+  # with no server side counterpart are repeated here.
+  app_name: "DDNS by DNSPod"
+  # Where the SPA sends its calls; the server mounts the API there
+  api_base_url: "/api"
+  # IdP name shown in the UI; empty falls back to "OIDC"
+  provider_name: "Authelia"
+  # For IdPs that implement no standard logout, e.g. Authelia's /logout?rd={redirectUrl}.
+  # Empty hides the "sign out everywhere" entry.
+  logout_url_template: "https://auth.example.com/logout?rd={redirectUrl}"
+  # Scope requested at sign in
+  scope: "openid profile email groups"
+  # Callback path; must match what the client registers
+  redirect_path: "/auth/callback"
+
+crypto:
+  # Key file used to encrypt the Tencent Cloud SecretKey; generated on first
+  # start. Back it up or the stored credentials cannot be decrypted.
+  key_file: "data/secret.key"
+
+dnspod:
+  endpoint: "dnspod.tencentcloudapi.com"
+  timeout: 30
+
+ipdetect:
+  # The detection pools come entirely from this file; nothing is built in, and
+  # an empty pool means detection always fails. Within one family, sources are
+  # tried in order and the first usable answer wins. Order: v4/v6 first (the
+  # response body is the IP text), then v4_json/v6_json. To prioritise a JSON
+  # source, move the whole family into *_json. timeout is the per-source limit.
+  timeout: 30
+  # IPv4 pool, tried in order
+  v4:
+    - "https://api.ipify.org"
+    - "http://ipv4.ip.sb"
+    - "http://api-ipv4.ip.sb"
+    - "https://v4.ident.me"
+    - "https://v4.tnedi.me"
+    - "https://ipv4.icanhazip.com"
+  # IPv6 pool, for AAAA records
+  v6:
+    - "https://api6.ipify.org"
+    - "https://v6.ident.me"
+    - "https://ipv6.icanhazip.com"
+  # JSON IPv4 sources; path locates the IP field from the root (nestable),
+  # defaulting to the "ip" key when empty. Tried in order.
+  v4_json:
+    - url: "https://ipv4.jsonip.com"
+      path:
+        - "ip"
+  # JSON IPv6 sources
+  v6_json:
+    - url: "https://ipv6.jsonip.com"
+      path:
+        - "ip"
+
+scheduler:
+  enabled: true
+  # Alert once this many consecutive failures happen, instead of every tick
+  fail_threshold: 3
+
+cache:
+  # Cache DNSPod read results so refreshing the page cannot trigger rate
+  # limiting (429)
+  enabled: true
+  # Seconds; 0 or negative disables caching
+  domains_sec: 300
+  records_sec: 30
+  lines_sec: 600
+
+api:
+  # Master switch for the public REST API (/api/v1). When off, external calls
+  # answer 503; existing keys are untouched and it resumes on re-enable.
+  # These paths validate the API key directly, no nginx bypass needed.
+  enabled: true
+
+acme:
+  # Certificates issued by Let's Encrypt with a DNS-01 challenge: the TXT
+  # record is published through the account a certificate names, so nothing has
+  # to be reachable from the internet and a wildcard can be issued.
+  #
+  # Off means nothing is issued at all: the daily check stops, and asking for an
+  # issuance by hand is refused (503) rather than starting a run this says
+  # should not happen. Certificates already on disk are left alone.
+  enabled: true
+  # Let's Encrypt production. While trying this out, point it at the staging
+  # endpoint instead - it issues certificates no browser trusts, and its rate
+  # limits are not the ones that matter:
+  #   https://acme-staging-v02.api.letsencrypt.org/directory
+  directory: "https://acme-v02.api.letsencrypt.org/directory"
+  # Account contact. Empty registers without one, which works; the address is
+  # what the CA would use to warn about the account itself.
+  # Read when the account is first registered: changing it later does not change
+  # the contact the CA already holds.
+  email: ""
+  # Where certificates are written. Each one gets a subdirectory - named after
+  # the certificate unless it names its own - holding cert.pem, chain.pem,
+  # fullchain.pem and privkey.pem, the names certbot writes.
+  # The image sets this to /certs, which is the volume to mount into whatever
+  # serves TLS.
+  output_dir: "certs"
+  # Renew once this many days are left; 0 turns automatic renewal off
+  renew_before_days: 30
+  # Local hour of the daily check. About a minute after start there is one more,
+  # so a process that was down at this hour does not skip a day of renewals.
+  check_hour: 3
+  # Permission of privkey.pem, in octal. 0600 keeps the key to this process,
+  # which is normally enough: the image runs as root, and a rootless runtime
+  # maps that to whoever started it.
+  # Only a reader running as another user needs 0640 plus a group the two
+  # share, arranged on the host.
+  key_mode: "0600"
+  # How long one issuance may take, seconds. Most of it is spent waiting for
+  # the CA to validate the challenge.
+  timeout: 300
+  # How long to wait for the published TXT record to appear in the resolver
+  # before telling the CA to validate, seconds. The CA reads the zone's
+  # authoritative servers itself, so this is a head start rather than a
+  # requirement, and giving up on it is not a failure.
+  propagation_timeout: 30
+
+notifier:
+  # Private addresses (CIDR list) notification channels may reach. Loopback,
+  # link-local (including cloud metadata 169.254.169.254), private and multicast
+  # addresses are refused by default; public addresses are unaffected.
+  # Example: a self-hosted ntfy on the LAN
+  # Uncomment and name your own service: nothing internal is reachable until an
+  # address is listed here, which is the intended default.
+  allow_private: []
+    # - "192.168.1.10/32"
+    # - "10.0.0.0/8"
+  # Server-side configuration only (override with DDNS_NOTIFIER_ALLOW_PRIVATE,
+  # comma separated). It must not be a per-channel setting, or any signed-in
+  # user could allow their own private addresses.

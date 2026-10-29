@@ -1,0 +1,50 @@
+# Version control metadata: the image is built from a copy, not a checkout
+.git
+.gitignore
+.github
+
+# Local references and AI assistant scratch space
+.docs
+.opencode
+AGENTS.md
+ATOMCODE.md
+CLAUDE.md
+CODEBUDDY.md
+OPENCODE.md
+.idea
+.vscode
+.DS_Store
+*~
+
+# Runtime data: the database, the encryption key and logs live on a volume
+data
+*.db
+*.db-journal
+*.dat
+*.log
+tmp
+crontab.sh
+
+# Credentials
+.env
+.env.*
+*.env
+
+# Local build output, rebuilt inside the image
+bin
+frontend/dist
+frontend/coverage
+**/node_modules
+**/.tanstack
+
+# Produced by the frontend stage and copied in from there; sending this copy
+# would only bloat the context and could embed stale local artifacts
+backend/internal/frontend/dist
+
+# A local override that is not meant to ship
+config.local.yml
+
+# The checkout's own runtime configuration. The image is generic - the server
+# tells the SPA its settings at run time - so baking a local override in would
+# only stamp one deployment's identity provider onto every deployment.
+frontend/public/config.local.json

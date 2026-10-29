@@ -1,0 +1,14 @@
+{
+  "appName": "DDNS by DNSPod",
+  "apiBaseUrl": "/api",
+  "authRequired": true,
+  "acmeEnabled": true,
+  "oidc": {
+    "issuer": "https://auth.example.com",
+    "clientId": "ddns-by-dnspod",
+    "scope": "openid profile email groups",
+    "redirectPath": "/auth/callback",
+    "providerName": "Authelia",
+    "logoutUrlTemplate": ""
+  }
+}

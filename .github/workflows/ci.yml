@@ -104,5 +104,10 @@ jobs:
       - name: Build the container image
         run: docker build -f backend/Dockerfile -t ddns-by-dnspod:ci .
 
+      # The file marks OIDC_ISSUER and OIDC_CLIENT_ID as required, so the check
+      # needs values: it validates the shape, not a deployment.
       - name: Validate the compose file
+        env:
+          OIDC_ISSUER: https://auth.example.com
+          OIDC_CLIENT_ID: ci
         run: docker compose config --quiet

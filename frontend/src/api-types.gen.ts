@@ -612,6 +612,8 @@ export interface components {
         };
         Error: {
             error: string;
+            /** @enum {string} */
+            code?: "no_account";
             request_id?: string;
         };
         FrontendConfig: {

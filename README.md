@@ -42,11 +42,15 @@ export NTFY_PASS="your-password"
 ### 2. 启动
 
 ```bash
-docker network create proxy          # 若尚未创建
 mkdir -p data certs                  # 容器以 root 运行，挂载目录不需要 chown
-docker compose up -d --build
+docker compose up -d --build         # 8080 只发布到宿主回环，DDNS_PORT 可改
 docker compose logs -f
 ```
+
+compose 只用项目默认网络，不需要预先创建任何外部网络。端口默认只绑宿主机回环
+（`127.0.0.1:${DDNS_PORT:-8080}`，`DDNS_PORT` 只改宿主侧，容器内仍是 8080）：反代在
+宿主机上时直接指向它。反代在另一个容器里时 `127.0.0.1` 到不了本服务，要么把那个容器
+加入本 compose 项目，要么改成 `0.0.0.0` 并把宿主机防火墙放在前面。
 
 `OIDC_ISSUER` 与 `OIDC_CLIENT_ID`（下一步）必须在 `up` 之前导出：compose 缺这两项会直接报错，
 而不是起一个连不上 IdP 的容器。
@@ -98,7 +102,10 @@ nginx 只需做普通反代，无需任何鉴权配置。
 ## 运维
 
 - **探针**：`/api/health` 是存活（进程在），`/api/ready` 是就绪（数据库能答、身份提供方已连通过）。
-  容器 healthcheck 用 ready--活着不等于能服务。
+  容器 healthcheck 是 `ddns-server -healthcheck`，探 `/api/health`：镜像里不需要 curl/wget，
+  scratch 或 distroless 也能用。就绪留给负载均衡与编排--IdP 抖动不该把调度器一起重启。
+  容器里只认 `DDNS_SERVER_LISTEN`：HEALTHCHECK 是镜像内置的固定命令，不会带上 `-c`，
+  用配置文件改 `server.listen` 时探针仍会去探默认端口。
 - **备份**：sqlite 开 WAL，**运行中直接拷 `ddns.db` 会丢未 checkpoint 的事务**。用内置参数：
 
   ```bash

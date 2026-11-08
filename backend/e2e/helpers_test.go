@@ -105,9 +105,17 @@ type serverOptions struct {
 	auth bool
 }
 
+// server is what a test needs to reach the process and to run the binary again
+// the way the container healthcheck does.
+type server struct {
+	base string
+	bin  string
+	cfg  string
+}
+
 // startServer builds and starts the real binary, retrying when the reserved
 // port is taken between reservation and bind.
-func startServer(t *testing.T, opts serverOptions) string {
+func startServer(t *testing.T, opts serverOptions) *server {
 	t.Helper()
 
 	if _, err := os.Stat("../internal/frontend/dist/index.html"); err != nil {
@@ -195,11 +203,11 @@ oidc:
 			}
 		})
 
-		return base
+		return &server{base: base, bin: bin, cfg: cfgPath}
 	}
 
 	t.Fatalf("server failed to start after 3 attempts: %v", lastErr)
-	return ""
+	return nil
 }
 
 // decodeEnvelope reads the {"data": ...} wrapper every success response uses.

@@ -6,6 +6,7 @@
  * serve, in `features/<name>/api.ts`.
  */
 import axios, { type AxiosRequestConfig } from 'axios'
+import type { components } from '@/api-types.gen'
 import { authRequired } from '@/lib/config'
 import { getAccessToken } from '@/lib/auth'
 
@@ -15,6 +16,9 @@ interface Envelope<T> {
 
 /** Query parameters, which every listing here builds the same way. */
 export type Query = Record<string, string | number | boolean | undefined>
+
+/** The error codes the contract defines; a new one in openapi.yml appears here. */
+type ErrorCode = NonNullable<components['schemas']['Error']['code']>
 
 /**
  * The axios instance the kernel owns. Exported so a test can install an
@@ -44,12 +48,23 @@ http.interceptors.request.use(async (config) => {
 export class ApiError extends Error {
   readonly status: number
   readonly requestId: string | undefined
+  /**
+   * A stable identifier for the failures a client reacts to instead of
+   * showing, e.g. `no_account`. Absent unless the server named the condition:
+   * the message is what a person reads, this is what code branches on.
+   */
+  readonly code: ErrorCode | undefined
 
-  constructor(message: string, status: number, requestId?: string) {
+  constructor(
+    message: string,
+    status: number,
+    options: { requestId?: string; code?: ErrorCode } = {}
+  ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
-    this.requestId = requestId
+    this.requestId = options.requestId
+    this.code = options.code
   }
 }
 
@@ -60,13 +75,13 @@ function toApiError(error: unknown): ApiError {
   }
 
   const status = error.response?.status ?? 0
-  const body = error.response?.data as { error?: string; request_id?: string } | undefined
+  const body = error.response?.data as components['schemas']['Error'] | undefined
   // A network failure or timeout has no server wording worth showing - the
   // axios text is English and internal. Leaving the message empty lets the
   // caller's fallback speak.
   const message =
     body?.error ?? (status === 0 || error.code === 'ECONNABORTED' ? '' : error.message)
-  return new ApiError(message, status, body?.request_id)
+  return new ApiError(message, status, { requestId: body?.request_id, code: body?.code })
 }
 
 /**

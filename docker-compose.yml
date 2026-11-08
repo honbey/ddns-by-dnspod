@@ -44,14 +44,12 @@ services:
       - OIDC_PROVIDER_NAME=${OIDC_PROVIDER_NAME:-OIDC}
       # Empty hides the "sign out everywhere" entry
       - "OIDC_LOGOUT_URL=${OIDC_LOGOUT_URL:-}"
-    # No host port mapped; only the reverse-proxy network, fronted by nginx + Authelia
-    expose:
-      - "8080"
-    networks:
-      - proxy
-
-# External network shared with nginx/Authelia
-# Create it first: docker network create proxy
-networks:
-  proxy:
-    external: true
+    # Bound to host loopback: the reverse proxy runs on this host, and nothing
+    # else has to be able to reach the console. A proxy in another container
+    # cannot use 127.0.0.1 - either attach it to this compose project or change
+    # this to 0.0.0.0 and put the host firewall in front.
+    #
+    # DDNS_PORT moves the host port only; the server inside still listens on
+    # 8080.
+    ports:
+      - "127.0.0.1:${DDNS_PORT:-8080}:8080"

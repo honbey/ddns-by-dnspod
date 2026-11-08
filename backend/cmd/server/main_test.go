@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"io"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -90,5 +93,79 @@ func TestSetupLoggingWritesOneLinePerRecord(t *testing.T) {
 				t.Fatalf("%q is missing the fields: %q", tc.format, lines[0])
 			}
 		})
+	}
+}
+
+// The probe has to find the server at whatever address it was told to listen
+// on, including the wildcard form that cannot itself be dialed.
+func TestProbeURLFollowsTheListenAddress(t *testing.T) {
+	cases := []struct {
+		name   string
+		listen string
+		want   string
+	}{
+		{"port only", ":8080", "http://127.0.0.1:8080/api/health"},
+		{"wildcard v4", "0.0.0.0:9090", "http://127.0.0.1:9090/api/health"},
+		{"wildcard v6", "[::]:8081", "http://127.0.0.1:8081/api/health"},
+		{"an explicit loopback is kept", "127.0.0.1:7070", "http://127.0.0.1:7070/api/health"},
+		{"empty falls back to the default port", "", "http://127.0.0.1:8080/api/health"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := probeURL(tc.listen); got != tc.want {
+				t.Fatalf("probeURL(%q) = %q; want %q", tc.listen, got, tc.want)
+			}
+		})
+	}
+}
+
+// Only a 200 is healthy: the exit code is the whole answer Docker reads, and a
+// 503 that exited 0 would report a broken instance as fine.
+func TestHealthcheckReportsTheHTTPStatus(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		want   int
+	}{
+		{"a healthy server", http.StatusOK, 0},
+		{"a server that cannot serve", http.StatusServiceUnavailable, 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Recorded rather than asserted inside the handler: it runs on its
+			// own goroutine, and t.Errorf after the test returned panics.
+			var mu sync.Mutex
+			var asked string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				asked = r.URL.Path
+				mu.Unlock()
+				w.WriteHeader(tc.status)
+			}))
+			defer srv.Close()
+
+			if got := healthcheck("", srv.URL+"/api/health"); got != tc.want {
+				t.Fatalf("healthcheck() = %d; want %d", got, tc.want)
+			}
+
+			mu.Lock()
+			path := asked
+			mu.Unlock()
+			if path != "/api/health" {
+				t.Fatalf("probe asked for %q, want /api/health", path)
+			}
+		})
+	}
+}
+
+// A server that is gone is the case this exists for: the probe must not hang
+// on it and must not report success.
+func TestHealthcheckFailsWhenNothingAnswers(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	url := srv.URL + "/api/health"
+	srv.Close()
+
+	if got := healthcheck("", url); got != 1 {
+		t.Fatalf("healthcheck() = %d; want 1", got)
 	}
 }

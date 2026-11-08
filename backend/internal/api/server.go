@@ -162,7 +162,10 @@ func (s *Server) resolveAccount(accountID uint) (*model.Account, error) {
 		return &account, nil
 	}
 	if err := s.store.DB().First(&account).Error; err != nil {
-		return nil, &accountError{msg: "no Tencent Cloud account configured yet, add one first"}
+		return nil, &accountError{
+			msg:  "no Tencent Cloud account is configured yet, add one first",
+			code: CodeNoAccount,
+		}
 	}
 	return &account, nil
 }

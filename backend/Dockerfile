@@ -59,18 +59,22 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 	CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-s -w -X ddns-by-dnspod/internal/config.Version=$(sed -n 's/^[[:space:]]*version: *\"\([^\"]*\)\".*/\1/p' openapi.yml)" \
     -o /out/ddns-server ./cmd/server
+# The runtime image has no shell to create these with: the mount points exist
+# in the image so the process can open its database and write certificates
+# before a volume is mounted over either. /tmp is where SQLite spills a sort
+# that does not fit in memory.
+RUN mkdir -p /out/rootfs/data /out/rootfs/certs /out/rootfs/tmp \
+	&& chmod 1777 /out/rootfs/tmp
 
-# Same Debian release as the builder, so the runtime and the thing that
-# compiled it agree on the C library even if CGO is ever switched back on.
-FROM debian:trixie-slim
-# ca-certificates: discovery, JWKS and the ACME directory are fetched over
-# HTTPS. wget: the healthcheck below. tzdata: the daily certificate check runs
-# at a local hour.
-RUN apt-get update \
-	&& apt-get install -y --no-install-recommends ca-certificates wget tzdata \
-	&& rm -rf /var/lib/apt/lists/* \
-	&& mkdir -p /data /certs
+# Scratch, on purpose: a static binary plus the CA bundle is the whole runtime.
+# No distribution to patch, no shell to escape into, and the healthcheck below
+# needs neither curl nor wget because the binary probes itself.
+FROM scratch
 
+# OIDC discovery, JWKS, the DNSPod API and the ACME directory are all HTTPS.
+COPY --from=backend /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+# TZ is read from the zoneinfo database compiled into the binary (time/tzdata).
+COPY --from=backend /out/rootfs/ /
 COPY --from=backend /out/ddns-server /usr/local/bin/ddns-server
 
 # /data holds the database and the key that decrypts the stored credentials,
@@ -94,7 +98,11 @@ ENV DDNS_DATABASE_PATH=/data/ddns.db \
     DDNS_ACME_OUTPUT_DIR=/certs \
     TZ=Asia/Shanghai
 
+# Exec form, not a shell: this works in an image with no /bin/sh, which is what
+# makes scratch or distroless an option. It asks /api/health (liveness);
+# /api/ready also asks the identity provider, and a blinking IdP must not mark
+# a working scheduler unhealthy.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -qO- http://127.0.0.1:8080/api/ready >/dev/null 2>&1 || exit 1
+    CMD ["/usr/local/bin/ddns-server", "-healthcheck"]
 
 ENTRYPOINT ["/usr/local/bin/ddns-server"]

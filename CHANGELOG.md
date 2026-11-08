@@ -75,11 +75,19 @@ tag 在远端（`v0.4.0` ... `v1.1.0`）；它们的变更记录以各自 tag �
   会把旧的或空的 dist 嵌进二进制）。
 - `/metrics` 在 `metrics.enabled=false` 时返回显式 JSON 404（行为不变）。
 - 依赖改为精确版本并统一到同一版本线；`@playwright/test` 取代裸 `playwright`。
-- 镜像改用 `node:24-slim` 与 `golang:1.27-trixie`，运行层 `debian:trixie-slim`。
+- 镜像改用 `node:24-slim` 与 `golang:1.27-trixie`，运行层 `scratch`：只剩静态二进制、
+  CA 证书与三个空挂载点，从 180 MB 降到 49 MB。healthcheck 改为 `ddns-server -healthcheck`
+  （exec 形式，探 `/api/health`），镜像里不再有 wget；tzdata 由 `time/tzdata`
+  编进二进制，`TZ` 照常生效。
 - 清理 `web-app-fs` 残留：`storage.ts` 的探针键与 s3 相关注释；
   `vite.config.ts` 里关于 session cookie 的陈旧注释改为 Bearer 说明。
 - `AGENTS.md` 的"禁止任何 Unicode 字符"改为"优先 ASCII 标点"，并说明
   本地化文案与 DNSPod 上游中文错误串不受此限。
+- compose 不再依赖外部 `proxy` 网络：使用项目默认网络并把 8080 发布到宿主机
+  （`DDNS_PORT` 可改），反代指向宿主机端口即可，不必与服务同网络。
+- 未配置腾讯云账号时，读取账号列表的失败只在同一浏览器提示一次；此前每次窗口
+  聚焦触发的 refetch 都会再弹一条同样的 toast。判定依据是错误体新增的可选 `code`
+  （目前只有 `no_account`），后端改文案不会再让这个提示退化成每次刷新弹一次。
 
 ## [2.0.0] - 2026-10-25
 

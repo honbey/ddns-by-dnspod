@@ -4,8 +4,9 @@
 
 DNSPod API 3.0 的解析管理 + DDNS。Go 后端为**无状态资源服务器**：无会话、无 Cookie、
 无 trusted header，只验 `Authorization: Bearer`。
-- 技术栈：gin / GORM + 纯 Go sqlite / viper / robfig/cron / 腾讯云 dnspod SDK /
-  golang-jwt；React 19 + Vite + Tailwind v4 + shadcn-admin / TanStack Router+Query+Table / recharts
+- 技术栈：Gin / GORM + 纯 Go SQLite / Viper / robfig/cron / 腾讯云 DNSPod SDK /
+  golang-jwt；React 19 + Vite + Tailwind CSS v4 + shadcn-admin /
+  TanStack Router + Query + Table / Recharts
 - 前端是 OIDC public client（授权码 + PKCE），产物 `go:embed` 进单二进制
 
 ## Commands
@@ -29,8 +30,6 @@ make version          # 打印构建进二进制的版本（唯一来源是 back
 
 ## Guidelines
 
-- **项目还在快速开发中，不考虑前向兼容与迁移**
-- **禁止任何无用户批准的文档修改**
 - **只用 ASCII 标点**：代码、注释、文档与提交信息里用 `-`、`->`、`...`。禁用
   U+2014（em dash）、U+2013（en dash）、U+2192（arrow）、U+2026（ellipsis）。
   面向用户的本地化文案（`i18n/locales`）按各自语言的习惯书写，不受此限；
@@ -48,16 +47,21 @@ make version          # 打印构建进二进制的版本（唯一来源是 back
   `lib/lists.ts` 的 `collectPages` 逐页读到全量（上限 `MAX_LIST_PAGES`，触顶时页面写
   `Showing the first N of M`），`mapBounded` 是所有批量动作
   （Run All / Test All）的并发上限入口，别回到 `forEach` 直接扇出
-- **响应**：成功 `{"data":...}`，失败 `{"error":"...","request_id":"..."}`，出口只有
-  `middleware.WriteJSON` / `middleware.WriteError`；内部错误只回通用文案，禁止返回 `err.Error()`
-- **探针**：`/api/health` 存活、`/api/ready` 就绪（后者才是容器 healthcheck）。`/metrics` 走
-  `metrics.enabled`，默认关
+- **响应**：成功 `{"data":...}`，失败 `{"error":"...","request_id":"..."}`；客户端要按条件
+  分支时服务端可再加 `code`（如 `no_account`，枚举在 `openapi.yml`），文案给人看、code 给代码看。
+  出口只有 `middleware.WriteJSON` / `WriteError` / `WriteCodedError`；内部错误只回通用文案，
+  禁止返回 `err.Error()`
+- **探针**：`/api/health` 存活、`/api/ready` 就绪（数据库 + IdP）。容器 healthcheck 是
+  `ddns-server -healthcheck`（exec 形式，探 `/api/health`），镜像里不需要 curl/wget；就绪留给
+  负载均衡。探测地址从配置（环境变量优先）推导；容器的 HEALTHCHECK 是固定命令，用 `-c`
+  文件改 `server.listen` 时探针仍会探默认端口，容器里一律用 `DDNS_SERVER_LISTEN`。
+  `/metrics` 走 `metrics.enabled`，默认关
 - **日志**：一律 `log/slog` 写 stderr；`server.log_format`/`server.log_level` 可调（客户端取消记在
   debug）；访问日志带 `rid`/`caller`
 - **备份**：用 `-backup <path>`，别在运行中拷 `ddns.db`（WAL 会丢未 checkpoint 的写入）；
   该参数需要和服务器**同一份 `-c` 配置**
-- **契约**：`backend/openapi.yml` 是载荷形状的唯一来源，`src/api-types.gen.ts` 由它生成（不入库）；
-  `contract_test.go` 双向比对路由表并校验响应
+- **契约**：`backend/openapi.yml` 是载荷形状的唯一来源，`src/api-types.gen.ts` 由它生成并入库
+  （CI 校验生成漂移）；`contract_test.go` 双向比对路由表并校验响应
 - **DDNS 执行**：调度器按 `(账号, 域名, 地址族)` 分组，整组共享一次 IP 探测与
   记录列表，组内串行更新；以 DNSPod 真实记录为准；同主机同类型同线路只取
   第一条；探测源逐个尝试；失败只在首次写历史，SKIP 不写历史；通知按运行聚合（`buildRunMessage`），
@@ -113,6 +117,9 @@ make version          # 打印构建进二进制的版本（唯一来源是 back
   `lib/describe-error.ts`。业务端点在 `features/<name>/api.ts`。
 - **错误态**：查询失败用 `components/error-state.tsx`（原因 + 重试），别让表格显示"暂无数据"--
   那是在撒谎。判定用 `isError`，已有数据时的刷新失败要保留屏幕内容。
+- **未配置账号的提示只弹一次**：`lib/query-client.ts` 按错误体的 `code: no_account`
+  （`api.CodeNoAccount`）识别，同一浏览器只 toast 一次，其余静默交给页面自己的错误态；
+  保存账号后由 `clearMissingAccountNotice()` 复位。加新的 code 要先加进 `openapi.yml` 的枚举。
 - **开放重定向**：`lib/redirect.ts` 的 `safeReturnPath` 是唯一判定，别在别处再写一份前缀检查；
   它先剥控制字符（`/\t/evil.com` 这类），后判 `//`。
 - **跨标签页登出**：`lib/session-events.ts`；`signOut` 广播，`discardSession`（过期）不广播--

@@ -34,6 +34,11 @@ func fail(c *gin.Context, status int, message string) {
 	middleware.WriteError(c, status, message)
 }
 
+// failWithCode is fail for a refusal the client keys on instead of the words.
+func failWithCode(c *gin.Context, status int, code, message string) {
+	middleware.WriteCodedError(c, status, code, message)
+}
+
 func badRequest(c *gin.Context, message string) {
 	fail(c, http.StatusBadRequest, message)
 }
@@ -113,7 +118,16 @@ func upstreamMessage(c *gin.Context, err error) string {
 // such id, or no account configured yet. Nothing in it is internal - the id is
 // the one the request sent - so the message is returned to the caller rather
 // than logged away.
-type accountError struct{ msg string }
+// CodeNoAccount is the one refusal a client keys on: no credentials are stored
+// yet. The sentence may be reworded or translated; this string is the contract.
+const CodeNoAccount = "no_account"
+
+// accountError carries an optional code. Only the missing-account case is one a
+// client reacts to differently; an unknown id is an ordinary 400.
+type accountError struct {
+	msg  string
+	code string
+}
 
 func (e *accountError) Error() string { return e.msg }
 
@@ -127,7 +141,7 @@ func (e *accountError) Error() string { return e.msg }
 func credentialError(c *gin.Context, err error) {
 	var acct *accountError
 	if errors.As(err, &acct) {
-		badRequest(c, acct.msg)
+		failWithCode(c, http.StatusBadRequest, acct.code, acct.msg)
 		return
 	}
 	serverError(c, err)

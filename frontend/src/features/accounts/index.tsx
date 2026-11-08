@@ -12,6 +12,7 @@ import {
   verifyAccount,
 } from '@/features/accounts/api'
 import { handleServerError } from '@/lib/handle-server-error'
+import { clearMissingAccountNotice } from '@/lib/query-client'
 import { type Account } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { ConfigDrawer } from '@/components/config-drawer'
@@ -48,6 +49,8 @@ export function Accounts() {
     mutationFn: async ({ id, input }: { id?: number; input: AccountInput }) =>
       id ? updateAccount(id, input) : createAccount(input),
     onSuccess: async () => {
+      // The one-shot warning was about the empty list this just filled.
+      clearMissingAccountNotice()
       await invalidate()
       // The domain list depends on which credentials exist, so it goes stale here.
       await queryClient.invalidateQueries({ queryKey: ['domains'] })

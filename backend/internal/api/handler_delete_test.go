@@ -117,6 +117,20 @@ func errorMessage(t *testing.T, rec *httptest.ResponseRecorder) string {
 	return body.Error
 }
 
+// errorCode reads the stable identifier out of a JSON error response. Empty
+// means the server sent no code, which is the case for every refusal a client
+// only has to show.
+func errorCode(t *testing.T, rec *httptest.ResponseRecorder) string {
+	t.Helper()
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode body %q: %v", rec.Body.String(), err)
+	}
+	return body.Code
+}
+
 // newTestAccount inserts an account with a properly encrypted secret.
 // A plaintext secret would fail to decrypt, and everything that builds a
 // DNSPod client decrypts the secret first.

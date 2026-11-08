@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,6 +16,10 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	// Embedded zoneinfo: the runtime image carries no /usr/share/zoneinfo, so
+	// TZ would silently fall back to UTC. Data compiled in rather than copied
+	// keeps the image to the binary and the CA bundle.
+	_ "time/tzdata"
 
 	"github.com/gin-gonic/gin"
 
@@ -84,18 +89,74 @@ func fatal(msg string, err error) {
 	os.Exit(1)
 }
 
+// healthcheck answers the container probe when the image carries no wget or
+// curl: the binary asks its own liveness endpoint over loopback and reports
+// the answer as an exit code, which is all Docker reads.
+//
+// Liveness and not readiness, on purpose. Readiness also asks the identity
+// provider; restarting a container because an IdP blinked takes the DDNS
+// scheduler down with it, and nothing it does needs the IdP to answer.
+func healthcheck(configPath, override string) int {
+	url := override
+	if url == "" {
+		cfg, err := config.Load(configPath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "healthcheck: load config:", err)
+			return 1
+		}
+		url = probeURL(cfg.Server.Listen)
+	}
+
+	// Shorter than the container's --timeout=5s, so the probe reports its own
+	// reason instead of being killed with nothing said.
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "healthcheck:", err)
+		return 1
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Fprintf(os.Stderr, "healthcheck: %s answered %s\n", url, resp.Status)
+		return 1
+	}
+	return 0
+}
+
+// probeURL turns the listen address into one loopback can dial. A wildcard
+// listen is not dialable as written, and the probe shares the server's network
+// namespace, so 127.0.0.1 reaches the same process.
+func probeURL(listen string) string {
+	host, port, err := net.SplitHostPort(listen)
+	if err != nil || port == "" {
+		return "http://127.0.0.1:8080/api/health"
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+	return "http://" + net.JoinHostPort(host, port) + "/api/health"
+}
+
 func main() {
 	var configPath string
 	var backupPath string
 	var showVersion bool
+	var runHealthcheck bool
+	var healthcheckURL string
 	flag.StringVar(&configPath, "c", "", "path to the config file (built-in defaults plus env vars are used when empty)")
 	flag.StringVar(&backupPath, "backup", "", "write a consistent snapshot of the database at database.path to this path and exit (needs the same -c config as the server)")
 	flag.BoolVar(&showVersion, "version", false, "print the version and exit")
+	flag.BoolVar(&runHealthcheck, "healthcheck", false, "probe the running server's /api/health and exit 0 when it answers 200")
+	flag.StringVar(&healthcheckURL, "healthcheck-url", "", "URL the -healthcheck probe requests (default: derived from server.listen)")
 	flag.Parse()
 
 	if showVersion {
 		fmt.Println("ddns-server", config.Version)
 		return
+	}
+	if runHealthcheck {
+		os.Exit(healthcheck(configPath, healthcheckURL))
 	}
 
 	cfg, err := config.Load(configPath)

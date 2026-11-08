@@ -25,8 +25,25 @@ func WriteJSON(c *gin.Context, status int, obj any) {
 // layers and the request id is always the one the log carries. The id is
 // omitted only when there is none to carry - a bare context a unit test
 // builds, never a request.
+//
+// WriteCodedError adds the optional code on top of this shape. A client that
+// only shows the message can ignore it.
 func WriteError(c *gin.Context, status int, message string) {
+	writeError(c, status, "", message)
+}
+
+// WriteCodedError is WriteError with a stable identifier, for a failure the
+// client reacts to rather than shows. The message is for a person and may be
+// reworded or translated; the code is the contract.
+func WriteCodedError(c *gin.Context, status int, code, message string) {
+	writeError(c, status, code, message)
+}
+
+func writeError(c *gin.Context, status int, code, message string) {
 	body := gin.H{"error": message}
+	if code != "" {
+		body["code"] = code
+	}
 	if rid := RequestIDFrom(c); rid != "" {
 		body["request_id"] = rid
 	}

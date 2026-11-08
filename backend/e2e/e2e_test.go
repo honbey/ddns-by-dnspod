@@ -16,6 +16,7 @@ package e2e
 import (
 	"encoding/json"
 	"net/http"
+	"os/exec"
 	"regexp"
 	"testing"
 	"time"
@@ -25,8 +26,8 @@ import (
 // in: the bundle, the two probes, the runtime configuration and the fact that
 // an unknown /api path is JSON rather than the page.
 func TestProbesAndEmbeddedSPA(t *testing.T) {
-	base := startServer(t, serverOptions{})
-	a := &api{t: t, base: base, hc: &http.Client{Timeout: 15 * time.Second}}
+	srv := startServer(t, serverOptions{})
+	a := &api{t: t, base: srv.base, hc: &http.Client{Timeout: 15 * time.Second}}
 
 	t.Run("serves the bundle and falls back to it", func(t *testing.T) {
 		code, index := a.do(http.MethodGet, "/", nil)
@@ -123,8 +124,8 @@ func TestProbesAndEmbeddedSPA(t *testing.T) {
 // stops being 401 once the budget is spent. Without it an invented token buys
 // unbounded work.
 func TestRejectionBudget(t *testing.T) {
-	base := startServer(t, serverOptions{auth: true})
-	a := &api{t: t, base: base, hc: &http.Client{Timeout: 15 * time.Second}}
+	srv := startServer(t, serverOptions{auth: true})
+	a := &api{t: t, base: srv.base, hc: &http.Client{Timeout: 15 * time.Second}}
 
 	badToken := map[string]string{"Authorization": "Bearer not-a-real-token"}
 
@@ -162,5 +163,29 @@ func TestRejectionBudget(t *testing.T) {
 	// lose the ability to restart a process that is being flooded.
 	if code, _ := a.do(http.MethodGet, "/api/health", nil); code != http.StatusOK {
 		t.Errorf("health during a flood = %d, want 200", code)
+	}
+}
+
+// The container healthcheck runs this command, not curl: it has to find the
+// server through the config the process was started with, and it has to fail
+// when nothing answers. Both halves are what make the exit code trustworthy.
+func TestHealthcheckCommand(t *testing.T) {
+	srv := startServer(t, serverOptions{})
+
+	// The same environment the server was started with: viper lets DDNS_* win
+	// over the file, so a stray listener variable would point the probe at a
+	// port this test never opened.
+	up := exec.Command(srv.bin, "-healthcheck", "-c", srv.cfg)
+	up.Env = envWithoutDDNS()
+	if out, err := up.CombinedOutput(); err != nil {
+		t.Fatalf("healthcheck against a running server = %v\n%s", err, out)
+	}
+
+	dead := freeAddr(t)
+	down := exec.Command(srv.bin, "-healthcheck", "-healthcheck-url", "http://"+dead+"/api/health")
+	down.Env = envWithoutDDNS()
+	out, err := down.CombinedOutput()
+	if err == nil {
+		t.Fatalf("healthcheck against %s must fail, output:\n%s", dead, out)
 	}
 }

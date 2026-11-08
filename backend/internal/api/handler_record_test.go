@@ -300,9 +300,27 @@ func TestNoAccountIsExplainedRatherThanBlamedOnDNSPod(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("want 400, got %d (%s)", rec.Code, rec.Body.String())
 	}
-	const want = "no Tencent Cloud account configured yet, add one first"
+	const want = "no Tencent Cloud account is configured yet, add one first"
 	if got := errorMessage(t, rec); got != want {
 		t.Fatalf("want %q, got %q", want, got)
+	}
+	// The sentence is for a person and may change; the client keys on this.
+	if got := errorCode(t, rec); got != CodeNoAccount {
+		t.Fatalf("code = %q, want %q", got, CodeNoAccount)
+	}
+}
+
+// An id that is not there is an ordinary 400: there is nothing a client should
+// do differently from any other bad request, so it carries no code.
+func TestUnknownAccountCarriesNoCode(t *testing.T) {
+	srv, cfg := newTestServer(t)
+
+	rec := do(t, srv, cfg, http.MethodGet, "/api/domains/example.com/records?account_id=999", nil)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("want 400, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	if got := errorCode(t, rec); got != "" {
+		t.Fatalf("code = %q, want none", got)
 	}
 }
 

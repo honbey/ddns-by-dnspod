@@ -881,6 +881,12 @@ components:
       required: [error]
       properties:
         error: { type: string }
+        # A stable identifier for failures a client reacts to instead of
+        # showing, e.g. no_account. Absent when the message is all there is.
+        # Adding a value is a contract change: clients switch on it.
+        code:
+          type: string
+          enum: [no_account]
         request_id: { type: string }
 
     FrontendConfig:

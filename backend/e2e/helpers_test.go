@@ -68,8 +68,7 @@ func freeAddr(t *testing.T) string {
 	return addr
 }
 
-// waitHealthy polls /api/health and gives up early when the log shows a bind
-// failure, so a taken port is retried without waiting for the full timeout.
+// waitHealthy gives up early when the log shows a bind failure.
 func waitHealthy(base, logPath string, timeout time.Duration) error {
 	client := &http.Client{Timeout: 2 * time.Second}
 	deadline := time.Now().Add(timeout)
@@ -96,25 +95,19 @@ func waitHealthy(base, logPath string, timeout time.Duration) error {
 	return fmt.Errorf("health check: %w", last)
 }
 
-// serverOptions is the part of the configuration a test varies. Everything else
-// is pinned to something that cannot reach the network: these tests drive the
-// binary, not DNSPod or Let's Encrypt.
+// serverOptions is the part of the configuration a test varies.
 type serverOptions struct {
-	// auth keeps token verification on. With it off the server impersonates
-	// disabled_sub, which is what the resource checks want.
+	// With auth off the server impersonates disabled_sub.
 	auth bool
 }
 
-// server is what a test needs to reach the process and to run the binary again
-// the way the container healthcheck does.
 type server struct {
 	base string
 	bin  string
 	cfg  string
 }
 
-// startServer builds and starts the real binary, retrying when the reserved
-// port is taken between reservation and bind.
+// startServer builds and starts the real binary, retrying a taken port.
 func startServer(t *testing.T, opts serverOptions) *server {
 	t.Helper()
 

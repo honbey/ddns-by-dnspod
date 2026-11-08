@@ -117,9 +117,7 @@ func errorMessage(t *testing.T, rec *httptest.ResponseRecorder) string {
 	return body.Error
 }
 
-// errorCode reads the stable identifier out of a JSON error response. Empty
-// means the server sent no code, which is the case for every refusal a client
-// only has to show.
+// errorCode returns "" when the server sent no code.
 func errorCode(t *testing.T, rec *httptest.ResponseRecorder) string {
 	t.Helper()
 	var body struct {

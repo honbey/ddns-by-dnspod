@@ -289,10 +289,7 @@ func TestUpstreamMessageKeepsTheSDKTextOutOfTheResponse(t *testing.T) {
 	}
 }
 
-// With no account configured, the reason is a sentence written for the
-// operator - "add one first" - and it was being swallowed by a message blaming
-// DNSPod, a service that had not been called at all. The wording is the one
-// resolveAccount's other call sites have always sent back.
+// No account is the caller's problem, not DNSPod's.
 func TestNoAccountIsExplainedRatherThanBlamedOnDNSPod(t *testing.T) {
 	srv, cfg := newTestServer(t)
 
@@ -310,8 +307,7 @@ func TestNoAccountIsExplainedRatherThanBlamedOnDNSPod(t *testing.T) {
 	}
 }
 
-// An id that is not there is an ordinary 400: there is nothing a client should
-// do differently from any other bad request, so it carries no code.
+// An unknown id is an ordinary 400 without a code.
 func TestUnknownAccountCarriesNoCode(t *testing.T) {
 	srv, cfg := newTestServer(t)
 

@@ -1,16 +1,9 @@
 //go:build e2e
 
-// Package e2e drives the built server over HTTP: the embedded SPA, the probes,
-// the runtime configuration and the rejection budget. It runs the real binary
-// against a temporary database, so what it checks is the process a deployment
-// starts, not a handler wired by hand.
-//
-// Run from backend with:
+// Package e2e drives the built server against a temporary database.
+// Build the frontend first so the binary has assets to embed:
 //
 //	GOPATH=~/.go go test -tags=e2e ./e2e/ -v
-//
-// The frontend must be built first (frontend npm run build) so the binary has
-// assets to embed.
 package e2e
 
 import (
@@ -22,9 +15,6 @@ import (
 	"time"
 )
 
-// TestProbesAndEmbeddedSPA covers what a deployment answers before anyone signs
-// in: the bundle, the two probes, the runtime configuration and the fact that
-// an unknown /api path is JSON rather than the page.
 func TestProbesAndEmbeddedSPA(t *testing.T) {
 	srv := startServer(t, serverOptions{})
 	a := &api{t: t, base: srv.base, hc: &http.Client{Timeout: 15 * time.Second}}
@@ -119,10 +109,7 @@ func TestProbesAndEmbeddedSPA(t *testing.T) {
 	})
 }
 
-// TestRejectionBudget holds the flood guard end to end: with verification on
-// and an issuer that cannot be reached, every request fails, and the answer
-// stops being 401 once the budget is spent. Without it an invented token buys
-// unbounded work.
+// The answer stops being 401 once the per-source budget is spent.
 func TestRejectionBudget(t *testing.T) {
 	srv := startServer(t, serverOptions{auth: true})
 	a := &api{t: t, base: srv.base, hc: &http.Client{Timeout: 15 * time.Second}}
@@ -166,15 +153,11 @@ func TestRejectionBudget(t *testing.T) {
 	}
 }
 
-// The container healthcheck runs this command, not curl: it has to find the
-// server through the config the process was started with, and it has to fail
-// when nothing answers. Both halves are what make the exit code trustworthy.
+// The container healthcheck runs this command with the server's own config.
 func TestHealthcheckCommand(t *testing.T) {
 	srv := startServer(t, serverOptions{})
 
-	// The same environment the server was started with: viper lets DDNS_* win
-	// over the file, so a stray listener variable would point the probe at a
-	// port this test never opened.
+	// DDNS_* wins over the file in viper; keep the server's environment.
 	up := exec.Command(srv.bin, "-healthcheck", "-c", srv.cfg)
 	up.Env = envWithoutDDNS()
 	if out, err := up.CombinedOutput(); err != nil {

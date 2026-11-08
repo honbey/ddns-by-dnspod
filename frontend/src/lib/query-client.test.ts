@@ -4,8 +4,7 @@ import { ApiError } from '@/lib/http'
 import { clearMissingAccountNotice, createQueryClient } from '@/lib/query-client'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
-// The sentence itself is not what this file is about; the dictionary is loaded
-// elsewhere and would only make the assertions harder to read.
+// The dictionary is loaded elsewhere; assertions only need the message.
 vi.mock('@/lib/describe-error', () => ({
   describeError: (error: unknown) => (error as Error).message,
 }))
@@ -66,8 +65,7 @@ describe('the missing account notice', () => {
   it('keys on the code, not on the sentence a 400 happens to carry', async () => {
     const client = createQueryClient(() => {})
 
-    // Same words, no code: the server did not name the condition, so this is
-    // just another failure and every occurrence is worth a toast.
+    // Same words, no code: every occurrence is worth a toast.
     const unlabelled = new ApiError(
       'no Tencent Cloud account is configured yet, add one first',
       400

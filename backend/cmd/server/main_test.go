@@ -12,10 +12,6 @@ import (
 	"testing"
 )
 
-// The level decides what a deployment hears, and nothing about it may be a
-// guess: a caller walking away is logged at debug, so an operator has to be
-// able to ask for debug to see it. An unrecognised name must not silently
-// become something stricter.
 func TestLogLevelFallsBackToInfo(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -39,13 +35,7 @@ func TestLogLevelFallsBackToInfo(t *testing.T) {
 	}
 }
 
-// One record is one line, whatever goes into it.
-//
-// The values are quoted by the handler, so nothing a caller controls can end
-// the line early and start another one that reads like ours: a path carrying
-// %0A arrives percent-decoded, and so does anything else that reaches a record
-// without going through CurrentUser first. Hand-formatting every value at every
-// call site is what failed quietly before, so the handler does it once here.
+// Values are quoted, so a path containing %0A cannot end the line early.
 func TestSetupLoggingWritesOneLinePerRecord(t *testing.T) {
 	cases := []struct {
 		format string
@@ -53,8 +43,7 @@ func TestSetupLoggingWritesOneLinePerRecord(t *testing.T) {
 	}{
 		{"text", "addr="},
 		{"json", `"addr":`},
-		// An unrecognised format is not a third shape to maintain: it falls
-		// back to the one a terminal reads.
+		// An unknown format falls back to text.
 		{"", "addr="},
 	}
 	for _, tc := range cases {
@@ -96,8 +85,6 @@ func TestSetupLoggingWritesOneLinePerRecord(t *testing.T) {
 	}
 }
 
-// The probe has to find the server at whatever address it was told to listen
-// on, including the wildcard form that cannot itself be dialed.
 func TestProbeURLFollowsTheListenAddress(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -119,8 +106,7 @@ func TestProbeURLFollowsTheListenAddress(t *testing.T) {
 	}
 }
 
-// Only a 200 is healthy: the exit code is the whole answer Docker reads, and a
-// 503 that exited 0 would report a broken instance as fine.
+// Only a 200 is healthy.
 func TestHealthcheckReportsTheHTTPStatus(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -132,8 +118,7 @@ func TestHealthcheckReportsTheHTTPStatus(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Recorded rather than asserted inside the handler: it runs on its
-			// own goroutine, and t.Errorf after the test returned panics.
+			// The handler runs on its own goroutine; assert after it returns.
 			var mu sync.Mutex
 			var asked string
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -158,8 +143,6 @@ func TestHealthcheckReportsTheHTTPStatus(t *testing.T) {
 	}
 }
 
-// A server that is gone is the case this exists for: the probe must not hang
-// on it and must not report success.
 func TestHealthcheckFailsWhenNothingAnswers(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	url := srv.URL + "/api/health"

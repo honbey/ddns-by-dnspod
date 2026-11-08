@@ -6,12 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// WriteJSON encodes obj without HTML escaping.
-//
-// gin's c.JSON escapes <, > and &, which turns every "old -> new" pair in the
-// history into "\u003e" on the wire. The API serves application/json only -
-// there is no HTML to inject - so the escape buys nothing and costs
-// readability.
+// WriteJSON encodes without HTML escaping: gin's c.JSON would turn "old -> new"
+// into "\u003e" in history entries.
 func WriteJSON(c *gin.Context, status int, obj any) {
 	c.Writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	c.Writer.WriteHeader(status)
@@ -20,21 +16,12 @@ func WriteJSON(c *gin.Context, status int, obj any) {
 	_ = encoder.Encode(obj)
 }
 
-// WriteError writes the shared failure shape: {"error": "...", "request_id":
-// "..."}. Every refusal goes through here, so the shape cannot drift between
-// layers and the request id is always the one the log carries. The id is
-// omitted only when there is none to carry - a bare context a unit test
-// builds, never a request.
-//
-// WriteCodedError adds the optional code on top of this shape. A client that
-// only shows the message can ignore it.
+// WriteError writes {"error","request_id"}; the id is omitted when absent.
 func WriteError(c *gin.Context, status int, message string) {
 	writeError(c, status, "", message)
 }
 
-// WriteCodedError is WriteError with a stable identifier, for a failure the
-// client reacts to rather than shows. The message is for a person and may be
-// reworded or translated; the code is the contract.
+// WriteCodedError adds the contract's optional code.
 func WriteCodedError(c *gin.Context, status int, code, message string) {
 	writeError(c, status, code, message)
 }
@@ -51,7 +38,5 @@ func writeError(c *gin.Context, status int, code, message string) {
 	WriteJSON(c, status, body)
 }
 
-// StatusNotResponded is what a request the caller walked away from answers
-// with. net/http has no such code - nginx defined 499 for it - and it keeps
-// abandoned requests out of the 5xx count, where they would look like faults.
+// StatusNotResponded (nginx 499) keeps abandoned requests out of the 5xx count.
 const StatusNotResponded = 499

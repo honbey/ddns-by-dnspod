@@ -16,9 +16,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
-	// Embedded zoneinfo: the runtime image carries no /usr/share/zoneinfo, so
-	// TZ would silently fall back to UTC. Data compiled in rather than copied
-	// keeps the image to the binary and the CA bundle.
+	// The scratch runtime has no /usr/share/zoneinfo; TZ needs compiled-in data.
 	_ "time/tzdata"
 
 	"github.com/gin-gonic/gin"
@@ -35,8 +33,7 @@ import (
 	"ddns-by-dnspod/internal/store"
 )
 
-// toIPEndpoints converts config endpoint structs into the detector's type.
-// The two packages are kept independent on purpose, so the conversion happens here.
+// toIPEndpoints converts config endpoints into the detector's type.
 func toIPEndpoints(in []config.IPEndpoint) []ipdetect.Endpoint {
 	out := make([]ipdetect.Endpoint, 0, len(in))
 	for _, e := range in {
@@ -45,9 +42,7 @@ func toIPEndpoints(in []config.IPEndpoint) []ipdetect.Endpoint {
 	return out
 }
 
-// logLevel turns the configured name into a level, falling back rather than
-// refusing to start: a typo in this value should not take a working service
-// down, it should just be loud about being ignored.
+// logLevel falls back to info on an unknown name instead of refusing to start.
 func logLevel(name string) (slog.Level, bool) {
 	var level slog.Level
 	if err := level.UnmarshalText([]byte(strings.ToLower(strings.TrimSpace(name)))); err != nil {
@@ -56,8 +51,7 @@ func logLevel(name string) (slog.Level, bool) {
 	return level, true
 }
 
-// setupLogging installs the process-wide handler. Both formats go to stderr,
-// one record per line: a container collects that, a terminal reads it.
+// setupLogging writes both formats to stderr, one record per line.
 func setupLogging(format string, level slog.Level) {
 	opts := &slog.HandlerOptions{Level: level}
 	if format == "json" {
@@ -67,9 +61,7 @@ func setupLogging(format string, level slog.Level) {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, opts)))
 }
 
-// idpOrigins returns the origins the content policy has to let the page reach:
-// the provider the browser signs in with, renews against and revokes against.
-// None when there is no provider, which leaves the policy at self-only.
+// idpOrigins are the CSP origins the browser needs for its provider.
 func idpOrigins(cfg *config.Config) []string {
 	if cfg.OIDC.Disabled || cfg.OIDC.Issuer == "" {
 		return nil
@@ -81,21 +73,14 @@ func idpOrigins(cfg *config.Config) []string {
 	return []string{u.Scheme + "://" + u.Host}
 }
 
-// fatal logs a startup failure as a record instead of a bare print, so the
-// reason reaches the same collector as everything else. It exits rather than
-// returning because every caller has already torn down what it owns.
+// fatal logs the reason to the same collector as the rest of the process.
 func fatal(msg string, err error) {
 	slog.Error(msg, "error", err)
 	os.Exit(1)
 }
 
-// healthcheck answers the container probe when the image carries no wget or
-// curl: the binary asks its own liveness endpoint over loopback and reports
-// the answer as an exit code, which is all Docker reads.
-//
-// Liveness and not readiness, on purpose. Readiness also asks the identity
-// provider; restarting a container because an IdP blinked takes the DDNS
-// scheduler down with it, and nothing it does needs the IdP to answer.
+// healthcheck answers the container probe over loopback; Docker reads the exit code.
+// /api/health is liveness: /api/ready also checks the IdP.
 func healthcheck(configPath, override string) int {
 	url := override
 	if url == "" {
@@ -107,8 +92,7 @@ func healthcheck(configPath, override string) int {
 		url = probeURL(cfg.Server.Listen)
 	}
 
-	// Shorter than the container's --timeout=5s, so the probe reports its own
-	// reason instead of being killed with nothing said.
+	// Shorter than the container's --timeout=5s.
 	client := &http.Client{Timeout: 3 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
@@ -124,9 +108,7 @@ func healthcheck(configPath, override string) int {
 	return 0
 }
 
-// probeURL turns the listen address into one loopback can dial. A wildcard
-// listen is not dialable as written, and the probe shares the server's network
-// namespace, so 127.0.0.1 reaches the same process.
+// probeURL replaces a wildcard listen with 127.0.0.1.
 func probeURL(listen string) string {
 	host, port, err := net.SplitHostPort(listen)
 	if err != nil || port == "" {
@@ -166,8 +148,6 @@ func main() {
 	level, knownLevel := logLevel(cfg.Server.LogLevel)
 	setupLogging(cfg.Server.LogFormat, level)
 
-	// What this process actually runs with, minus anything secret: the first
-	// thing to read when something looks wrong.
 	slog.Info("configuration loaded",
 		"listen", cfg.Server.Listen,
 		"mode", cfg.Server.Mode,
@@ -230,8 +210,7 @@ func main() {
 
 	detector := ipdetect.NewWithJSON(cfg.IPDetect.V4, cfg.IPDetect.V6, toIPEndpoints(cfg.IPDetect.V4JSON), toIPEndpoints(cfg.IPDetect.V6JSON), cfg.IPDetect.Timeout)
 	sender := notifier.New(st.Encryptor(), notifier.Config{AllowPrivate: cfg.Notifier.AllowPrivate})
-	// The browser signs in on its own and sends the resulting access token with
-	// every call; this process only checks it, which is what keeps it stateless.
+	// The browser signs in on its own and sends a bearer token with every call.
 	verifier := auth.New(cfg.OIDC)
 	executor := ddns.NewExecutor(st, detector, sender, cfg.DNSPod, cfg.Scheduler, cfg.Cache)
 	scheduler := ddns.NewScheduler(st, executor, cfg.Scheduler.Enabled)

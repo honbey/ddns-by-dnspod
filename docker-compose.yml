@@ -5,51 +5,27 @@ services:
       dockerfile: backend/Dockerfile
     container_name: ddns-by-dnspod
     restart: unless-stopped
-    # The container runs as root, which a rootless runtime (podman) maps to
-    # whoever started it: both directories are writable without a chown on the
-    # host, and the certificates are readable by their other containers.
     volumes:
-      # Database and encryption key persistence
       - ./data:/data
-      # Issued certificates, in the layout certbot uses. The TLS application
-      # that consumes them mounts the same host directory, which is what makes
-      # a renewal reach it without anyone copying files around.
       - ./certs:/certs
-    # Every setting is an environment variable here; no env_file is read, so a
-    # variable reaches the container only if it is listed below. Compose fills
-    # the ${...} from the shell or from a .env file beside this one, which is
-    # where the real credentials belong: this file is the shape, not the values.
+    # Compose reads ${...} from the shell or the .env beside this file.
     environment:
       - TZ=${TZ:-Asia/Shanghai}
-      # Imported on the first start to create the default account, and the ntfy
-      # channel when the topic is set.
+      # Imported on the first start only.
       - TENCENTCLOUD_SECRET_ID=${TENCENTCLOUD_SECRET_ID:-}
       - TENCENTCLOUD_SECRET_KEY=${TENCENTCLOUD_SECRET_KEY:-}
       - NTFY_SERVER=${NTFY_SERVER:-https://ntfy.sh}
       - NTFY_TOPIC=${NTFY_TOPIC:-}
       - NTFY_USER=${NTFY_USER:-}
       - NTFY_PASS=${NTFY_PASS:-}
-      # Protects the stored credentials. Left empty, a key is generated into
-      # /data/secret.key and has to be backed up with the database.
+      # Empty generates /data/secret.key, which must be backed up with the database.
       - DDNS_CRYPTO_KEY=${DDNS_CRYPTO_KEY:-}
-      # Everything the SPA is told at run time; the image itself stays generic.
-      # These names are bare rather than DDNS_ prefixed, because the browser reads
-      # the same words. Only the keys without a usable default appear here:
-      # app_name, api_base_url, scope, redirect_path and disabled fall back to
-      # the built-in ones.
-      # OIDC_ISSUER and OIDC_CLIENT_ID drive the backend's token check as well,
-      # so the browser and the server cannot disagree about the tenant.
-      - OIDC_ISSUER=${OIDC_ISSUER:?set OIDC_ISSUER to your provider, a placeholder default would only start a service that cannot verify a single token}
-      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:?set OIDC_CLIENT_ID to the client you registered with that provider}
+      - OIDC_ISSUER=${OIDC_ISSUER:?OIDC_ISSUER is required}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:?OIDC_CLIENT_ID is required}
       - OIDC_PROVIDER_NAME=${OIDC_PROVIDER_NAME:-OIDC}
-      # Empty hides the "sign out everywhere" entry
       - "OIDC_LOGOUT_URL=${OIDC_LOGOUT_URL:-}"
-    # Bound to host loopback: the reverse proxy runs on this host, and nothing
-    # else has to be able to reach the console. A proxy in another container
-    # cannot use 127.0.0.1 - either attach it to this compose project or change
-    # this to 0.0.0.0 and put the host firewall in front.
-    #
-    # DDNS_PORT moves the host port only; the server inside still listens on
-    # 8080.
+    # Host loopback only. A proxy in another container cannot use 127.0.0.1:
+    # attach it to this project, or use 0.0.0.0 behind the host firewall.
+    # DDNS_PORT moves the host port; the server still listens on 8080.
     ports:
       - "127.0.0.1:${DDNS_PORT:-8080}:8080"

@@ -5,7 +5,8 @@ FROM node:24-slim AS frontend
 ARG NPM_REGISTRY=https://registry.npmjs.org
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci --no-audit --no-fund --registry=${NPM_REGISTRY}
+# The lockfile records a mirror host; replace it with NPM_REGISTRY, as ci.yml does.
+RUN NPM_CONFIG_REPLACE_REGISTRY_HOST=always npm ci --no-audit --no-fund --registry=${NPM_REGISTRY}
 COPY frontend/ ./
 # prebuild regenerates the SPA types from the contract at this relative path.
 COPY backend/openapi.yml /src/backend/openapi.yml

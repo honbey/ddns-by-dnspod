@@ -7,6 +7,20 @@ v1.1.0 及更早版本是 Python 实现，变更记录以各自 tag 为准。
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-11-09
+
+### 新增
+
+- `.github/workflows/release.yml`：标签推送或手动触发时，用 workflow 自带的
+  `GITHUB_TOKEN` 构建镜像并推送到 `ghcr.io/honbey/ddns-by-dnspod`（版本 tag 与 `latest`），
+  再按本段内容创建 GitHub Release。`ci.yml` 仍只做构建验证，不推送镜像。
+
+### 变更
+
+- 版本号从 `2.0.0` 升到 `2.0.1`。`backend/openapi.yml` 的 `info.version` 仍是唯一来源，
+  `frontend/package.json` 与 `frontend/package-lock.json` 同步；`-version`、`/api/health`
+  与镜像 tag 都由此推导。
+
 ## [2.0.0] - 2026-11-09
 
 Go 重写。

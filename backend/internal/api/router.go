@@ -96,6 +96,8 @@ func (s *Server) RegisterRoutes(r *gin.Engine, cfg config.Config) {
 		// Change history: per task (the DNS record changes) and per host (the
 		// public address itself, tracked independently of any domain)
 		api.GET("/history", s.listHistory)
+		api.GET("/history/ip-changes", s.listIPHistory)
+		api.POST("/history/ip-changes/import", s.importIPHistory)
 		api.GET("/stats/ip-changes", s.ipChangeStats)
 
 		// Notification channels

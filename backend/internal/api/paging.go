@@ -23,8 +23,14 @@ type pageParams struct {
 // parsePageParams reads page and page_size from the query, falling back to sane
 // defaults whenever a value is missing or invalid.
 func parsePageParams(c *gin.Context) pageParams {
+	return parsePageParamsWith(c, defaultPageSize)
+}
+
+// parsePageParamsWith is parsePageParams for an endpoint whose natural page is
+// a different size.
+func parsePageParamsWith(c *gin.Context, defaultSize int) pageParams {
 	page := atoiDefault(c.Query("page"), 1)
-	size := atoiDefault(c.Query("page_size"), defaultPageSize)
+	size := atoiDefault(c.Query("page_size"), defaultSize)
 	if size > maxPageSize {
 		size = maxPageSize
 	}

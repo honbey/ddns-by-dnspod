@@ -9,6 +9,10 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 export GOPATH="${GOPATH:-$HOME/.go}"
 
+# This suite is about the sign-in flow, so a development shell's AUTH_DISABLED
+# must not leak in and switch verification off for the whole run.
+unset AUTH_DISABLED AUTH_DISABLED_SUB OIDC_ISSUER OIDC_CLIENT_ID
+
 DATA="$(mktemp -d /tmp/ddns-e2e.XXXXXX)"
 IDP_PORT="${IDP_PORT:-9443}"
 APP_PORT="${APP_PORT:-3998}"
@@ -36,6 +40,16 @@ go build -o "$DATA/ddns-server" ./cmd/server
 
 PORT="$IDP_PORT" CLIENT_ID="$CLIENT_ID" node "$ROOT/frontend/e2e/mock-idp.mjs" &
 idp_pid=$!
+
+# The verifier discovers the issuer once at startup and does not retry on a
+# timer, so a provider that is not listening yet would leave /api/ready at 503
+# for the whole run. Wait for its discovery document before the app starts.
+for _ in {1..100}; do
+  if curl -fsS "http://127.0.0.1:${IDP_PORT}/.well-known/openid-configuration" >/dev/null 2>&1; then
+    break
+  fi
+  sleep 0.1
+done
 
 # The scheduler and the certificate manager are real network work with no
 # bearing on the UI; they stay off so the suite is about the browser.

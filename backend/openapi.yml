@@ -468,6 +468,55 @@ paths:
                     properties:
                       data: { $ref: "#/components/schemas/PagedHistoryEntry" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/history/ip-changes:
+    get:
+      tags: [history]
+      operationId: listIPHistory
+      summary: >-
+        The address timeline, newest first. Unlike the chart endpoint this
+        includes the baseline row of each family and carries pagination.
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - { $ref: "#/components/parameters/FamilyFilter" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfPagedIPChange" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/ServerError" }
+  /api/history/ip-changes/import:
+    post:
+      tags: [history]
+      operationId: importIPHistory
+      summary: >-
+        Merges a CSV of time,ip[,family] into the address timeline. The family
+        is inferred from the address when the column is absent. A time without
+        an offset is read as UTC. Rows that cannot be read are reported and
+        skipped; a file with no usable row is refused.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfIPHistoryImportResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/ServerError" }
   /api/stats/ip-changes:
     get:
       tags: [history]
@@ -479,13 +528,14 @@ paths:
         - name: limit
           in: query
           schema: { type: integer, default: 30 }
-        - { $ref: "#/components/parameters/Family" }
+        - { $ref: "#/components/parameters/FamilyFilter" }
       responses:
         "200":
           description: ok
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnvelopeOfIPChangePointList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/notify/channels:
@@ -771,7 +821,14 @@ components:
       name: family
       in: query
       required: false
+      description: Which address family to answer for.
       schema: { type: string, enum: [v4, v6], default: v4 }
+    FamilyFilter:
+      name: family
+      in: query
+      required: false
+      description: Empty means both address families.
+      schema: { type: string, enum: [v4, v6] }
     Page:
       name: page
       in: query
@@ -1073,6 +1130,44 @@ components:
         created: { type: integer }
         skipped: { type: integer }
         task_ids: { type: array, items: { type: integer } }
+    IPHistoryImportError:
+      type: object
+      required: [line, code, message]
+      properties:
+        line: { type: integer, description: Line in the uploaded file. }
+        code:
+          type: string
+          description: Stable identifier the SPA translates.
+          enum:
+            - time_invalid
+            - time_future
+            - time_too_old
+            - ip_invalid
+            - family_invalid
+            - family_mismatch
+            - row_invalid
+            - duplicate_row
+        message:
+          type: string
+          description: English wording for logs and debugging; not shown as is.
+    IPHistoryImportResult:
+      type: object
+      required: [imported, skipped, errors]
+      properties:
+        imported:
+          type: integer
+          description: Rows inserted into the timeline.
+        skipped:
+          type: integer
+          description: >-
+            Rows not stored: refused CSV rows plus samples already known or
+            repeating the address next to them.
+        errors:
+          type: array
+          description: >-
+            Up to 20 refused rows and 20 duplicates, in file order; skipped
+            counts every row that was not stored.
+          items: { $ref: "#/components/schemas/IPHistoryImportError" }
     RunResult:
       type: object
       required: [task_id, domain, sub_domain, record_type, old_ip, new_ip, status, message, changed]
@@ -1113,6 +1208,18 @@ components:
         old_ip: { type: string }
         new_ip: { type: string }
         duration_sec: { type: integer, nullable: true }
+    IPChange:
+      type: object
+      required: [id, family, old_ip, new_ip, created_at]
+      properties:
+        id: { type: integer }
+        family: { type: string, enum: [v4, v6] }
+        old_ip:
+          type: string
+          description: Empty on the first row of a family, which is only a baseline.
+        new_ip: { type: string }
+        duration_sec: { type: integer, nullable: true }
+        created_at: { type: string, format: date-time }
 
     NotifyChannel:
       type: object
@@ -1270,6 +1377,15 @@ components:
             items:
               type: array
               items: { $ref: "#/components/schemas/HistoryEntry" }
+    PagedIPChange:
+      allOf:
+        - $ref: "#/components/schemas/Paged"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/IPChange" }
 
     EnvelopeOfPagedAccount:
       allOf:
@@ -1369,6 +1485,18 @@ components:
             data:
               type: array
               items: { $ref: "#/components/schemas/IPChangePoint" }
+    EnvelopeOfPagedIPChange:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/PagedIPChange" }
+    EnvelopeOfIPHistoryImportResult:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/IPHistoryImportResult" }
     EnvelopeOfNotifyChannel:
       allOf:
         - $ref: "#/components/schemas/Envelope"

@@ -20,7 +20,10 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'bash e2e/server.sh',
-    url: `${BASE_URL}/api/health`,
+    // Readiness, not liveness: the suite asserts /api/ready right away, and
+    // that answer only turns 200 once the verifier has discovered the
+    // provider. Polling the stronger endpoint is what makes the wait honest.
+    url: `${BASE_URL}/api/ready`,
     reuseExistingServer: false,
     timeout: 180_000,
   },

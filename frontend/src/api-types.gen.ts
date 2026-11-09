@@ -405,6 +405,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/history/ip-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The address timeline, newest first. Unlike the chart endpoint this includes the baseline row of each family and carries pagination. */
+        get: operations["listIPHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/history/ip-changes/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Merges a CSV of time,ip[,family] into the address timeline. The family is inferred from the address when the column is absent. A time without an offset is read as UTC. Rows that cannot be read are reported and skipped; a file with no usable row is refused. */
+        post: operations["importIPHistory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/stats/ip-changes": {
         parameters: {
             query?: never;
@@ -754,6 +788,25 @@ export interface components {
             skipped: number;
             task_ids: number[];
         };
+        IPHistoryImportError: {
+            /** @description Line in the uploaded file. */
+            line: number;
+            /**
+             * @description Stable identifier the SPA translates.
+             * @enum {string}
+             */
+            code: "time_invalid" | "time_future" | "time_too_old" | "ip_invalid" | "family_invalid" | "family_mismatch" | "row_invalid" | "duplicate_row";
+            /** @description English wording for logs and debugging; not shown as is. */
+            message: string;
+        };
+        IPHistoryImportResult: {
+            /** @description Rows inserted into the timeline. */
+            imported: number;
+            /** @description Rows not stored: refused CSV rows plus samples already known or repeating the address next to them. */
+            skipped: number;
+            /** @description Up to 20 refused rows and 20 duplicates, in file order; skipped counts every row that was not stored. */
+            errors: components["schemas"]["IPHistoryImportError"][];
+        };
         RunResult: {
             task_id: number;
             domain: string;
@@ -786,6 +839,17 @@ export interface components {
             old_ip: string;
             new_ip: string;
             duration_sec?: number | null;
+        };
+        IPChange: {
+            id: number;
+            /** @enum {string} */
+            family: "v4" | "v6";
+            /** @description Empty on the first row of a family, which is only a baseline. */
+            old_ip: string;
+            new_ip: string;
+            duration_sec?: number | null;
+            /** Format: date-time */
+            created_at: string;
         };
         NotifyChannel: {
             id: number;
@@ -881,6 +945,9 @@ export interface components {
         PagedHistoryEntry: components["schemas"]["Paged"] & {
             items: components["schemas"]["HistoryEntry"][];
         };
+        PagedIPChange: components["schemas"]["Paged"] & {
+            items: components["schemas"]["IPChange"][];
+        };
         EnvelopeOfPagedAccount: components["schemas"]["Envelope"] & {
             data?: components["schemas"]["PagedAccount"];
         };
@@ -925,6 +992,12 @@ export interface components {
         };
         EnvelopeOfIPChangePointList: components["schemas"]["Envelope"] & {
             data?: components["schemas"]["IPChangePoint"][];
+        };
+        EnvelopeOfPagedIPChange: components["schemas"]["Envelope"] & {
+            data?: components["schemas"]["PagedIPChange"];
+        };
+        EnvelopeOfIPHistoryImportResult: components["schemas"]["Envelope"] & {
+            data?: components["schemas"]["IPHistoryImportResult"];
         };
         EnvelopeOfNotifyChannel: components["schemas"]["Envelope"] & {
             data?: components["schemas"]["NotifyChannel"];
@@ -1065,7 +1138,10 @@ export interface components {
         Domain: string;
         /** @description Which account to talk through; empty means the default one. */
         AccountId: number;
+        /** @description Which address family to answer for. */
         Family: "v4" | "v6";
+        /** @description Empty means both address families. */
+        FamilyFilter: "v4" | "v6";
         Page: number;
         PageSize: number;
     };
@@ -1123,6 +1199,7 @@ export interface operations {
     currentIP: {
         parameters: {
             query?: {
+                /** @description Which address family to answer for. */
                 family?: components["parameters"]["Family"];
             };
             header?: never;
@@ -1751,11 +1828,70 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
         };
     };
+    listIPHistory: {
+        parameters: {
+            query?: {
+                page?: components["parameters"]["Page"];
+                page_size?: components["parameters"]["PageSize"];
+                /** @description Empty means both address families. */
+                family?: components["parameters"]["FamilyFilter"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ok */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOfPagedIPChange"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["ServerError"];
+        };
+    };
+    importIPHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description ok */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOfIPHistoryImportResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            500: components["responses"]["ServerError"];
+        };
+    };
     listIPChanges: {
         parameters: {
             query?: {
                 limit?: number;
-                family?: components["parameters"]["Family"];
+                /** @description Empty means both address families. */
+                family?: components["parameters"]["FamilyFilter"];
             };
             header?: never;
             path?: never;
@@ -1772,6 +1908,7 @@ export interface operations {
                     "application/json": components["schemas"]["EnvelopeOfIPChangePointList"];
                 };
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
         };
     };

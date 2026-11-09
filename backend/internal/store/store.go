@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -273,7 +274,13 @@ func (s *Store) RecordPublicIPChange(family, ip string, at time.Time) error {
 	defer s.ipMu.Unlock()
 
 	var last model.PublicIPChange
-	err := s.db.Where("family = ?", family).Order("id DESC").Limit(1).First(&last).Error
+	// By instant, not by id: after an import the ids are assigned in timeline
+	// order, but a database that was written by an older build may not be, and
+	// "the last row" has to be the newest address either way.
+	err := s.db.Where("family = ?", family).
+		Order("created_at DESC, id DESC").
+		Limit(1).
+		First(&last).Error
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return fmt.Errorf("read the last public %s address: %w", family, err)
 	}
@@ -294,4 +301,158 @@ func (s *Store) RecordPublicIPChange(family, ip string, at time.Time) error {
 		return fmt.Errorf("record the public %s address: %w", family, err)
 	}
 	return nil
+}
+
+// IPHistorySample is one address observed at a point in time, as imported.
+type IPHistorySample struct {
+	Family string
+	IP     string
+	At     time.Time
+}
+
+// ipHistoryPoint is one entry of the merged timeline. fromImport marks a point
+// this import added, and id remembers its index in the input so a refused
+// sample can be named.
+type ipHistoryPoint struct {
+	at         time.Time
+	ip         string
+	fromImport bool
+	id         int
+}
+
+// ImportPublicIPHistory merges imported samples into the per-family timeline
+// and returns the indexes of the samples it did not store.
+//
+// A row here is a change, not a sample: old_ip and duration_sec describe the
+// gap since the row before it. A sample that lands in the middle of the
+// timeline therefore changes what every later row means, which is why the
+// family is rebuilt from the merged points rather than patched in place. The
+// stored rows keep their addresses and instants; only their ids are new.
+//
+// Only a sample can be skipped, never a stored row: the rows are what this
+// process saw, and dropping one would delete a real change the file says
+// nothing about. The decision is made on the fully merged timeline - judging a
+// sample against the nearest stored row before the merge would compare it with
+// a row that other samples may not sit next to.
+func (s *Store) ImportPublicIPHistory(samples []IPHistorySample) (imported int, skipped []int, err error) {
+	if len(samples) == 0 {
+		return 0, nil, nil
+	}
+
+	// The same lock as RecordPublicIPChange: a task that starts while an import
+	// rewrites a family must not read a half-replaced timeline and append to it.
+	s.ipMu.Lock()
+	defer s.ipMu.Unlock()
+
+	type indexedSample struct {
+		IPHistorySample
+		index int
+	}
+	byFamily := make(map[string][]indexedSample, 2)
+	for i, sample := range samples {
+		byFamily[sample.Family] = append(byFamily[sample.Family], indexedSample{sample, i})
+	}
+
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		for family, list := range byFamily {
+			var existing []model.PublicIPChange
+			if err := tx.Where("family = ?", family).
+				Order("created_at ASC, id ASC").
+				Find(&existing).Error; err != nil {
+				return fmt.Errorf("read the public %s history: %w", family, err)
+			}
+
+			// Merge first, cut later: a sample's neighbours are only known once
+			// every sample has been placed.
+			points := make([]ipHistoryPoint, 0, len(existing)+len(list))
+			occupied := make(map[int64]struct{}, len(existing))
+			for _, row := range existing {
+				points = append(points, ipHistoryPoint{at: row.CreatedAt, ip: row.NewIP})
+				occupied[row.CreatedAt.Unix()] = struct{}{}
+			}
+
+			sort.SliceStable(list, func(i, j int) bool { return list[i].At.Before(list[j].At) })
+			for _, sample := range list {
+				if _, taken := occupied[sample.At.Unix()]; taken {
+					skipped = append(skipped, sample.index)
+					continue
+				}
+				points = append(points, ipHistoryPoint{
+					at:         sample.At,
+					ip:         sample.IP,
+					fromImport: true,
+					id:         sample.index,
+				})
+				occupied[sample.At.Unix()] = struct{}{}
+			}
+			sort.SliceStable(points, func(i, j int) bool { return points[i].at.Before(points[j].at) })
+
+			// Pass 1, left to right: a sample repeating the address to its
+			// left says the address did not change, so the earlier row wins.
+			kept := make([]ipHistoryPoint, 0, len(points))
+			for _, p := range points {
+				if p.fromImport && len(kept) > 0 && kept[len(kept)-1].ip == p.ip {
+					skipped = append(skipped, p.id)
+					continue
+				}
+				kept = append(kept, p)
+			}
+
+			// Pass 2, right to left: dropping a point exposes a new right
+			// neighbour to the point on its left, so this decision has to be
+			// made on the final timeline. Only a stored row directly to the
+			// right makes an imported point redundant; keeping one resets the
+			// neighbour to "nothing stored in view".
+			timeline := make([]ipHistoryPoint, 0, len(kept))
+			nextStored := ""
+			for k := len(kept) - 1; k >= 0; k-- {
+				p := kept[k]
+				if p.fromImport && nextStored != "" && p.ip == nextStored {
+					skipped = append(skipped, p.id)
+					continue
+				}
+				timeline = append(timeline, p)
+				if p.fromImport {
+					nextStored = ""
+				} else {
+					nextStored = p.ip
+				}
+			}
+			for i, j := 0, len(timeline)-1; i < j; i, j = i+1, j-1 {
+				timeline[i], timeline[j] = timeline[j], timeline[i]
+			}
+
+			added := len(timeline) - len(existing)
+
+			if added == 0 {
+				continue
+			}
+			imported += added
+
+			entries := make([]model.PublicIPChange, 0, len(timeline))
+			for i, p := range timeline {
+				entry := model.PublicIPChange{Family: family, NewIP: p.ip, CreatedAt: p.at}
+				if i > 0 {
+					entry.OldIP = timeline[i-1].ip
+					sec := int64(p.at.Sub(timeline[i-1].at).Seconds())
+					entry.DurationSec = &sec
+				}
+				entries = append(entries, entry)
+			}
+
+			if err := tx.Where("family = ?", family).Delete(&model.PublicIPChange{}).Error; err != nil {
+				return fmt.Errorf("replace the public %s history: %w", family, err)
+			}
+			if len(entries) > 0 {
+				if err := tx.CreateInBatches(entries, 200).Error; err != nil {
+					return fmt.Errorf("write the public %s history: %w", family, err)
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, nil, err
+	}
+	return imported, skipped, nil
 }

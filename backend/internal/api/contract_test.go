@@ -1,11 +1,14 @@
 package api
 
 import (
+	"bytes"
 	"context"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -133,13 +136,38 @@ func TestContractResponses(t *testing.T) {
 	})
 
 	t.Run("a paged listing carries its page fields", func(t *testing.T) {
-		for _, path := range []string{"/api/ddns/tasks", "/api/history", "/api/stats/ip-changes"} {
+		for _, path := range []string{"/api/ddns/tasks", "/api/history", "/api/history/ip-changes", "/api/stats/ip-changes"} {
 			expectDocumented(t, r, router, http.MethodGet, path+"?page=1&page_size=20", "", http.StatusOK)
 		}
 	})
 
 	t.Run("the public address reflects that this host reached nothing", func(t *testing.T) {
 		expectDocumented(t, r, router, http.MethodGet, "/api/ip?family=v6", "", http.StatusOK)
+	})
+
+	t.Run("a CSV import answers inside the envelope", func(t *testing.T) {
+		stamp := time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
+		expectDocumentedMultipart(t, r, router, "/api/history/ip-changes/import",
+			"time,ip\n"+stamp+",203.0.113.1\n", http.StatusOK)
+	})
+
+	// An empty errors array validates nothing about the error shape, so the
+	// enum on IPHistoryImportError.code would otherwise never meet the gate.
+	t.Run("a CSV import reports its bad rows inside the contract", func(t *testing.T) {
+		stamp := time.Now().Add(-time.Hour).UTC().Format(time.RFC3339)
+		expectDocumentedMultipart(t, r, router, "/api/history/ip-changes/import",
+			"time,ip\n"+stamp+",203.0.113.2\nnot-a-time,1.1.1.1\n", http.StatusOK)
+	})
+
+	// Both endpoints refuse a family outside the enum, and both answers are in
+	// the document: a 400 nobody declared is a shape the SPA cannot know.
+	t.Run("a family the contract does not allow is refused", func(t *testing.T) {
+		for _, path := range []string{
+			"/api/history/ip-changes?family=v9",
+			"/api/stats/ip-changes?family=v9",
+		} {
+			expectDocumented(t, r, router, http.MethodGet, path, "", http.StatusBadRequest)
+		}
 	})
 
 	t.Run("a request without a token is refused", func(t *testing.T) {
@@ -156,6 +184,9 @@ func TestContractResponses(t *testing.T) {
 		for _, path := range []string{"/api/accounts", "/api/domains", "/api/keys"} {
 			expectDocumented(t, r, router, http.MethodGet, path, "", http.StatusUnauthorized)
 		}
+		// The import rewrites a timeline, so the refusal has to reach it too
+		// rather than only the listings.
+		expectDocumented(t, r, router, http.MethodPost, "/api/history/ip-changes/import", "", http.StatusUnauthorized)
 	})
 
 	t.Run("an id that cannot name a resource is refused", func(t *testing.T) {
@@ -186,13 +217,60 @@ func expectDocumented(
 	res := httptest.NewRecorder()
 	r.ServeHTTP(res, req)
 
+	validateDocumented(t, req, res, router, want)
+}
+
+// expectDocumentedMultipart drives one upload through the same validation.
+// The import is the only route that answers from a multipart request, and its
+// result shape is part of the contract like every other envelope.
+func expectDocumentedMultipart(
+	t *testing.T,
+	r *gin.Engine,
+	router routers.Router,
+	path, content string,
+	want int,
+) {
+	t.Helper()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", "history.csv")
+	if err != nil {
+		t.Fatalf("create the form file: %v", err)
+	}
+	if _, err := part.Write([]byte(content)); err != nil {
+		t.Fatalf("write the form file: %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close the form: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, path, body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	res := httptest.NewRecorder()
+	r.ServeHTTP(res, req)
+
+	validateDocumented(t, req, res, router, want)
+}
+
+// validateDocumented checks one answer against the document: the status code,
+// the content type and every field of the body.
+func validateDocumented(
+	t *testing.T,
+	req *http.Request,
+	res *httptest.ResponseRecorder,
+	router routers.Router,
+	want int,
+) {
+	t.Helper()
+
 	if res.Code != want {
-		t.Fatalf("%s %s -> %d, want %d (body: %s)", method, path, res.Code, want, res.Body.String())
+		t.Fatalf("%s %s -> %d, want %d (body: %s)", req.Method, req.URL.Path, res.Code, want, res.Body.String())
 	}
 
 	route, pathParams, err := router.FindRoute(req)
 	if err != nil {
-		t.Fatalf("%s %s is missing from %s: %v", method, path, contractPath, err)
+		t.Fatalf("%s %s is missing from %s: %v", req.Method, req.URL.Path, contractPath, err)
 	}
 
 	input := &openapi3filter.ResponseValidationInput{
@@ -207,6 +285,6 @@ func expectDocumented(
 	}
 	if err := openapi3filter.ValidateResponse(context.Background(), input.SetBodyBytes(res.Body.Bytes())); err != nil {
 		t.Fatalf("%s %s -> %d does not match %s: %v\nbody: %s",
-			method, path, res.Code, contractPath, err, res.Body.String())
+			req.Method, req.URL.Path, res.Code, contractPath, err, res.Body.String())
 	}
 }

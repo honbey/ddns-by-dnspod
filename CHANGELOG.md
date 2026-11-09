@@ -18,6 +18,11 @@ v1.1.0 及更早版本是 Python 实现，变更记录以各自 tag 为准。
   返回 429；只计失败，有效 opaque token 不受影响。
 - Playwright 端到端：`npm run test:e2e` / `make test-e2e`，由 `e2e/server.sh` 起真二进制与本地 IdP。
 - `.editorconfig`、`.npmrc`、`.github/renovate.json`、`.env.example`。
+- 变更历史页改为 Tabs：任务历史与 IP 历史共用一页。IP 历史分页浏览，支持 CSV 导入
+  （`time,ip[,family]`，无偏移时间按 UTC 解析），坏行按行号报告，重复地址不产生新行。
+- `GET /api/history/ip-changes`（分页）与 `POST /api/history/ip-changes/import`（multipart）；
+  导入把样本按时间并入解析时间轴，既有行不被删除。
+- Playwright 用例覆盖历史页的 tab 切换与 CSV 导入。
 
 ### 变更
 
@@ -53,6 +58,14 @@ v1.1.0 及更早版本是 Python 实现，变更记录以各自 tag 为准。
   `.env.example`，腾讯云凭证可留空、登录后在界面添加。
 - 错误响应新增可选 `code`（目前只有 `no_account`）。未配置账号时的失败提示按 code 判定，
   同一浏览器只弹一次，保存账号后复位。
+- `/api/stats/ip-changes` 的 `family` 从带 `default: v4` 的 `Family` 换为无默认值的
+  `FamilyFilter`，与服务器空值表示两个地址族的既有行为一致；非法值由 200 空列表改为 400，
+  两个历史 GET 的 `400` 已补进契约。
+- 导入结果的 `IPHistoryImportError` 新增 required 枚举 `code`（`time_invalid`、`time_future`、
+  `time_too_old`、`ip_invalid`、`family_invalid`、`family_mismatch`、`row_invalid`、
+  `duplicate_row`），前端按 code 翻译；`message` 只作日志。
+- CSV 导入识别 UTF-8 BOM（Excel 导出的表头），请求体超过上限时说明大小限制，
+  不再误报缺少 file 字段。
 
 ## [2.0.0] - 2026-10-25
 

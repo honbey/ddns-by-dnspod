@@ -97,4 +97,3 @@ clean:
 
 dev-idp:
 	CLIENT_ID=ddns-by-dnspod node $(FRONTEND_DIR)/e2e/mock-idp.mjs
-

@@ -7,8 +7,24 @@ v1.1.0 及更早版本是 Python 实现，变更记录以各自 tag 为准。
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-09
+
+Go 重写。
+
 ### 新增
 
+- 域名解析管理：记录增删改查、批量新增/删除、启用暂停、线路选择，可替代 DNSPod 控制台
+- DDNS 任务：调度器按 `(账号, 域名, 地址族)` 分组执行，整组共享一次 IP 探测与记录列表
+- 变更历史：按任务与按主机两套，公网地址存活时长可视化
+- 证书：Let's Encrypt DNS-01 签发与自动续期，走已有 DNSPod 账号，无需对外开端口
+- 通知：ntfy 与通用 webhook，支持自定义模板与请求头。一次运行只发一条消息--同一主机的多条
+  记录合并成一条（含 `records` 列表，模板里可 range `Records`）；单条记录时标题与正文与旧版一字不差
+- API Key：供脚本调用的对外 REST API（`/api/v1`），作用域限定到账号 + 域名
+- OIDC 登录（授权码 + PKCE），界面中英双语
+- 探针 `/api/health`、`/api/ready`，指标 `/metrics`（Prometheus，`metrics.enabled` 默认关）
+- `-backup` 一致性快照（`VACUUM INTO`），同名可重复执行，产物 0600
+- OpenAPI 契约（`backend/openapi.yml`）作为载荷形状的唯一来源，前端类型由它生成，
+  契约测试与镜像构建都会校验实现没有漂移
 - `oidc.opaque_tokens`：opaque token 的 userinfo 回退，默认关闭。只在 issuer 按客户端隔离
   userinfo 时打开，否则 audience 校验无处落地。
 - Go 端到端测试（`backend/e2e/`，`-tags=e2e`）：真二进制 + 临时库，覆盖嵌入的 SPA、两个探针、
@@ -66,25 +82,6 @@ v1.1.0 及更早版本是 Python 实现，变更记录以各自 tag 为准。
   `duplicate_row`），前端按 code 翻译；`message` 只作日志。
 - CSV 导入识别 UTF-8 BOM（Excel 导出的表头），请求体超过上限时说明大小限制，
   不再误报缺少 file 字段。
-
-## [2.0.0] - 2026-10-25
-
-Go 重写。
-
-### 新增
-
-- 域名解析管理：记录增删改查、批量新增/删除、启用暂停、线路选择，可替代 DNSPod 控制台
-- DDNS 任务：调度器按 `(账号, 域名, 地址族)` 分组执行，整组共享一次 IP 探测与记录列表
-- 变更历史：按任务与按主机两套，公网地址存活时长可视化
-- 证书：Let's Encrypt DNS-01 签发与自动续期，走已有 DNSPod 账号，无需对外开端口
-- 通知：ntfy 与通用 webhook，支持自定义模板与请求头。一次运行只发一条消息--同一主机的多条
-  记录合并成一条（含 `records` 列表，模板里可 range `Records`）；单条记录时标题与正文与旧版一字不差
-- API Key：供脚本调用的对外 REST API（`/api/v1`），作用域限定到账号 + 域名
-- OIDC 登录（授权码 + PKCE），界面中英双语
-- 探针 `/api/health`、`/api/ready`，指标 `/metrics`（Prometheus，`metrics.enabled` 默认关）
-- `-backup` 一致性快照（`VACUUM INTO`），同名可重复执行，产物 0600
-- OpenAPI 契约（`backend/openapi.yml`）作为载荷形状的唯一来源，前端类型由它生成，
-  契约测试与镜像构建都会校验实现没有漂移
 
 ### 安全
 

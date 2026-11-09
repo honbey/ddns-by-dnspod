@@ -1,0 +1,13 @@
+$:
+  vscode:
+    clouddev:
+      docker:
+        image: docker.cnb.cool/honbey/cnb-dev-env:latest
+      services:
+        - vscode
+        - docker
+      stages:
+        - name: "Link workspace"
+          script: |
+            mkdir -p /root/workspace/cnb
+            ln -sfn /workspace /root/workspace/cnb/${CNB_REPO_NAME}

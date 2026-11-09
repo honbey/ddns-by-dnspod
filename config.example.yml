@@ -1,0 +1,157 @@
+server:
+  # Listen address.
+  listen: ":8080"
+  mode: "release"
+  # text or json; both go to stderr, one record per line.
+  log_format: "text"
+  # Only correct when TLS terminates in front of this process.
+  hsts: false
+  # debug, info, warn, error. debug also logs client cancellations.
+  log_level: "info"
+  # CIDRs whose X-Forwarded-For is trusted. Add only the reverse proxy's network:
+  # widening it to a private range lets any host there choose the logged address.
+  trusted_proxies:
+    - "127.0.0.0/8"
+    - "::1/128"
+    # - "172.16.0.0/12"
+  # Failed token verifications allowed per source per minute before 429 instead of 401.
+  # Only failures spend the budget; a non-positive value falls back to 30.
+  reject_budget_per_minute: 30
+
+metrics:
+  # /metrics is off by default and unauthenticated when on. Keep the location off
+  # the public proxy: it shares the UI's address.
+  enabled: false
+
+database:
+  # SQLite file path; mount this directory in containers.
+  path: "data/ddns.db"
+
+history:
+  # Days a change history row is kept; 0 keeps everything.
+  retention_days: 90
+
+oidc:
+  # Local development only: skips verification and impersonates disabled_sub.
+  # Never enable in production.
+  disabled: false
+  disabled_sub: "dev-user"
+  # IdP discovery address. Required while verification is on; trailing slash is trimmed.
+  issuer: "https://auth.example.com"
+  # Public client registered at the IdP; the SPA receives the same value.
+  client_id: "ddns-by-dnspod"
+  # Expected aud; empty means client_id.
+  audience: ""
+  # Accept a token whatever its aud, only when the IdP cannot issue the right one.
+  skip_audience_check: false
+  # userinfo fallback for opaque tokens. Off by default: userinfo cannot prove
+  # which client the token was issued to, so the audience check does not apply.
+  # Turn it on only against an issuer that scopes userinfo per client.
+  opaque_tokens: false
+  # Override jwks_uri from discovery, for IdPs that publish an internal-only address.
+  jwks_url: ""
+  # Timeout for calls to the IdP, in milliseconds.
+  timeout_ms: 5000
+  # Claim holding the display name; falls back to preferred_username / name / email / sub.
+  username_claim: "preferred_username"
+  groups_claim: "groups"
+
+frontend:
+  # Served at run time through /config.json, so the image holds no deployment values.
+  app_name: "DDNS by DNSPod"
+  api_base_url: "/api"
+  # Empty falls back to "OIDC".
+  provider_name: "Authelia"
+  # For IdPs without a standard logout, e.g. Authelia's /logout?rd={redirectUrl}.
+  # Empty hides the "sign out everywhere" entry.
+  logout_url_template: "https://auth.example.com/logout?rd={redirectUrl}"
+  scope: "openid profile email groups"
+  # Must match the callback registered at the IdP.
+  redirect_path: "/auth/callback"
+
+crypto:
+  # Encrypts the stored SecretKey; generated on first start. Back it up:
+  # losing it makes the stored credentials unreadable.
+  key_file: "data/secret.key"
+
+dnspod:
+  endpoint: "dnspod.tencentcloudapi.com"
+  timeout: 30
+
+ipdetect:
+  # Address pools are entirely configured here; an empty pool means detection fails.
+  # Within a family, sources are tried in order: plain text first, then JSON.
+  # timeout is the per-source limit.
+  timeout: 30
+  # IPv4 pool.
+  v4:
+    - "https://api.ipify.org"
+    - "http://ipv4.ip.sb"
+    - "http://api-ipv4.ip.sb"
+    - "https://v4.ident.me"
+    - "https://v4.tnedi.me"
+    - "https://ipv4.icanhazip.com"
+  # IPv6 pool, for AAAA records.
+  v6:
+    - "https://api6.ipify.org"
+    - "https://v6.ident.me"
+    - "https://ipv6.icanhazip.com"
+  # JSON sources; path locates the IP field from the root (nestable), defaulting to "ip".
+  v4_json:
+    - url: "https://ipv4.jsonip.com"
+      path:
+        - "ip"
+  v6_json:
+    - url: "https://ipv6.jsonip.com"
+      path:
+        - "ip"
+
+scheduler:
+  enabled: true
+  # Alert once this many consecutive failures happen, instead of every tick.
+  fail_threshold: 3
+
+cache:
+  # Cache DNSPod reads to avoid 429 on refresh.
+  enabled: true
+  # Seconds; 0 or negative disables caching.
+  domains_sec: 300
+  records_sec: 30
+  lines_sec: 600
+
+api:
+  # Master switch for /api/v1. Off: external calls get 503, existing keys stay.
+  # These paths validate the API key directly.
+  enabled: true
+
+acme:
+  # DNS-01 via the account a certificate names: no inbound port, wildcards work.
+  # Off: no issuance, no daily check, manual issuance gets 503. Files on disk stay.
+  enabled: true
+  # Staging endpoint while testing:
+  #   https://acme-staging-v02.api.letsencrypt.org/directory
+  directory: "https://acme-v02.api.letsencrypt.org/directory"
+  # Contact, read only when the account is first registered.
+  email: ""
+  # Each certificate gets a subdirectory with cert.pem, chain.pem, fullchain.pem
+  # and privkey.pem (certbot names). The image sets this to /certs.
+  output_dir: "certs"
+  # Renew once this many days are left; 0 turns automatic renewal off.
+  renew_before_days: 30
+  # Local hour of the daily check; a check also runs shortly after start.
+  check_hour: 3
+  # Permission of privkey.pem, in octal. 0640 plus a shared group is needed only
+  # when a different user reads the files.
+  key_mode: "0600"
+  # Seconds allowed for one issuance, mostly spent waiting for CA validation.
+  timeout: 300
+  # Seconds to wait for the TXT record to appear before asking the CA to validate.
+  propagation_timeout: 30
+
+notifier:
+  # CIDRs notification channels may reach. Loopback, link-local (including
+  # 169.254.169.254), private and multicast are refused by default.
+  # DDNS_NOTIFIER_ALLOW_PRIVATE overrides it; keep this server-side, not per channel.
+  allow_private: []
+    # - "192.168.1.10/32"
+    # - "10.0.0.0/8"

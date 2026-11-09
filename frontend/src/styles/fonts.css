@@ -1,0 +1,14 @@
+/*
+ * Bundled self-hosted fonts (shadcn-admin's Inter and Manrope).
+ *
+ * No CDN: the woff2 files travel with the build, so nothing loads from a third
+ * party and the content policy can stay at `font-src 'self'`. Each family
+ * carries its subsets behind unicode-range, so a browser downloads only the
+ * ones the page renders - Latin and Latin-Extended here, while Chinese copy
+ * falls through to the system stack.
+ *
+ * Want zero font bytes instead? Drop these two imports and the fontsource
+ * dependencies; the family names then resolve to the system stack.
+ */
+@import '@fontsource-variable/inter/wght.css';
+@import '@fontsource-variable/manrope/wght.css';

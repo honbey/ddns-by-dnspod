@@ -1,0 +1,31 @@
+services:
+  ddns-by-dnspod:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: ddns-by-dnspod
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+      - ./certs:/certs
+    # Compose reads ${...} from the shell or the .env beside this file.
+    environment:
+      - TZ=${TZ:-Asia/Shanghai}
+      # Imported on the first start only.
+      - TENCENTCLOUD_SECRET_ID=${TENCENTCLOUD_SECRET_ID:-}
+      - TENCENTCLOUD_SECRET_KEY=${TENCENTCLOUD_SECRET_KEY:-}
+      - NTFY_SERVER=${NTFY_SERVER:-https://ntfy.sh}
+      - NTFY_TOPIC=${NTFY_TOPIC:-}
+      - NTFY_USER=${NTFY_USER:-}
+      - NTFY_PASS=${NTFY_PASS:-}
+      # Empty generates /data/secret.key, which must be backed up with the database.
+      - DDNS_CRYPTO_KEY=${DDNS_CRYPTO_KEY:-}
+      - OIDC_ISSUER=${OIDC_ISSUER:?OIDC_ISSUER is required}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:?OIDC_CLIENT_ID is required}
+      - OIDC_PROVIDER_NAME=${OIDC_PROVIDER_NAME:-OIDC}
+      - "OIDC_LOGOUT_URL=${OIDC_LOGOUT_URL:-}"
+    # Host loopback only. A proxy in another container cannot use 127.0.0.1:
+    # attach it to this project, or use 0.0.0.0 behind the host firewall.
+    # DDNS_PORT moves the host port; the server still listens on 8080.
+    ports:
+      - "127.0.0.1:${DDNS_PORT:-8080}:8080"

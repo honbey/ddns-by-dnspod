@@ -1,0 +1,101 @@
+name: ci
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          # Same major as backend/Dockerfile.
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        env:
+          # The lockfile points at a mainland mirror; use the public registry here.
+          NPM_CONFIG_REGISTRY: https://registry.npmjs.org
+          NPM_CONFIG_REPLACE_REGISTRY_HOST: always
+        run: npm ci
+
+      # Before the build: prebuild would regenerate and hide the drift.
+      - name: API types match the contract
+        working-directory: frontend
+        run: |
+          npm run types
+          git diff --exit-code -- src/api-types.gen.ts
+
+      - name: Lint and formatting
+        working-directory: frontend
+        run: |
+          npm run lint
+          npm run format:check
+
+      # The Go tests need the SPA embedded in the binary.
+      - name: The version is written once
+        run: |
+          spec=$(sed -n 's/^[[:space:]]*version: *"\([^"]*\)".*/\1/p' backend/openapi.yml)
+          pkg=$(node -p "require('./frontend/package.json').version")
+          echo "openapi.yml=$spec package.json=$pkg"
+          test "$spec" = "$pkg"
+
+      - name: Build the SPA
+        working-directory: frontend
+        run: npm run build
+
+      - name: Go static checks
+        working-directory: backend
+        run: |
+          gofmt -l . | tee /tmp/gofmt.out
+          test ! -s /tmp/gofmt.out
+          go vet ./...
+
+      - name: Go tests (race detector)
+        working-directory: backend
+        run: go test -race ./...
+
+      - name: Frontend type check and unit tests
+        working-directory: frontend
+        run: |
+          npx tsc -b
+          npm test
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests (real sign-in flow)
+        working-directory: frontend
+        run: npm run test:e2e
+
+      - name: Go end-to-end tests (real binary)
+        working-directory: backend
+        run: go test -count=1 -tags=e2e ./e2e/ -v
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the container image
+        run: docker build -f backend/Dockerfile -t ddns-by-dnspod:ci .
+
+      # compose declares OIDC_ISSUER and OIDC_CLIENT_ID as required.
+      - name: Validate the compose file
+        env:
+          OIDC_ISSUER: https://auth.example.com
+          OIDC_CLIENT_ID: ci
+        run: docker compose config --quiet

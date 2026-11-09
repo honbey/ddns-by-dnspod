@@ -1,0 +1,1532 @@
+openapi: 3.0.3
+info:
+  title: DDNS by DNSPod
+  version: "2.0.0"
+  description: >-
+    DNSPod record management and DDNS in one process. Every authenticated route
+    takes `Authorization: Bearer <access token>`; the routes under `/api/v1`
+    take an API key instead and exist for scripts.
+
+servers:
+  - url: /
+
+tags:
+  - name: system
+  - name: accounts
+  - name: domains
+  - name: records
+  - name: tasks
+  - name: history
+  - name: notifications
+  - name: certificates
+  - name: keys
+  - name: public
+
+paths:
+  /api/health:
+    get:
+      tags: [system]
+      operationId: health
+      summary: Liveness probe. Always public.
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/Health" }
+  /api/ready:
+    get:
+      tags: [system]
+      operationId: ready
+      summary: >-
+        Readiness probe: the database answers, and the identity provider has
+        been reached at least once. Always public.
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/Ready" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /config.json:
+    get:
+      tags: [system]
+      operationId: frontendConfig
+      summary: >-
+        Runtime configuration for the bundle. Deliberately not wrapped in the
+        {"data": ...} envelope: the bundle reads it as a plain document.
+      security: []
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FrontendConfig" }
+  /api/ip:
+    get:
+      tags: [system]
+      operationId: currentIP
+      summary: What this host is reachable as right now.
+      parameters:
+        - { $ref: "#/components/parameters/Family" }
+      responses:
+        "200": { $ref: "#/components/responses/Data" , description: ok }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/accounts:
+    get:
+      tags: [accounts]
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+      operationId: listAccounts
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfPagedAccount" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [accounts]
+      operationId: createAccount
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountInput" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfAccount" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/accounts/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    put:
+      tags: [accounts]
+      operationId: updateAccount
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccountInput" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfAccount" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [accounts]
+      operationId: deleteAccount
+      responses:
+        "200": { $ref: "#/components/responses/NullData" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/accounts/{id}/verify:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      tags: [accounts]
+      operationId: verifyAccount
+      summary: Asks DNSPod whether the stored credential still works.
+      responses:
+        "200": { $ref: "#/components/responses/NullData" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "502": { $ref: "#/components/responses/BadGateway" }
+
+  /api/domains:
+    get:
+      tags: [domains]
+      operationId: listDomains
+      parameters:
+        - { $ref: "#/components/parameters/AccountId" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfDomainList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/domains/{domain}/records:
+    parameters:
+      - { $ref: "#/components/parameters/Domain" }
+      - { $ref: "#/components/parameters/AccountId" }
+    get:
+      tags: [records]
+      operationId: listRecords
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: sub_domain
+          in: query
+          schema: { type: string }
+        - name: record_type
+          in: query
+          schema: { type: string }
+        - name: keyword
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/PagedDnsRecord" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [records]
+      operationId: createRecord
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecordInput" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfDnsRecord" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/domains/{domain}/records/batch:
+    parameters:
+      - { $ref: "#/components/parameters/Domain" }
+      - { $ref: "#/components/parameters/AccountId" }
+    post:
+      tags: [records]
+      operationId: batchCreateRecords
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items: { $ref: "#/components/schemas/RecordInput" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfBatchCreateResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/domains/{domain}/records/batch-delete:
+    parameters:
+      - { $ref: "#/components/parameters/Domain" }
+      - { $ref: "#/components/parameters/AccountId" }
+    post:
+      tags: [records]
+      operationId: batchDeleteRecords
+      summary: >-
+        Deletes several records. A POST rather than `DELETE /records/batch`,
+        which would be read as one more record id.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items: { type: integer }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfBatchDeleteResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/domains/{domain}/lines:
+    parameters:
+      - { $ref: "#/components/parameters/Domain" }
+      - { $ref: "#/components/parameters/AccountId" }
+    get:
+      tags: [records]
+      operationId: listRecordLines
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfLineList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/domains/{domain}/groups:
+    parameters:
+      - { $ref: "#/components/parameters/Domain" }
+      - { $ref: "#/components/parameters/AccountId" }
+    get:
+      tags: [records]
+      operationId: listRecordGroups
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfGroupList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/domains/{domain}/records/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Domain" }
+      - { $ref: "#/components/parameters/RecordId" }
+      - { $ref: "#/components/parameters/AccountId" }
+    put:
+      tags: [records]
+      operationId: updateRecord
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecordInput" }
+      responses:
+        "200": { $ref: "#/components/responses/NullData" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [records]
+      operationId: deleteRecord
+      responses:
+        "200": { $ref: "#/components/responses/NullData" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/domains/{domain}/records/{id}/status:
+    parameters:
+      - { $ref: "#/components/parameters/Domain" }
+      - { $ref: "#/components/parameters/RecordId" }
+      - { $ref: "#/components/parameters/AccountId" }
+    patch:
+      tags: [records]
+      operationId: setRecordStatus
+      summary: Enables or disables one record without rewriting it.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enable: { type: boolean }
+      responses:
+        "200": { $ref: "#/components/responses/NullData" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/ddns/tasks:
+    get:
+      tags: [tasks]
+      operationId: listTasks
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: domain
+          in: query
+          schema: { type: string }
+        - name: keyword
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/PagedDDNSTask" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [tasks]
+      operationId: createTask
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskInput" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfDDNSTask" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/ddns/tasks/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    get:
+      tags: [tasks]
+      operationId: getTask
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfDDNSTask" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    put:
+      tags: [tasks]
+      operationId: updateTask
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TaskInput" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfDDNSTask" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [tasks]
+      operationId: deleteTask
+      responses:
+        "200": { $ref: "#/components/responses/NullData" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/ddns/tasks/{id}/run:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      tags: [tasks]
+      operationId: runTask
+      summary: Runs one task now, whatever the schedule says.
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfRunResult" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/ServerError" }
+  /api/ddns/tasks/import-group/{domain}:
+    parameters:
+      - { $ref: "#/components/parameters/Domain" }
+    post:
+      tags: [tasks]
+      operationId: importTasksFromGroup
+      summary: Turns every address record of one DNSPod group into a task.
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ImportInput" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfImportResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/ddns/reload:
+    post:
+      tags: [tasks]
+      operationId: reloadScheduler
+      summary: Re-reads the tasks and rebuilds the in-process cron schedule.
+      responses:
+        "200": { $ref: "#/components/responses/NullData" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/ServerError" }
+
+  /api/history:
+    get:
+      tags: [history]
+      operationId: listHistory
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - name: task_id
+          in: query
+          schema: { type: integer }
+        - name: domain
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/PagedHistoryEntry" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/history/ip-changes:
+    get:
+      tags: [history]
+      operationId: listIPHistory
+      summary: >-
+        The address timeline, newest first. Unlike the chart endpoint this
+        includes the baseline row of each family and carries pagination.
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+        - { $ref: "#/components/parameters/FamilyFilter" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfPagedIPChange" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/ServerError" }
+  /api/history/ip-changes/import:
+    post:
+      tags: [history]
+      operationId: importIPHistory
+      summary: >-
+        Merges a CSV of time,ip[,family] into the address timeline. The family
+        is inferred from the address when the column is absent. A time without
+        an offset is read as UTC. Rows that cannot be read are reported and
+        skipped; a file with no usable row is refused.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfIPHistoryImportResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "500": { $ref: "#/components/responses/ServerError" }
+  /api/stats/ip-changes:
+    get:
+      tags: [history]
+      operationId: listIPChanges
+      summary: >-
+        Recent public address changes, oldest first so a chart reads left to
+        right. The first address of a family is a baseline and is excluded.
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 30 }
+        - { $ref: "#/components/parameters/FamilyFilter" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfIPChangePointList" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/notify/channels:
+    get:
+      tags: [notifications]
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+      operationId: listChannels
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfPagedNotifyChannel" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [notifications]
+      operationId: createChannel
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChannelInput" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfNotifyChannel" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/notify/channels/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    put:
+      tags: [notifications]
+      operationId: updateChannel
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChannelInput" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfNotifyChannel" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [notifications]
+      operationId: deleteChannel
+      responses:
+        "200": { $ref: "#/components/responses/NullData" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/notify/channels/{id}/test:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      tags: [notifications]
+      operationId: testChannel
+      summary: Delivers one throwaway message, the only way to know it works.
+      responses:
+        "200": { $ref: "#/components/responses/NullData" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/certificates:
+    get:
+      tags: [certificates]
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+      operationId: listCertificates
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfPagedCertificate" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [certificates]
+      operationId: createCertificate
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CertificateInput" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfCertificate" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/certificates/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    put:
+      tags: [certificates]
+      operationId: updateCertificate
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CertificateInput" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfCertificate" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [certificates]
+      operationId: deleteCertificate
+      summary: Removes the record of a certificate; the files on disk are left.
+      responses:
+        "200": { $ref: "#/components/responses/NullData" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/certificates/{id}/issue:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    post:
+      tags: [certificates]
+      operationId: issueCertificate
+      summary: >-
+        Starts an issuance and returns while it runs: the answer carries a
+        RUNNING status and the caller watches the row until it settles.
+      responses:
+        "202":
+          description: accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfCertificate" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+  /api/keys:
+    get:
+      tags: [keys]
+      parameters:
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/PageSize" }
+      operationId: listAPIKeys
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfPagedAPIKey" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    post:
+      tags: [keys]
+      operationId: createAPIKey
+      summary: >-
+        Creates a key. The plaintext is handed over exactly once, here, and
+        never again: only a prefix is stored.
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/APIKeyInput" }
+      responses:
+        "201":
+          description: created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfAPIKeyCreated" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /api/keys/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Id" }
+    put:
+      tags: [keys]
+      operationId: updateAPIKey
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/APIKeyInput" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfAPIKey" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    delete:
+      tags: [keys]
+      operationId: deleteAPIKey
+      responses:
+        "200": { $ref: "#/components/responses/NullData" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/domains/{domain}/records:
+    parameters:
+      - { $ref: "#/components/parameters/Domain" }
+    get:
+      tags: [public]
+      operationId: publicListRecords
+      security: [{ ApiKeyAuth: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+    post:
+      tags: [public]
+      operationId: publicCreateRecord
+      security: [{ ApiKeyAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecordInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /api/v1/domains/{domain}/records/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Domain" }
+      - { $ref: "#/components/parameters/RecordId" }
+    put:
+      tags: [public]
+      operationId: publicUpdateRecord
+      security: [{ ApiKeyAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RecordInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+    delete:
+      tags: [public]
+      operationId: publicDeleteRecord
+      security: [{ ApiKeyAuth: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Data" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    RecordId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    Domain:
+      name: domain
+      in: path
+      required: true
+      schema: { type: string }
+      example: example.com
+    AccountId:
+      name: account_id
+      in: query
+      required: false
+      description: Which account to talk through; empty means the default one.
+      schema: { type: integer }
+    Family:
+      name: family
+      in: query
+      required: false
+      description: Which address family to answer for.
+      schema: { type: string, enum: [v4, v6], default: v4 }
+    FamilyFilter:
+      name: family
+      in: query
+      required: false
+      description: Empty means both address families.
+      schema: { type: string, enum: [v4, v6] }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: page_size
+      in: query
+      schema: { type: integer, minimum: 1, default: 20 }
+
+  responses:
+    BadRequest:
+      description: The caller can fix it.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unavailable:
+      description: >-
+        This instance cannot serve the request right now - the database does
+        not answer, the identity provider never has, or a capability is
+        switched off in the configuration.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: The request is valid but collides with existing state.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthorized:
+      description: The token was rejected, or no key was sent.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ServerError:
+      description: Something broke here; the request id leads to the log line.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    BadGateway:
+      description: DNSPod failed us.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: DNSPod asked us to stop; back off and retry.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Health:
+      description: ok
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    required: [status, version]
+                    properties:
+                      status: { type: string }
+                      version:
+                        type: string
+                        description: Build version, taken from info.version at link time.
+                        example: "2.0.0"
+    Ready:
+      description: ok
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      status: { type: string }
+    NullData:
+      description: ok
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+                properties:
+                  data: { nullable: true }
+    Data:
+      description: ok
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Envelope"
+              - type: object
+
+  schemas:
+    Envelope:
+      type: object
+      required: [data]
+      properties:
+        data: {}
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        # A stable identifier for failures a client reacts to instead of
+        # showing, e.g. no_account. Absent when the message is all there is.
+        # Adding a value is a contract change: clients switch on it.
+        code:
+          type: string
+          enum: [no_account]
+        request_id: { type: string }
+
+    FrontendConfig:
+      type: object
+      required: [appName, apiBaseUrl, authRequired, acmeEnabled, oidc]
+      properties:
+        appName: { type: string }
+        apiBaseUrl: { type: string }
+        authRequired: { type: boolean }
+        acmeEnabled: { type: boolean }
+        oidc:
+          type: object
+          required: [issuer, clientId, scope, redirectPath, providerName, logoutUrlTemplate]
+          properties:
+            issuer: { type: string }
+            clientId: { type: string }
+            scope: { type: string }
+            redirectPath: { type: string }
+            providerName: { type: string }
+            logoutUrlTemplate: { type: string }
+
+    Paged:
+      type: object
+      required: [total, page, page_size]
+      properties:
+        total: { type: integer }
+        page: { type: integer }
+        page_size: { type: integer }
+
+    Account:
+      type: object
+      required: [id, name, secret_id, key_hint, is_default, created_at, updated_at]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        secret_id: { type: string }
+        key_hint: { type: string }
+        is_default: { type: boolean }
+        created_at: { type: string }
+        updated_at: { type: string }
+    AccountInput:
+      type: object
+      required: [name, secret_id, secret_key]
+      properties:
+        name: { type: string }
+        secret_id: { type: string }
+        secret_key: { type: string, description: Blank keeps the stored key. }
+        is_default: { type: boolean }
+
+    Domain:
+      type: object
+      required: [domain_id, name, status, ttl, grade, records]
+      properties:
+        domain_id: { type: integer }
+        name: { type: string }
+        status: { type: string }
+        ttl: { type: integer }
+        grade: { type: string }
+        records: { type: integer }
+
+    DnsRecord:
+      type: object
+      required:
+        [record_id, sub_domain, record_type, value, line, line_id, ttl, mx, weight, status, remark, updated_on]
+      properties:
+        record_id: { type: integer }
+        sub_domain: { type: string }
+        record_type: { type: string }
+        value: { type: string }
+        line: { type: string }
+        line_id: { type: string }
+        ttl: { type: integer }
+        mx: { type: integer }
+        weight: { type: integer }
+        status: { type: string }
+        remark: { type: string }
+        updated_on: { type: string }
+    RecordInput:
+      type: object
+      required: [sub_domain, record_type, value]
+      properties:
+        sub_domain: { type: string }
+        record_type: { type: string }
+        value: { type: string }
+        line: { type: string }
+        ttl: { type: integer }
+        mx: { type: integer }
+        weight: { type: integer, description: Shares the answer between records of the same host and type; 0 is even. }
+        status: { type: string }
+        remark: { type: string }
+    Line:
+      type: object
+      required: [name, id]
+      properties:
+        name: { type: string }
+        id: { type: string }
+    Group:
+      type: object
+      required: [id, name, type]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        type: { type: string }
+    BatchCreateResult:
+      type: object
+      properties:
+        succeeded:
+          type: array
+          items:
+            type: object
+            required: [sub_domain, record_id]
+            properties:
+              sub_domain: { type: string }
+              record_id: { type: integer }
+        failed:
+          type: array
+          items:
+            type: object
+            required: [sub_domain, error]
+            properties:
+              sub_domain: { type: string }
+              error: { type: string }
+    BatchDeleteResult:
+      type: object
+      properties:
+        deleted: { type: integer }
+        failed:
+          type: array
+          items:
+            type: object
+            required: [record_id, error]
+            properties:
+              record_id: { type: integer }
+              error: { type: string }
+
+    DDNSTask:
+      type: object
+      required: [id, account_id, domain, sub_domain, record_type, record_line, ttl, enabled, cron_expr, current_ip, last_status, last_message, fail_count, notify_on_change, created_at, updated_at]
+      properties:
+        id: { type: integer }
+        account_id: { type: integer }
+        domain: { type: string }
+        sub_domain: { type: string }
+        record_type: { type: string }
+        record_line: { type: string }
+        ttl: { type: integer }
+        enabled: { type: boolean }
+        cron_expr: { type: string }
+        current_ip: { type: string }
+        ip_since: { type: string, nullable: true }
+        last_run_at: { type: string, nullable: true }
+        last_status: { type: string }
+        last_message: { type: string }
+        fail_count: { type: integer }
+        notify_on_change: { type: boolean }
+        created_at: { type: string }
+        updated_at: { type: string }
+    TaskInput:
+      type: object
+      required: [account_id, domain, sub_domain]
+      properties:
+        account_id: { type: integer }
+        domain: { type: string }
+        sub_domain: { type: string }
+        record_type: { type: string }
+        record_line: { type: string }
+        ttl: { type: integer }
+        enabled: { type: boolean }
+        cron_expr: { type: string }
+        notify_on_change: { type: boolean }
+    ImportInput:
+      type: object
+      required: [group_id, account_id]
+      properties:
+        group_id: { type: integer }
+        account_id: { type: integer }
+        record_type: { type: string }
+        cron_expr: { type: string }
+        enabled: { type: boolean }
+    ImportResult:
+      type: object
+      required: [created, skipped, task_ids]
+      properties:
+        created: { type: integer }
+        skipped: { type: integer }
+        task_ids: { type: array, items: { type: integer } }
+    IPHistoryImportError:
+      type: object
+      required: [line, code, message]
+      properties:
+        line: { type: integer, description: Line in the uploaded file. }
+        code:
+          type: string
+          description: Stable identifier the SPA translates.
+          enum:
+            - time_invalid
+            - time_future
+            - time_too_old
+            - ip_invalid
+            - family_invalid
+            - family_mismatch
+            - row_invalid
+            - duplicate_row
+        message:
+          type: string
+          description: English wording for logs and debugging; not shown as is.
+    IPHistoryImportResult:
+      type: object
+      required: [imported, skipped, errors]
+      properties:
+        imported:
+          type: integer
+          description: Rows inserted into the timeline.
+        skipped:
+          type: integer
+          description: >-
+            Rows not stored: refused CSV rows plus samples already known or
+            repeating the address next to them.
+        errors:
+          type: array
+          description: >-
+            Up to 20 refused rows and 20 duplicates, in file order; skipped
+            counts every row that was not stored.
+          items: { $ref: "#/components/schemas/IPHistoryImportError" }
+    RunResult:
+      type: object
+      required: [task_id, domain, sub_domain, record_type, old_ip, new_ip, status, message, changed]
+      properties:
+        task_id: { type: integer }
+        domain: { type: string }
+        sub_domain: { type: string }
+        record_type: { type: string }
+        old_ip: { type: string }
+        new_ip: { type: string }
+        status: { type: string }
+        message: { type: string }
+        changed: { type: boolean }
+        duration_sec: { type: integer, nullable: true }
+
+    HistoryEntry:
+      type: object
+      required: [id, domain, sub_domain, record_type, old_ip, new_ip, status, message, created_at]
+      properties:
+        id: { type: integer }
+        task_id: { type: integer, nullable: true }
+        domain: { type: string }
+        sub_domain: { type: string }
+        record_type: { type: string }
+        record_id: { type: integer, nullable: true }
+        old_ip: { type: string }
+        new_ip: { type: string }
+        status: { type: string }
+        message: { type: string }
+        duration_sec: { type: integer, nullable: true }
+        created_at: { type: string }
+    IPChangePoint:
+      type: object
+      required: [time, family, old_ip, new_ip]
+      properties:
+        time: { type: string }
+        family: { type: string }
+        old_ip: { type: string }
+        new_ip: { type: string }
+        duration_sec: { type: integer, nullable: true }
+    IPChange:
+      type: object
+      required: [id, family, old_ip, new_ip, created_at]
+      properties:
+        id: { type: integer }
+        family: { type: string, enum: [v4, v6] }
+        old_ip:
+          type: string
+          description: Empty on the first row of a family, which is only a baseline.
+        new_ip: { type: string }
+        duration_sec: { type: integer, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    NotifyChannel:
+      type: object
+      required: [id, name, type, enabled, config, created_at, updated_at]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        type: { type: string }
+        enabled: { type: boolean }
+        config: { type: string, description: JSON text; its shape depends on the type. }
+        created_at: { type: string }
+        updated_at: { type: string }
+    ChannelInput:
+      type: object
+      required: [name, type, config]
+      properties:
+        name: { type: string }
+        type: { type: string }
+        enabled: { type: boolean }
+        config: { type: object, additionalProperties: true }
+
+    Certificate:
+      type: object
+      required: [id, name, account_id, domains, key_type, output_dir, output_path, auto_renew, notify_on_issue, last_status, last_message, fail_count, created_at, updated_at]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        account_id: { type: integer }
+        domains: { type: array, items: { type: string } }
+        key_type: { type: string }
+        output_dir: { type: string }
+        output_path: { type: string }
+        auto_renew: { type: boolean }
+        notify_on_issue: { type: boolean }
+        last_issued_at: { type: string, nullable: true }
+        not_after: { type: string, nullable: true }
+        last_status: { type: string }
+        last_message: { type: string }
+        fail_count: { type: integer }
+        created_at: { type: string }
+        updated_at: { type: string }
+    CertificateInput:
+      type: object
+      required: [name, account_id, domains, key_type]
+      properties:
+        name: { type: string }
+        account_id: { type: integer }
+        domains: { type: array, items: { type: string } }
+        key_type: { type: string }
+        output_dir: { type: string }
+        auto_renew: { type: boolean }
+        notify_on_issue: { type: boolean }
+
+    APIKey:
+      type: object
+      required: [id, name, key_prefix, domain, account_id, enabled, created_at, updated_at]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        key_prefix: { type: string }
+        domain: { type: string }
+        account_id: { type: integer }
+        enabled: { type: boolean }
+        last_used_at: { type: string, nullable: true }
+        created_at: { type: string }
+        updated_at: { type: string }
+    APIKeyCreated:
+      type: object
+      required: [key, api_key]
+      properties:
+        key: { type: string }
+        api_key: { $ref: "#/components/schemas/APIKey" }
+    APIKeyInput:
+      type: object
+      required: [name, domain, account_id]
+      properties:
+        name: { type: string }
+        domain:
+          type: string
+          description: >-
+            The one domain this key covers, or `*` for every domain of the
+            account. See model.APIKeyWildcard.
+        account_id: { type: integer }
+        enabled: { type: boolean }
+
+    PublicIP:
+      type: object
+      required: [ip, family, available]
+      properties:
+        ip: { type: string }
+        family: { type: string }
+        available: { type: boolean }
+        message: { type: string }
+
+    PagedAccount:
+      allOf:
+        - $ref: "#/components/schemas/Paged"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Account" }
+    PagedCertificate:
+      allOf:
+        - $ref: "#/components/schemas/Paged"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Certificate" }
+    PagedAPIKey:
+      allOf:
+        - $ref: "#/components/schemas/Paged"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/APIKey" }
+    PagedNotifyChannel:
+      allOf:
+        - $ref: "#/components/schemas/Paged"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/NotifyChannel" }
+    PagedDnsRecord:
+      allOf:
+        - $ref: "#/components/schemas/Paged"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/DnsRecord" }
+    PagedDDNSTask:
+      allOf:
+        - $ref: "#/components/schemas/Paged"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/DDNSTask" }
+    PagedHistoryEntry:
+      allOf:
+        - $ref: "#/components/schemas/Paged"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/HistoryEntry" }
+    PagedIPChange:
+      allOf:
+        - $ref: "#/components/schemas/Paged"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/IPChange" }
+
+    EnvelopeOfPagedAccount:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/PagedAccount" }
+    EnvelopeOfPagedCertificate:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/PagedCertificate" }
+    EnvelopeOfPagedAPIKey:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/PagedAPIKey" }
+    EnvelopeOfPagedNotifyChannel:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/PagedNotifyChannel" }
+    EnvelopeOfAccount:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/Account" }
+    EnvelopeOfDomainList:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/Domain" }
+    EnvelopeOfDnsRecord:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/DnsRecord" }
+    EnvelopeOfLineList:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/Line" }
+    EnvelopeOfGroupList:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/Group" }
+    EnvelopeOfBatchCreateResult:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/BatchCreateResult" }
+    EnvelopeOfBatchDeleteResult:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/BatchDeleteResult" }
+    EnvelopeOfDDNSTask:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/DDNSTask" }
+    EnvelopeOfImportResult:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/ImportResult" }
+    EnvelopeOfRunResult:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/RunResult" }
+    EnvelopeOfIPChangePointList:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/IPChangePoint" }
+    EnvelopeOfPagedIPChange:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/PagedIPChange" }
+    EnvelopeOfIPHistoryImportResult:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/IPHistoryImportResult" }
+    EnvelopeOfNotifyChannel:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/NotifyChannel" }
+    EnvelopeOfCertificate:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/Certificate" }
+    EnvelopeOfAPIKey:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/APIKey" }
+    EnvelopeOfAPIKeyCreated:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/APIKeyCreated" }
+    EnvelopeOfPublicIP:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/PublicIP" }
+
+security:
+  - BearerAuth: []

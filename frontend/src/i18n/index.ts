@@ -12,15 +12,24 @@
  */
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
-import { readStored, writeStored } from '@/lib/storage'
+import { readStored, removeStored, subscribeStored, writeStored } from '@/lib/storage'
 import { en } from './locales/en'
 import { zh } from './locales/zh'
+import {
+  DEFAULT_LOCALE,
+  LOCALES,
+  createEpochGate,
+  isLocale,
+  preferenceFromStorage,
+  resolveLocale,
+  type Locale,
+  type LocalePreference,
+} from './locale'
+
+export { LOCALES, isLocale, resolveLocale, type Locale, type LocalePreference } from './locale'
 
 /** Key under which the choice is remembered; absent means "follow the browser". */
 export const LOCALE_KEY = 'app_locale'
-
-export const LOCALES = ['zh', 'en'] as const
-export type Locale = (typeof LOCALES)[number]
 
 export const LOCALE_LABELS: Record<Locale, string> = {
   en: 'English',
@@ -39,29 +48,15 @@ type Leaves<T> = T extends string
 
 export type MessageKey = Leaves<typeof zh>
 
-const DEFAULT_LOCALE: Locale = 'zh'
-
-export function isLocale(value: unknown): value is Locale {
-  return typeof value === 'string' && (LOCALES as readonly string[]).includes(value)
-}
-
-function storedLocale(): Locale | null {
-  const stored = readStored(LOCALE_KEY)
-  return isLocale(stored) ? stored : null
-}
-
-/**
- * Falls back to Chinese for anything that is not English: the interface copy is
- * written in it, so a visitor whose browser asks for a third language is better
- * served by the real thing than by a half-translated mixture.
- */
-function browserLocale(): Locale {
-  if (typeof navigator === 'undefined') return DEFAULT_LOCALE
+function browserLanguages(): readonly string[] {
+  if (typeof navigator === 'undefined') return []
   // `languages[0]` is the preference the user actually ordered; `language` is
   // the same value only as long as the browser agrees with itself.
-  const [preferred] = navigator.languages ?? []
-  const tag = preferred || navigator.language || ''
-  return tag.toLowerCase().startsWith('en') ? 'en' : DEFAULT_LOCALE
+  return navigator.languages?.length ? navigator.languages : [navigator.language]
+}
+
+function browserLocale(): Locale {
+  return resolveLocale(null, browserLanguages())
 }
 
 function syncDocumentLang(locale: string): void {
@@ -69,7 +64,7 @@ function syncDocumentLang(locale: string): void {
   document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en'
 }
 
-const initialLocale = storedLocale() ?? browserLocale()
+const initialLocale = resolveLocale(readStored(LOCALE_KEY), browserLanguages())
 
 /** Resolved once the dictionaries are in; the app awaits it before rendering. */
 export const i18nReady = i18n.use(initReactI18next).init({
@@ -97,13 +92,91 @@ export const i18nReady = i18n.use(initReactI18next).init({
 i18n.on('languageChanged', syncDocumentLang)
 syncDocumentLang(initialLocale)
 
-/** Switches the interface language and remembers the choice. */
-export function setLocale(locale: Locale): void {
-  // Stored once the switch has happened, not before: a change that throws
-  // would otherwise leave the next visit starting in a language this one never
-  // managed to show.
-  void i18n.changeLanguage(locale).then(() => writeStored(LOCALE_KEY, locale))
+/**
+ * Preference changes are local to this module: a `storage` event only fires in
+ * *other* tabs, so the tab that made the choice needs its own notification.
+ */
+const preferenceListeners = new Set<() => void>()
+
+function notifyPreferenceListeners(): void {
+  for (const listener of preferenceListeners) listener()
 }
+
+export function subscribeLocalePreference(listener: () => void): () => void {
+  preferenceListeners.add(listener)
+  return () => {
+    preferenceListeners.delete(listener)
+  }
+}
+
+/** The stored choice; an absent or unknown value means follow the system. */
+export function localePreference(): LocalePreference {
+  return preferenceFromStorage(readStored(LOCALE_KEY))
+}
+
+const epochGate = createEpochGate()
+/** An explicit choice waiting to be persisted; OS changes must not steal it. */
+let pendingPersist: LocalePreference | null = null
+
+/**
+ * Every source of a language change goes through here. The last request wins:
+ * i18next serialises the calls, and only its callback may persist a choice, so
+ * a slower one cannot store a language that is no longer on screen.
+ */
+function requestLocale(preference: LocalePreference, persist: boolean): void {
+  const epoch = epochGate.next()
+  const target = preference === 'system' ? browserLocale() : preference
+  if (persist) pendingPersist = preference
+
+  void i18n.changeLanguage(target).then(
+    () => {
+      if (!epochGate.isCurrent(epoch)) return
+      if (persist) {
+        // Stored once the switch has happened, not before: a change that throws
+        // would otherwise leave the next visit starting in a language never shown.
+        if (preference === 'system') removeStored(LOCALE_KEY)
+        else writeStored(LOCALE_KEY, preference)
+        pendingPersist = null
+      }
+      notifyPreferenceListeners()
+    },
+    () => {
+      if (!epochGate.isCurrent(epoch)) return
+      // A failed change leaves the old language on screen. The UI still has to
+      // re-read the stored preference rather than keep a choice never applied.
+      pendingPersist = null
+      notifyPreferenceListeners()
+    }
+  )
+}
+
+/**
+ * Applies a preference. Following the system clears the stored value instead
+ * of writing the resolved language back, or the next visit would start with a
+ * choice this visitor never made.
+ */
+export function setLocalePreference(preference: LocalePreference): void {
+  requestLocale(preference, true)
+}
+
+if (typeof window !== 'undefined') {
+  // The browser language can change while the page is open. Only a visitor
+  // following the system should move, and a pending explicit choice is this
+  // tab's to finish rather than the OS's to cancel.
+  window.addEventListener('languagechange', () => {
+    if (pendingPersist !== null || localePreference() !== 'system') return
+    requestLocale('system', false)
+  })
+}
+
+// Another tab may set a language or return to the system default. The event
+// value is authoritative: when this tab's active store fell back to
+// sessionStorage or memory, reading it here would see null and turn an
+// explicit choice back into "system".
+subscribeStored(LOCALE_KEY, (value) => {
+  pendingPersist = null
+  requestLocale(preferenceFromStorage(value), false)
+})
 
 /** The active locale, narrowed from i18next's looser `language` string. */
 export function currentLocale(): Locale {

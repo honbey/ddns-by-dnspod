@@ -5,7 +5,8 @@ import { useForm } from 'react-hook-form'
 import { ChevronDownIcon } from '@radix-ui/react-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { fonts } from '@/config/fonts'
-import { currentLocale, LOCALE_LABELS, LOCALES, setLocale, type Locale } from '@/i18n'
+import { LOCALE_LABELS, LOCALES, setLocalePreference, type LocalePreference } from '@/i18n'
+import { useLocalePreference } from '@/hooks/use-locale-preference'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useFont } from '@/context/font-provider'
@@ -22,7 +23,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 
 const appearanceFormSchema = z.object({
-  theme: z.enum(['light', 'dark']),
+  theme: z.enum(['system', 'light', 'dark']),
   font: z.enum(fonts),
 })
 
@@ -30,37 +31,33 @@ type AppearanceFormValues = z.infer<typeof appearanceFormSchema>
 
 export function AppearanceForm() {
   const { t } = useTranslation()
-  const locale = currentLocale()
+  const preference = useLocalePreference()
   const languageLabelId = useId()
   // The theme cards are radio buttons rather than form fields, so the group
   // and each card name their label instead of being pointed at with `for`.
   const themeLabelId = useId()
 
   const { font, setFont } = useFont()
-  const { theme, resolvedTheme, setTheme } = useTheme()
-
-  // "System" follows the machine, so the card that reads as chosen is the one
-  // actually on screen.
-  const chosenTheme = theme === 'system' ? resolvedTheme : theme
+  const { theme, setTheme } = useTheme()
 
   const form = useForm<AppearanceFormValues>({
     resolver: zodResolver(appearanceFormSchema),
-    defaultValues: { theme: chosenTheme, font },
+    defaultValues: { theme, font },
   })
 
   // Nothing here is submitted: a choice applies the moment it is made, which
   // means the form has to follow the preference from wherever else it changed
-  // - the switch in the top bar, or another tab.
+  // - the switch in the top bar, the config drawer, or another tab.
   useEffect(() => {
-    form.reset({ theme: chosenTheme, font })
-  }, [chosenTheme, font, form])
+    form.reset({ theme, font })
+  }, [theme, font, form])
 
   function chooseFont(next: AppearanceFormValues['font']) {
     setFont(next)
     toast.success(t('settings.preferencesUpdated'))
   }
 
-  function chooseTheme(next: 'dark' | 'light') {
+  function chooseTheme(next: AppearanceFormValues['theme']) {
     setTheme(next)
     toast.success(t('settings.preferencesUpdated'))
   }
@@ -81,9 +78,10 @@ export function AppearanceForm() {
                 'w-50 appearance-none font-normal',
                 'dark:bg-background dark:hover:bg-background'
               )}
-              value={locale}
-              onChange={(event) => setLocale(event.target.value as Locale)}
+              value={preference}
+              onChange={(event) => setLocalePreference(event.target.value as LocalePreference)}
             >
+              <option value='system'>{t('common.followSystem')}</option>
               {LOCALES.map((item) => (
                 <option key={item} value={item}>
                   {LOCALE_LABELS[item]}
@@ -141,16 +139,52 @@ export function AppearanceForm() {
                 aria-labelledby={themeLabelId}
                 value={field.value}
                 onValueChange={(value) => {
-                  field.onChange(value as 'dark' | 'light')
-                  chooseTheme(value as 'dark' | 'light')
+                  const next = value as AppearanceFormValues['theme']
+                  field.onChange(next)
+                  chooseTheme(next)
                 }}
-                className='grid max-w-md grid-cols-2 gap-8 pt-2'
+                className='grid max-w-lg grid-cols-3 gap-4 pt-2'
               >
+                <FormItem>
+                  <FormLabel
+                    id={`${themeLabelId}-system`}
+                    htmlFor={undefined}
+                    className='flex-col items-center gap-0 [&:has([data-state=checked])>div]:border-primary'
+                  >
+                    <FormControl>
+                      <RadioGroupItem
+                        value='system'
+                        aria-labelledby={`${themeLabelId}-system`}
+                        className='sr-only'
+                      />
+                    </FormControl>
+                    <div className='w-full items-center rounded-md border-2 border-muted p-1 hover:border-accent'>
+                      <div
+                        className='space-y-2 rounded-sm p-2'
+                        style={{
+                          background: 'linear-gradient(135deg, #ecedef 50%, #0f172a 50%)',
+                        }}
+                      >
+                        <div className='space-y-2 rounded-md bg-white/90 p-2 shadow-xs'>
+                          <div className='h-2 w-16 rounded-lg bg-slate-200' />
+                          <div className='h-2 w-20 rounded-lg bg-slate-200' />
+                        </div>
+                        <div className='flex items-center space-x-2 rounded-md bg-slate-800/90 p-2 shadow-xs'>
+                          <div className='h-4 w-4 rounded-full bg-slate-400' />
+                          <div className='h-2 w-16 rounded-lg bg-slate-400' />
+                        </div>
+                      </div>
+                    </div>
+                    <span className='block w-full p-2 text-center font-normal whitespace-nowrap'>
+                      {t('common.followSystem')}
+                    </span>
+                  </FormLabel>
+                </FormItem>
                 <FormItem>
                   <FormLabel
                     id={`${themeLabelId}-light`}
                     htmlFor={undefined}
-                    className='[&:has([data-state=checked])>div]:border-primary'
+                    className='flex-col items-center gap-0 [&:has([data-state=checked])>div]:border-primary'
                   >
                     <FormControl>
                       <RadioGroupItem
@@ -159,23 +193,19 @@ export function AppearanceForm() {
                         className='sr-only'
                       />
                     </FormControl>
-                    <div className='items-center rounded-md border-2 border-muted p-1 hover:border-accent'>
+                    <div className='w-full items-center rounded-md border-2 border-muted p-1 hover:border-accent'>
                       <div className='space-y-2 rounded-sm bg-[#ecedef] p-2'>
                         <div className='space-y-2 rounded-md bg-white p-2 shadow-xs'>
+                          <div className='h-2 w-16 rounded-lg bg-[#ecedef]' />
                           <div className='h-2 w-20 rounded-lg bg-[#ecedef]' />
-                          <div className='h-2 w-25 rounded-lg bg-[#ecedef]' />
                         </div>
                         <div className='flex items-center space-x-2 rounded-md bg-white p-2 shadow-xs'>
                           <div className='h-4 w-4 rounded-full bg-[#ecedef]' />
-                          <div className='h-2 w-25 rounded-lg bg-[#ecedef]' />
-                        </div>
-                        <div className='flex items-center space-x-2 rounded-md bg-white p-2 shadow-xs'>
-                          <div className='h-4 w-4 rounded-full bg-[#ecedef]' />
-                          <div className='h-2 w-25 rounded-lg bg-[#ecedef]' />
+                          <div className='h-2 w-20 rounded-lg bg-[#ecedef]' />
                         </div>
                       </div>
                     </div>
-                    <span className='block w-full p-2 text-center font-normal'>
+                    <span className='block w-full p-2 text-center font-normal whitespace-nowrap'>
                       {t('theme.light')}
                     </span>
                   </FormLabel>
@@ -184,7 +214,7 @@ export function AppearanceForm() {
                   <FormLabel
                     id={`${themeLabelId}-dark`}
                     htmlFor={undefined}
-                    className='[&:has([data-state=checked])>div]:border-primary'
+                    className='flex-col items-center gap-0 [&:has([data-state=checked])>div]:border-primary'
                   >
                     <FormControl>
                       <RadioGroupItem
@@ -193,23 +223,19 @@ export function AppearanceForm() {
                         className='sr-only'
                       />
                     </FormControl>
-                    <div className='items-center rounded-md border-2 border-muted bg-popover p-1 hover:bg-accent hover:text-accent-foreground'>
+                    <div className='w-full items-center rounded-md border-2 border-muted bg-popover p-1 hover:bg-accent hover:text-accent-foreground'>
                       <div className='space-y-2 rounded-sm bg-slate-950 p-2'>
                         <div className='space-y-2 rounded-md bg-slate-800 p-2 shadow-xs'>
+                          <div className='h-2 w-16 rounded-lg bg-slate-400' />
                           <div className='h-2 w-20 rounded-lg bg-slate-400' />
-                          <div className='h-2 w-25 rounded-lg bg-slate-400' />
                         </div>
                         <div className='flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-xs'>
                           <div className='h-4 w-4 rounded-full bg-slate-400' />
-                          <div className='h-2 w-25 rounded-lg bg-slate-400' />
-                        </div>
-                        <div className='flex items-center space-x-2 rounded-md bg-slate-800 p-2 shadow-xs'>
-                          <div className='h-4 w-4 rounded-full bg-slate-400' />
-                          <div className='h-2 w-25 rounded-lg bg-slate-400' />
+                          <div className='h-2 w-20 rounded-lg bg-slate-400' />
                         </div>
                       </div>
                     </div>
-                    <span className='block w-full p-2 text-center font-normal'>
+                    <span className='block w-full p-2 text-center font-normal whitespace-nowrap'>
                       {t('theme.dark')}
                     </span>
                   </FormLabel>

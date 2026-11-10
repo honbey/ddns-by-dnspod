@@ -37,6 +37,7 @@ export const zh = {
     switchTheme: '切换到{theme}主题',
     language: '语言',
     switchLanguage: '切换语言',
+    followSystem: '跟随系统',
     somethingWentWrong: '出错了，请稍后重试。',
   },
   ui: {
@@ -482,7 +483,6 @@ export const zh = {
     sidebarSection: '侧边栏',
     layoutSection: '布局',
     directionSection: '文字方向',
-    system: '跟随系统',
     light: '浅色',
     dark: '深色',
     inset: '内嵌',

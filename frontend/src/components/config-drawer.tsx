@@ -193,7 +193,7 @@ function ThemeConfig() {
         {[
           {
             value: 'system',
-            label: t('theme.system'),
+            label: t('common.followSystem'),
             icon: IconThemeSystem,
           },
           {

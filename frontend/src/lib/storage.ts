@@ -126,6 +126,10 @@ export function subscribeStored(key: string, onChange: (value: string | null) =>
   if (typeof window === 'undefined') return () => {}
 
   const handler = (event: StorageEvent) => {
+    // Only localStorage emits these and only localStorage is shared between
+    // tabs. When this tab fell back to sessionStorage or memory, another tab's
+    // localStorage event cannot change a preference kept here.
+    if (active.name !== 'localStorage') return
     // `null` is `clear()`: every key went, including this one.
     if (event.key !== null && event.key !== key) return
     onChange(event.key === null ? null : event.newValue)

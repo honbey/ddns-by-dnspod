@@ -41,6 +41,7 @@ export const en: typeof zh = {
     switchTheme: 'Switch to the {theme} theme',
     language: 'Language',
     switchLanguage: 'Switch language',
+    followSystem: 'Follow system',
     somethingWentWrong: 'Something went wrong. Please try again later.',
   },
   ui: {
@@ -495,7 +496,6 @@ export const en: typeof zh = {
     sidebarSection: 'Sidebar',
     layoutSection: 'Layout',
     directionSection: 'Direction',
-    system: 'System',
     light: 'Light',
     dark: 'Dark',
     inset: 'Inset',

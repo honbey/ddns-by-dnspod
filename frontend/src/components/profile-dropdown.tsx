@@ -5,7 +5,8 @@ import { Check, DoorOpen, Globe, LogOut, Palette, Settings, UserCog } from 'luci
 import { useAuthStore } from '@/stores/auth-store'
 import { displayName, type LogoutScope } from '@/lib/auth'
 import { getDisplayNameInitials } from '@/lib/utils'
-import { currentLocale, LOCALE_LABELS, LOCALES, setLocale } from '@/i18n'
+import { LOCALE_LABELS, LOCALES, setLocalePreference } from '@/i18n'
+import { useLocalePreference } from '@/hooks/use-locale-preference'
 import useDialogState from '@/hooks/use-dialog-state'
 import { ConfigDrawer } from '@/components/config-drawer'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -39,7 +40,7 @@ export function ProfileDropdown() {
   const name = displayName(user)
   const email = user?.profile.email ?? ''
   const initials = getDisplayNameInitials(name)
-  const locale = currentLocale()
+  const preference = useLocalePreference()
 
   return (
     <>
@@ -88,14 +89,21 @@ export function ProfileDropdown() {
                 {t('common.switchLanguage')}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
+                <DropdownMenuItem
+                  onClick={() => setLocalePreference('system')}
+                  className={preference === 'system' ? 'font-semibold' : ''}
+                >
+                  {t('common.followSystem')}
+                  {preference === 'system' ? <Check className='ms-auto size-4' /> : null}
+                </DropdownMenuItem>
                 {LOCALES.map((item) => (
                   <DropdownMenuItem
                     key={item}
-                    onClick={() => setLocale(item)}
-                    className={locale === item ? 'font-semibold' : ''}
+                    onClick={() => setLocalePreference(item)}
+                    className={preference === item ? 'font-semibold' : ''}
                   >
                     {LOCALE_LABELS[item]}
-                    {locale === item ? <Check className='ms-auto size-4' /> : null}
+                    {preference === item ? <Check className='ms-auto size-4' /> : null}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuSubContent>

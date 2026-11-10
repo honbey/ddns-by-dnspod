@@ -332,7 +332,7 @@ export function profileOf(user: User | null): ProfileClaims {
  * without a claims policy this is an opaque UUID that reads badly in the UI.
  */
 export function displayName(user: User | null): string {
-  if (!user) return 'Signed out'
+  if (!user) return 'User'
   const profile = profileOf(user)
-  return profile.name ?? profile.preferred_username ?? profile.email ?? profile.sub ?? 'Signed in'
+  return profile.name ?? profile.preferred_username ?? profile.email ?? profile.sub ?? 'User'
 }

@@ -36,8 +36,8 @@ export function ThemeSwitch() {
       className='scale-95 rounded-full'
       onClick={() => setTheme(next)}
     >
-      <Sun className='size-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90' />
-      <Moon className='absolute size-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0' />
+      <Sun className='theme-switch-icon size-[1.2rem] scale-100 rotate-0 opacity-100 dark:scale-0 dark:-rotate-180 dark:opacity-0' />
+      <Moon className='theme-switch-icon absolute size-[1.2rem] scale-0 rotate-180 opacity-0 dark:scale-100 dark:rotate-0 dark:opacity-100' />
       <span className='sr-only'>{t('common.switchTheme', { theme: next })}</span>
     </Button>
   )

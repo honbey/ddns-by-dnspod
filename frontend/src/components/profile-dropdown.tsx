@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { Check, DoorOpen, Globe, LogOut, Palette, Settings, UserCog } from 'lucide-react'
+import { Check, DoorOpen, LogOut, Palette, Settings, UserCog } from 'lucide-react'
+import { TranslateIcon } from '@/components/icons/nav-icons'
 import { useAuthStore } from '@/stores/auth-store'
 import { displayName, type LogoutScope } from '@/lib/auth'
 import { getDisplayNameInitials } from '@/lib/utils'
@@ -85,7 +86,7 @@ export function ProfileDropdown() {
               {/* SubTrigger has no [&_svg] rules of its own, unlike Item, so
                   the mark is sized and toned here to match the two links. */}
               <DropdownMenuSubTrigger>
-                <Globe className='size-4 text-muted-foreground' />
+                <TranslateIcon className='size-4 text-muted-foreground' />
                 {t('common.switchLanguage')}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>

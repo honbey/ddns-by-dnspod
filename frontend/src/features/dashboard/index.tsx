@@ -1,14 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import {
-  ArrowDownUp,
-  Globe,
-  ListChecks,
-  Network,
-  RefreshCw,
-  ShieldCheck,
-  TriangleAlert,
-} from 'lucide-react'
+import { ListChecks, RefreshCw, TriangleAlert } from 'lucide-react'
+import { AccountIcon, DomainIcon, IpV4Icon, IpV6Icon } from '@/components/icons/nav-icons'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { listAccounts } from '@/features/accounts/api'
@@ -18,6 +11,7 @@ import { currentIP } from '@/features/system/api'
 import { listTasks, reloadScheduler } from '@/features/tasks/api'
 import { describeError } from '@/lib/describe-error'
 import { displayName } from '@/lib/auth'
+import { greetingKey } from '@/lib/greeting'
 import { type IPChangePoint } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -124,7 +118,7 @@ export function Dashboard() {
       <Main className='flex flex-1 flex-col gap-4'>
         <PageHeading
           title={t('nav.dashboard')}
-          subtitle={t('dashboard.signedInAs', { name: displayName(user) })}
+          subtitle={t(greetingKey(new Date().getHours()), { name: displayName(user) })}
           actions={
             <Button
               size='sm'
@@ -151,7 +145,7 @@ export function Dashboard() {
         <div className='grid gap-4 lg:grid-cols-2'>
           <AddressCard
             family='v4'
-            icon={Network}
+            icon={IpV4Icon}
             ip={ipv4.data?.ip}
             available={ipv4.data?.available}
             message={ipv4.data?.message}
@@ -160,7 +154,7 @@ export function Dashboard() {
           />
           <AddressCard
             family='v6'
-            icon={ArrowDownUp}
+            icon={IpV6Icon}
             ip={ipv6.data?.ip}
             available={ipv6.data?.available}
             message={ipv6.data?.message}
@@ -189,13 +183,13 @@ export function Dashboard() {
           <StatCard
             title={t('dashboard.statDomains')}
             value={domains.isPending ? '-' : (domains.data?.length ?? 0)}
-            icon={Globe}
+            icon={DomainIcon}
             loading={domains.isPending}
           />
           <StatCard
             title={t('dashboard.statAccounts')}
             value={accounts.isPending ? '-' : (accounts.data?.length ?? 0)}
-            icon={ShieldCheck}
+            icon={AccountIcon}
             loading={accounts.isPending}
           />
         </div>

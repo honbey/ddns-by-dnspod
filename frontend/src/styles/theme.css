@@ -15,6 +15,9 @@
   --accent: oklch(0.968 0.007 247.896);
   --accent-foreground: oklch(0.208 0.042 265.755);
   --destructive: oklch(0.577 0.245 27.325);
+  --success: oklch(0.596 0.145 163.225);
+  --warning: oklch(0.666 0.179 58.318);
+  --info: oklch(0.546 0.245 262.881);
   --border: oklch(0.929 0.013 255.508);
   --input: oklch(0.929 0.013 255.508);
   --ring: oklch(0.704 0.04 256.788);
@@ -51,6 +54,9 @@
   --accent: #1f1f1f;
   --accent-foreground: #fafafa;
   --destructive: #ef4444;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --info: #60a5fa;
   --border: #262626;
   --input: #262626;
   --ring: #52525b;
@@ -95,6 +101,9 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -111,4 +120,42 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* Toasts keep one neutral surface; only the frame and the icon carry the type.
+   The frame reads --normal-border on the toast element itself, so setting it
+   there wins over the value inherited from the toaster. The icon has no colour
+   rule of its own in sonner outside richColors, so it inherits the toast text
+   colour and is tinted directly. richColors stays off: its filled backgrounds
+   are what we do not want. */
+[data-sonner-toast][data-type='success'] {
+  --normal-border: color-mix(in oklab, var(--success) 55%, var(--border));
+}
+
+[data-sonner-toast][data-type='success'] [data-icon] {
+  color: var(--success);
+}
+
+[data-sonner-toast][data-type='error'] {
+  --normal-border: color-mix(in oklab, var(--destructive) 55%, var(--border));
+}
+
+[data-sonner-toast][data-type='error'] [data-icon] {
+  color: var(--destructive);
+}
+
+[data-sonner-toast][data-type='warning'] {
+  --normal-border: color-mix(in oklab, var(--warning) 55%, var(--border));
+}
+
+[data-sonner-toast][data-type='warning'] [data-icon] {
+  color: var(--warning);
+}
+
+[data-sonner-toast][data-type='info'] {
+  --normal-border: color-mix(in oklab, var(--info) 55%, var(--border));
+}
+
+[data-sonner-toast][data-type='info'] [data-icon] {
+  color: var(--info);
 }

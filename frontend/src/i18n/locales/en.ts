@@ -555,7 +555,12 @@ export const en: typeof zh = {
     account: 'account',
   },
   dashboard: {
-    signedInAs: 'Signed in as {name}',
+    greeting: {
+      morning: 'Good morning, {name}',
+      afternoon: 'Good afternoon, {name}',
+      evening: 'Good evening, {name}',
+      night: 'Good night, {name}',
+    },
     reloadSchedule: 'Reload Schedule',
     scheduleReloaded: 'Schedule reloaded',
     serverDidNotAnswer: 'The server did not answer',
@@ -566,6 +571,7 @@ export const en: typeof zh = {
     noChangeYet: 'no change on record yet',
     unchangedFor: 'unchanged for {duration}',
     noEgress: 'this host has no IPv{family} egress',
+    addressUnknown: 'unknown',
     statTasks: 'Tasks',
     statFailing: 'Failing',
     statDomains: 'Domains',

@@ -1,11 +1,10 @@
-import { type LucideIcon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 
 type StatCardProps = {
   title: string
   value: number | string
-  icon: LucideIcon
+  icon: React.ElementType
   loading?: boolean
 }
 

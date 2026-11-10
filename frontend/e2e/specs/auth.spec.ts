@@ -25,7 +25,9 @@ test.describe('sign in', () => {
     // without one.
     await signIn(page)
     await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible()
-    await expect(page.getByText(/Signed in as/)).toBeVisible()
+    // The subtitle greets by the local hour, so the assertion names all four
+    // English greetings rather than whichever one the clock happens to pick.
+    await expect(page.getByText(/^Good (morning|afternoon|evening|night), /)).toBeVisible()
   })
 
   // The token lives in sessionStorage and dies with the tab, which is what

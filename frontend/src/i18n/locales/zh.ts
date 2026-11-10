@@ -542,7 +542,12 @@ export const zh = {
     account: '账号',
   },
   dashboard: {
-    signedInAs: '当前登录：{name}',
+    greeting: {
+      morning: '早上好，{name}',
+      afternoon: '下午好，{name}',
+      evening: '晚上好，{name}',
+      night: '夜深了，{name}',
+    },
     reloadSchedule: '重载调度',
     scheduleReloaded: '调度已重载',
     serverDidNotAnswer: '服务器没有响应',
@@ -552,6 +557,7 @@ export const zh = {
     noChangeYet: '暂无变更记录',
     unchangedFor: '已保持 {duration}',
     noEgress: '此主机没有 IPv{family} 出口',
+    addressUnknown: '未获取',
     statTasks: '任务',
     statFailing: '失败',
     statDomains: '域名',

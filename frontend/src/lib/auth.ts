@@ -334,5 +334,8 @@ export function profileOf(user: User | null): ProfileClaims {
 export function displayName(user: User | null): string {
   if (!user) return 'User'
   const profile = profileOf(user)
-  return profile.name ?? profile.preferred_username ?? profile.email ?? profile.sub ?? 'User'
+  // || rather than ?? because an empty claim is not a name: some providers send
+  // every field as an empty string, which would otherwise render as a greeting
+  // with nobody at the end of it.
+  return profile.name || profile.preferred_username || profile.email || profile.sub || 'User'
 }

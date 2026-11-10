@@ -1,11 +1,9 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useState } from 'react'
 import { readStored, removeStored, subscribeStored, writeStored } from '@/lib/storage'
+import { DEFAULT_THEME, parseTheme, THEME_STORAGE_KEY, type Theme } from '@/lib/theme'
 
-type Theme = 'dark' | 'light' | 'system'
 type ResolvedTheme = Exclude<Theme, 'system'>
 
-const DEFAULT_THEME = 'system'
-const THEME_STORAGE_KEY = 'vite-ui-theme'
 /** How long the colour change is allowed to take; the CSS below matches it. */
 const THEME_TRANSITION_MS = 200
 
@@ -44,9 +42,7 @@ export function ThemeProvider({
   storageKey = THEME_STORAGE_KEY,
   ...props
 }: ThemeProviderProps) {
-  const [theme, _setTheme] = useState<Theme>(
-    () => (readStored(storageKey) as Theme | null) || defaultTheme
-  )
+  const [theme, _setTheme] = useState<Theme>(() => parseTheme(readStored(storageKey), defaultTheme))
 
   // The colour on screen is state, not a value memoised off `theme`: with the
   // preference set to "system" it has to change when the OS does, so the
@@ -66,10 +62,17 @@ export function ThemeProvider({
     return () => mediaQuery.removeEventListener('change', sync)
   }, [theme])
 
+  // The class and the browser chrome move in the same layout effect: a meta
+  // updated by a page component would lag a frame, and pages without that
+  // component would never get the right address bar colour at all.
   useLayoutEffect(() => {
     const root = window.document.documentElement
     root.classList.remove('light', 'dark')
     root.classList.add(resolvedTheme)
+    const meta = window.document.querySelector("meta[name='theme-color']")
+    if (meta) {
+      meta.setAttribute('content', resolvedTheme === 'dark' ? '#000000' : '#ffffff')
+    }
   }, [resolvedTheme])
 
   // Every surface takes its colour from the same tokens, but they do not all
@@ -89,8 +92,7 @@ export function ThemeProvider({
   // A theme set in another tab applies here too, which is the point of
   // keeping it somewhere every tab can see.
   useEffect(
-    () =>
-      subscribeStored(storageKey, (value) => _setTheme((value as Theme | null) ?? defaultTheme)),
+    () => subscribeStored(storageKey, (value) => _setTheme(parseTheme(value, defaultTheme))),
     [storageKey, defaultTheme]
   )
 

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { ListChecks, RefreshCw, TriangleAlert } from 'lucide-react'
@@ -11,7 +12,7 @@ import { currentIP } from '@/features/system/api'
 import { listTasks, reloadScheduler } from '@/features/tasks/api'
 import { describeError } from '@/lib/describe-error'
 import { displayName } from '@/lib/auth'
-import { greetingKey } from '@/lib/greeting'
+import { greetingKey, msUntilNextHour } from '@/lib/greeting'
 import { type IPChangePoint } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -50,6 +51,34 @@ export function Dashboard() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.auth.user)
+
+  // A page left open across an hour boundary would keep greeting with the hour
+  // it was rendered in. Every timeout is scheduled from the current clock to
+  // the next whole hour, so it cannot drift; a throttled background tab is
+  // resynced as soon as it is visible again.
+  const [hour, setHour] = useState(() => new Date().getHours())
+  useEffect(() => {
+    let timer: number | undefined
+    const schedule = () => {
+      timer = window.setTimeout(() => {
+        setHour(new Date().getHours())
+        schedule()
+      }, msUntilNextHour(new Date()))
+    }
+    const resync = () => {
+      if (document.visibilityState !== 'visible') return
+      window.clearTimeout(timer)
+      setHour(new Date().getHours())
+      schedule()
+    }
+
+    schedule()
+    document.addEventListener('visibilitychange', resync)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('visibilitychange', resync)
+    }
+  }, [])
 
   const tasks = useQuery({
     queryKey: ['tasks', 'dashboard'],
@@ -118,7 +147,7 @@ export function Dashboard() {
       <Main className='flex flex-1 flex-col gap-4'>
         <PageHeading
           title={t('nav.dashboard')}
-          subtitle={t(greetingKey(new Date().getHours()), { name: displayName(user) })}
+          subtitle={t(greetingKey(hour), { name: displayName(user) })}
           actions={
             <Button
               size='sm'

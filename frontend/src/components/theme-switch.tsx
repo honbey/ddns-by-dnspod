@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Moon, Sun } from 'lucide-react'
 import { useTheme } from '@/context/theme-provider'
@@ -18,14 +17,6 @@ import { Button } from '@/components/ui/button'
 export function ThemeSwitch() {
   const { t } = useTranslation()
   const { resolvedTheme, setTheme } = useTheme()
-
-  /* Update theme-color meta tag
-   * when theme is updated */
-  useEffect(() => {
-    const themeColor = resolvedTheme === 'dark' ? '#020817' : '#fff'
-    const metaThemeColor = document.querySelector("meta[name='theme-color']")
-    if (metaThemeColor) metaThemeColor.setAttribute('content', themeColor)
-  }, [resolvedTheme])
 
   const next = resolvedTheme === 'dark' ? 'light' : 'dark'
 

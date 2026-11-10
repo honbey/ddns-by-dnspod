@@ -1,4 +1,7 @@
 :root {
+  /* Native scrollbars, date pickers and autofill follow the same switch as
+     the tokens below instead of staying light inside a dark page. */
+  color-scheme: light;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
@@ -39,6 +42,7 @@
 
 /* Pure black, with grey steps carrying the hierarchy */
 .dark {
+  color-scheme: dark;
   --background: #000000;
   --foreground: #fafafa;
   --card: #0a0a0a;
@@ -123,11 +127,13 @@
 }
 
 /* Toasts keep one neutral surface; only the frame and the icon carry the type.
-   The frame reads --normal-border on the toast element itself, so setting it
-   there wins over the value inherited from the toaster. The icon has no colour
-   rule of its own in sonner outside richColors, so it inherits the toast text
-   colour and is tinted directly. richColors stays off: its filled backgrounds
-   are what we do not want. */
+   success, error, warning and info map to --success, --destructive, --warning
+   and --info, declared in both palettes above. The frame reads --normal-border
+   on the toast element itself, so setting it there wins over the value
+   inherited from the toaster. The icon has no colour rule of its own in sonner
+   outside richColors, so it inherits the toast text colour and is tinted
+   directly. richColors stays off: its filled backgrounds are what we do not
+   want. */
 [data-sonner-toast][data-type='success'] {
   --normal-border: color-mix(in oklab, var(--success) 55%, var(--border));
 }

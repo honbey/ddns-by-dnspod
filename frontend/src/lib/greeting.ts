@@ -16,3 +16,22 @@ export function greetingKey(hour: number): GreetingKey {
   if (hour >= 18 && hour < 23) return 'dashboard.greeting.evening'
   return 'dashboard.greeting.night'
 }
+
+/** A full period to wait when the next boundary cannot be trusted. */
+const HOUR_MS = 60 * 60_000
+
+/**
+ * Milliseconds from `now` to the next whole local hour.
+ *
+ * Building the target with setHours rather than adding a fixed hour keeps the
+ * boundary exact after a DST step, and stops a repeating timer from drifting a
+ * few milliseconds further away on every tick. A clock stepped back past the
+ * boundary leaves no useful target: waiting a whole hour beats a 1ms timeout
+ * loop that would spin until the clock caught up.
+ */
+export function msUntilNextHour(now: Date): number {
+  const next = new Date(now)
+  next.setHours(now.getHours() + 1, 0, 0, 0)
+  const delta = next.getTime() - now.getTime()
+  return delta > 0 ? delta : HOUR_MS
+}

@@ -39,7 +39,7 @@ export const zh = {
     somethingWentWrong: '出错了，请稍后重试。',
   },
   nav: {
-    dynamicDns: '动态 DNS',
+    general: '通用',
     configuration: '配置',
     other: '其他',
     dashboard: '仪表盘',

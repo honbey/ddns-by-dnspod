@@ -43,7 +43,7 @@ export const en: typeof zh = {
     somethingWentWrong: 'Something went wrong. Please try again later.',
   },
   nav: {
-    dynamicDns: 'Dynamic DNS',
+    general: 'General',
     configuration: 'Configuration',
     other: 'Other',
     dashboard: 'Dashboard',

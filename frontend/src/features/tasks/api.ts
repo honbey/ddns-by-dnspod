@@ -1,7 +1,7 @@
 /** DDNS tasks: the records this service keeps pointed at this host. */
 import { request } from '@/lib/http'
 import { API_PAGE_SIZE, collectPages, type CollectedList } from '@/lib/lists'
-import type { DDNSTask, ImportResult, PagedDDNSTask, RunResult } from '@/lib/types'
+import type { DDNSTask, ImportResult, PagedDDNSTask, RunResult, TaskBatchResult } from '@/lib/types'
 
 export interface TaskInput {
   account_id: number
@@ -47,8 +47,21 @@ export function getTask(id: number): Promise<DDNSTask> {
   return request<DDNSTask>({ method: 'get', url: `/ddns/tasks/${id}` })
 }
 
-export function createTask(input: TaskInput): Promise<DDNSTask> {
-  return request<DDNSTask>({ method: 'post', url: '/ddns/tasks', data: input })
+/** One task per host; the server skips the ones that already exist. */
+export interface BatchTaskInput {
+  account_id: number
+  domain: string
+  sub_domains: string[]
+  record_type?: string
+  record_line?: string
+  ttl?: number
+  enabled?: boolean
+  cron_expr?: string
+  notify_on_change?: boolean
+}
+
+export function batchCreateTasks(input: BatchTaskInput): Promise<TaskBatchResult> {
+  return request<TaskBatchResult>({ method: 'post', url: '/ddns/tasks/batch', data: input })
 }
 
 export function updateTask(id: number, input: TaskInput): Promise<DDNSTask> {

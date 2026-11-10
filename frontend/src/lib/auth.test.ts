@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const manager = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock('@/lib/session-events', () => ({
   broadcastSignOut: vi.fn(),
 }))
 
-import { signOut } from './auth'
+import { displayName, signOut } from './auth'
 import { useAuthStore } from '@/stores/auth-store'
 
 describe('sign-out', () => {
@@ -27,6 +27,14 @@ describe('sign-out', () => {
     manager.getUser.mockResolvedValue({ expired: false, refresh_token: 'refresh' })
     manager.removeUser.mockResolvedValue(undefined)
     manager.metadataService.getRevocationEndpoint.mockResolvedValue(undefined)
+  })
+
+  // A failed assertion used to leave fake timers and the location spy in
+  // place, so the next case ran against the wrong clock. Vitest has no
+  // restoreMocks configured, so the cleanup belongs here.
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it('clears the local session when provider metadata hangs', async () => {
@@ -41,7 +49,26 @@ describe('sign-out', () => {
     expect(useAuthStore.getState().auth.user).toBeNull()
     expect(manager.removeUser).toHaveBeenCalled()
     expect(assign).toHaveBeenCalledWith('/')
-    assign.mockRestore()
-    vi.useRealTimers()
+  })
+})
+
+describe('displayName', () => {
+  const userWith = (profile: Record<string, unknown>) =>
+    ({ profile }) as unknown as Parameters<typeof displayName>[0]
+
+  it('walks past an empty claim to the next one', () => {
+    expect(
+      displayName(userWith({ name: '', preferred_username: '', email: 'a@example.com', sub: 'id' }))
+    ).toBe('a@example.com')
+  })
+
+  it('falls back to User when every claim is empty', () => {
+    expect(displayName(userWith({ name: '', preferred_username: '', email: '', sub: '' }))).toBe(
+      'User'
+    )
+  })
+
+  it('keeps the same fallback for a signed-out session', () => {
+    expect(displayName(null)).toBe('User')
   })
 })

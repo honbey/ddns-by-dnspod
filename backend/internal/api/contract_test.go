@@ -198,6 +198,19 @@ func TestContractResponses(t *testing.T) {
 	t.Run("the API key path refuses a missing key", func(t *testing.T) {
 		expectDocumented(t, r, router, http.MethodGet, "/api/v1/domains/example.com/records", "", http.StatusUnauthorized)
 	})
+
+	// The batch result and the 409 it shares with single-task creation are new
+	// shapes in the document. Neither needs a DNSPod credential, so they can be
+	// checked here with nothing but a local account.
+	t.Run("task creation answers inside the contract", func(t *testing.T) {
+		account := newTestAccount(t, srv)
+		id := itoa(account.ID)
+		batch := `{"account_id":` + id + `,"domain":"example.com","sub_domains":["www","api"],"cron_expr":"*/5 * * * *"}`
+		expectDocumented(t, r, router, http.MethodPost, "/api/ddns/tasks/batch", batch, http.StatusOK)
+
+		single := `{"account_id":` + id + `,"domain":"example.com","sub_domain":"www","cron_expr":"*/10 * * * *"}`
+		expectDocumented(t, r, router, http.MethodPost, "/api/ddns/tasks", single, http.StatusConflict)
+	})
 }
 
 // expectDocumented drives one request and validates the answer against the

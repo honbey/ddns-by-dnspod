@@ -1,16 +1,14 @@
 import {
-  BadgeCheck,
   BellRing,
-  Globe,
   History,
   KeyRound,
   LayoutDashboard,
   ListChecks,
   Palette,
   Settings,
-  ShieldCheck,
   UserCog,
 } from 'lucide-react'
+import { AccountIcon, CertificateIcon, DomainIcon } from '@/components/icons/nav-icons'
 import { type SidebarData } from '../types'
 
 /**
@@ -26,7 +24,7 @@ import { type SidebarData } from '../types'
 export const sidebarData: SidebarData = {
   navGroups: [
     {
-      titleKey: 'nav.dynamicDns',
+      titleKey: 'nav.general',
       items: [
         {
           titleKey: 'nav.dashboard',
@@ -41,7 +39,7 @@ export const sidebarData: SidebarData = {
         {
           titleKey: 'nav.domains',
           url: '/domains',
-          icon: Globe,
+          icon: DomainIcon,
         },
         {
           titleKey: 'nav.history',
@@ -56,12 +54,12 @@ export const sidebarData: SidebarData = {
         {
           titleKey: 'nav.accounts',
           url: '/accounts',
-          icon: ShieldCheck,
+          icon: AccountIcon,
         },
         {
           titleKey: 'nav.certificates',
           url: '/certificates',
-          icon: BadgeCheck,
+          icon: CertificateIcon,
         },
         {
           titleKey: 'nav.apiKeys',

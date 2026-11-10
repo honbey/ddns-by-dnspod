@@ -33,7 +33,10 @@ function recordSearch(accountId: number): { account_id?: number } {
  * Nothing about records yet: that belongs to the page behind the row, because a
  * table of domains listing a table of records would not survive a narrow window.
  */
-export function useDomainsColumns(actions: DomainRowActions): ColumnDef<Domain>[] {
+export function useDomainsColumns(
+  actions: DomainRowActions,
+  groupNames: Map<number, string>
+): ColumnDef<Domain>[] {
   const { t } = useTranslation()
   return [
     {
@@ -63,6 +66,22 @@ export function useDomainsColumns(actions: DomainRowActions): ColumnDef<Domain>[
       ),
       cell: ({ row }) => <span className='tabular-nums'>{row.original.records}</span>,
       meta: { className: 'w-24' },
+    },
+    {
+      id: 'group',
+      // The id is what the faceted filter offers, so the column's own value has
+      // to be the id rather than the name shown in the cell.
+      accessorFn: (domain) => String(domain.group_id),
+      filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('domains.groupColumn')} />
+      ),
+      cell: ({ row }) => (
+        <span className='text-muted-foreground text-sm'>
+          {groupNames.get(row.original.group_id) ?? t('domains.noGroup')}
+        </span>
+      ),
+      meta: { className: 'w-32' },
     },
     {
       id: 'status',

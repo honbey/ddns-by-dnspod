@@ -68,7 +68,10 @@ export function useHistoryColumns(): ColumnDef<HistoryEntry>[] {
                       className='shrink-0 rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none'
                     >
                       <TriangleAlert aria-hidden='true' className='size-3.5 text-destructive' />
-                      <span className='sr-only'>Why it failed: {detail}</span>
+                      <span className='sr-only'>
+                        {t('ui.whyFailed')}
+                        {detail}
+                      </span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent className='max-w-md break-words'>{detail}</TooltipContent>
@@ -82,7 +85,10 @@ export function useHistoryColumns(): ColumnDef<HistoryEntry>[] {
                       className='shrink-0 rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none'
                     >
                       <CirclePause aria-hidden='true' className='text-muted-foreground size-3.5' />
-                      <span className='sr-only'>Why it was skipped: {detail}</span>
+                      <span className='sr-only'>
+                        {t('ui.whySkipped')}
+                        {detail}
+                      </span>
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>{detail}</TooltipContent>

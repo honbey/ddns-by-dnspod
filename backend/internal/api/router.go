@@ -73,6 +73,7 @@ func (s *Server) RegisterRoutes(r *gin.Engine, cfg config.Config) {
 
 		// DNS records
 		api.GET("/domains", s.listDomains)
+		api.GET("/domain-groups", s.listDomainGroups)
 		api.GET("/domains/:domain/records", s.listRecords)
 		api.POST("/domains/:domain/records", s.createRecord)
 		api.POST("/domains/:domain/records/batch", s.batchCreateRecords)
@@ -86,6 +87,7 @@ func (s *Server) RegisterRoutes(r *gin.Engine, cfg config.Config) {
 		// DDNS tasks
 		api.GET("/ddns/tasks", s.listTasks)
 		api.POST("/ddns/tasks", s.createTask)
+		api.POST("/ddns/tasks/batch", s.batchCreateTasks)
 		api.GET("/ddns/tasks/:id", s.getTask)
 		api.PUT("/ddns/tasks/:id", s.updateTask)
 		api.DELETE("/ddns/tasks/:id", s.deleteTask)

@@ -118,11 +118,11 @@ export function useCertificatesColumns(
             {row.original.last_status === 'RUNNING' ? (
               <Loader2 aria-hidden='true' className='size-3 animate-spin' />
             ) : null}
-            {row.original.last_status || 'never run'}
+            {row.original.last_status || t('ui.neverRun')}
           </Badge>
           {row.original.fail_count > 0 ? (
             <div className='text-muted-foreground text-xs'>
-              {row.original.fail_count} failed in a row
+              {t('ui.failedInRow', { count: row.original.fail_count })}
             </div>
           ) : null}
           <div className='text-muted-foreground max-w-64 truncate text-xs'>
@@ -135,7 +135,7 @@ export function useCertificatesColumns(
     {
       id: 'key_type',
       accessorFn: (cert) => cert.key_type,
-      header: () => <div className='text-sm font-medium'>Key</div>,
+      header: () => <div className='text-sm font-medium'>{t('ui.key')}</div>,
       cell: ({ row }) => (
         <span className='text-muted-foreground text-sm'>{keyTypeLabel(row.original.key_type)}</span>
       ),

@@ -177,18 +177,12 @@ export function DataTableBulkActions<TData>({
           <Separator className='h-5' orientation='vertical' aria-hidden='true' />
 
           <div className='flex items-center gap-x-1 text-sm' id='bulk-actions-description'>
-            <Badge
-              variant='default'
-              className='min-w-8 rounded-lg'
-              aria-label={`${selectedCount} selected`}
-            >
+            <Badge variant='default' className='min-w-8 rounded-lg sm:hidden' aria-hidden='true'>
               {selectedCount}
-            </Badge>{' '}
-            <span className='hidden sm:inline'>
-              {entityName}
-              {selectedCount > 1 ? 's' : ''}
-            </span>{' '}
-            selected
+            </Badge>
+            <span className='sr-only sm:not-sr-only'>
+              {t('table.selectedSummary', { count: selectedCount, entity: entityName })}
+            </span>
           </div>
 
           <Separator className='h-5' orientation='vertical' aria-hidden='true' />

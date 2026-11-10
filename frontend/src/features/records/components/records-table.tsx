@@ -146,7 +146,7 @@ export function RecordsTable({ data, loading, actions, onBulkDelete }: RecordsTa
         table={table}
         searchPlaceholder={t('table.filter')}
         filters={[
-          { columnId: 'record_type', title: 'Type', options: TYPE_OPTIONS },
+          { columnId: 'record_type', title: t('ui.type'), options: TYPE_OPTIONS },
           {
             columnId: 'status',
             title: t('records.statusColumn'),
@@ -190,7 +190,7 @@ export function RecordsTable({ data, loading, actions, onBulkDelete }: RecordsTa
         )}
       </TableShell>
       <DataTablePagination table={table} className='mt-auto' />
-      <DataTableBulkActions table={table} entityName='record'>
+      <DataTableBulkActions table={table} entityName={t('entity.record')}>
         <Button
           variant='destructive'
           size='sm'

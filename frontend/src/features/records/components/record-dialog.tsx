@@ -550,7 +550,7 @@ export function BatchDialog({ open, onOpenChange, saving, onSubmit }: BatchDialo
                 ))}
               </SelectContent>
             </Select>
-            <p className='text-muted-foreground text-xs'>A for IPv4, AAAA for IPv6.</p>
+            <p className='text-muted-foreground text-xs'>{t('records.typeHint')}</p>
           </div>
         </div>
 

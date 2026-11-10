@@ -28,7 +28,11 @@
     <!-- Fonts are bundled (src/styles/fonts.css): nothing loads from a third
          party, which is what lets the content policy stay at 'self'. -->
 
-    <meta name="theme-color" content="#fff" />
+    <meta name="theme-color" content="#ffffff" />
+    <!-- Classic script, deliberately before the module: it settles the palette
+         before the first paint, while the module still has to await i18n, the
+         runtime config and the session. -->
+    <script src="/theme-init.js"></script>
   </head>
 
   <body>

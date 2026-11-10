@@ -59,6 +59,15 @@ type Domain struct {
 	TTL      uint64 `json:"ttl"`
 	Grade    string `json:"grade"`
 	Records  uint64 `json:"records"`
+	GroupID  uint64 `json:"group_id"`
+}
+
+// DomainGroup spans domains, unlike Group, which is a tag inside one domain.
+// Size is how many domains DNSPod reports in the group.
+type DomainGroup struct {
+	ID   uint64 `json:"id"`
+	Name string `json:"name"`
+	Size uint64 `json:"size"`
 }
 
 // Line describes a record line
@@ -139,9 +148,10 @@ type ModifyRecordInput struct {
 type Client struct {
 	cli *sdk.Client
 
-	domains *cache[[]Domain]
-	records *cache[*RecordPage]
-	lines   *cache[[]Line]
+	domains      *cache[[]Domain]
+	domainGroups *cache[[]DomainGroup]
+	records      *cache[*RecordPage]
+	lines        *cache[[]Line]
 }
 
 // CacheTTL holds the lifetime of cached read results
@@ -185,10 +195,11 @@ func NewClientWithCache(secretID, secretKey, endpoint string, timeoutSec int, tt
 		return nil, fmt.Errorf("create DNSPod client: %w", err)
 	}
 	return &Client{
-		cli:     cli,
-		domains: newCache[[]Domain](ttl.Domains),
-		records: newCache[*RecordPage](ttl.Records),
-		lines:   newCache[[]Line](ttl.Lines),
+		cli:          cli,
+		domains:      newCache[[]Domain](ttl.Domains),
+		domainGroups: newCache[[]DomainGroup](ttl.Domains),
+		records:      newCache[*RecordPage](ttl.Records),
+		lines:        newCache[[]Line](ttl.Lines),
 	}, nil
 }
 
@@ -245,6 +256,7 @@ func (c *Client) ListDomains(ctx context.Context) ([]Domain, error) {
 				TTL:      derefU64(d.TTL),
 				Grade:    derefStr(d.Grade),
 				Records:  derefU64(d.RecordCount),
+				GroupID:  derefU64(d.GroupId),
 			})
 		}
 		offset += int64(len(resp.Response.DomainList))
@@ -254,6 +266,38 @@ func (c *Client) ListDomains(ctx context.Context) ([]Domain, error) {
 	}
 	c.domains.set("all", domains)
 	return domains, nil
+}
+
+// ListDomainGroups lists the account's domain groups.
+//
+// The SDK takes no paging parameters for this one, so a single call answers
+// every group. Cached like the domain list: the frontend asks on every visit
+// and DNSPod rate limits reads.
+func (c *Client) ListDomainGroups(ctx context.Context) ([]DomainGroup, error) {
+	if cached, ok := c.domainGroups.get("all"); ok {
+		return append([]DomainGroup(nil), cached...), nil
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("list domain groups: %w", err)
+	}
+
+	resp, err := c.cli.DescribeDomainGroupList(sdk.NewDescribeDomainGroupListRequest())
+	if err != nil {
+		return nil, fmt.Errorf("list domain groups: %w", err)
+	}
+
+	groups := make([]DomainGroup, 0)
+	if resp.Response != nil {
+		for _, g := range resp.Response.GroupList {
+			groups = append(groups, DomainGroup{
+				ID:   derefGroupID(g.GroupId),
+				Name: derefStr(g.GroupName),
+				Size: derefGroupID(g.Size),
+			})
+		}
+	}
+	c.domainGroups.set("all", groups)
+	return groups, nil
 }
 
 // ListRecords queries DNS records.
@@ -703,4 +747,13 @@ func derefU64(p *uint64) uint64 {
 		return 0
 	}
 	return *p
+}
+
+// derefGroupID narrows the SDK's signed group fields to the unsigned ids the
+// API surface uses. A missing or negative value means "no group".
+func derefGroupID(p *int64) uint64 {
+	if p == nil || *p < 0 {
+		return 0
+	}
+	return uint64(*p)
 }

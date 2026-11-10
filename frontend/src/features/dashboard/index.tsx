@@ -1,14 +1,8 @@
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import {
-  ArrowDownUp,
-  Globe,
-  ListChecks,
-  Network,
-  RefreshCw,
-  ShieldCheck,
-  TriangleAlert,
-} from 'lucide-react'
+import { ListChecks, RefreshCw, TriangleAlert } from 'lucide-react'
+import { AccountIcon, DomainIcon, IpV4Icon, IpV6Icon } from '@/components/icons/nav-icons'
 import { toast } from 'sonner'
 import { useAuthStore } from '@/stores/auth-store'
 import { listAccounts } from '@/features/accounts/api'
@@ -18,11 +12,11 @@ import { currentIP } from '@/features/system/api'
 import { listTasks, reloadScheduler } from '@/features/tasks/api'
 import { describeError } from '@/lib/describe-error'
 import { displayName } from '@/lib/auth'
+import { greetingKey, msUntilNextHour } from '@/lib/greeting'
 import { type IPChangePoint } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { PageHeading } from '@/components/layout/page-heading'
@@ -57,6 +51,34 @@ export function Dashboard() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.auth.user)
+
+  // A page left open across an hour boundary would keep greeting with the hour
+  // it was rendered in. Every timeout is scheduled from the current clock to
+  // the next whole hour, so it cannot drift; a throttled background tab is
+  // resynced as soon as it is visible again.
+  const [hour, setHour] = useState(() => new Date().getHours())
+  useEffect(() => {
+    let timer: number | undefined
+    const schedule = () => {
+      timer = window.setTimeout(() => {
+        setHour(new Date().getHours())
+        schedule()
+      }, msUntilNextHour(new Date()))
+    }
+    const resync = () => {
+      if (document.visibilityState !== 'visible') return
+      window.clearTimeout(timer)
+      setHour(new Date().getHours())
+      schedule()
+    }
+
+    schedule()
+    document.addEventListener('visibilitychange', resync)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('visibilitychange', resync)
+    }
+  }, [])
 
   const tasks = useQuery({
     queryKey: ['tasks', 'dashboard'],
@@ -119,14 +141,13 @@ export function Dashboard() {
       <Header>
         <Search className='me-auto' />
         <ThemeSwitch />
-        <ConfigDrawer />
         <ProfileDropdown />
       </Header>
 
       <Main className='flex flex-1 flex-col gap-4'>
         <PageHeading
           title={t('nav.dashboard')}
-          subtitle={t('dashboard.signedInAs', { name: displayName(user) })}
+          subtitle={t(greetingKey(hour), { name: displayName(user) })}
           actions={
             <Button
               size='sm'
@@ -153,7 +174,7 @@ export function Dashboard() {
         <div className='grid gap-4 lg:grid-cols-2'>
           <AddressCard
             family='v4'
-            icon={Network}
+            icon={IpV4Icon}
             ip={ipv4.data?.ip}
             available={ipv4.data?.available}
             message={ipv4.data?.message}
@@ -162,7 +183,7 @@ export function Dashboard() {
           />
           <AddressCard
             family='v6'
-            icon={ArrowDownUp}
+            icon={IpV6Icon}
             ip={ipv6.data?.ip}
             available={ipv6.data?.available}
             message={ipv6.data?.message}
@@ -191,13 +212,13 @@ export function Dashboard() {
           <StatCard
             title={t('dashboard.statDomains')}
             value={domains.isPending ? '-' : (domains.data?.length ?? 0)}
-            icon={Globe}
+            icon={DomainIcon}
             loading={domains.isPending}
           />
           <StatCard
             title={t('dashboard.statAccounts')}
             value={accounts.isPending ? '-' : (accounts.data?.length ?? 0)}
-            icon={ShieldCheck}
+            icon={AccountIcon}
             loading={accounts.isPending}
           />
         </div>

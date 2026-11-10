@@ -97,9 +97,12 @@ func upstreamMessage(c *gin.Context, err error) string {
 	return "DNSPod call failed"
 }
 
-// CodeNoAccount is the one refusal a client keys on. The message may change;
-// this string is the contract.
-const CodeNoAccount = "no_account"
+// CodeNoAccount and CodeDuplicateTask are the refusals a client keys on. The
+// message may change; these strings are the contract.
+const (
+	CodeNoAccount     = "no_account"
+	CodeDuplicateTask = "duplicate_task"
+)
 
 type accountError struct {
 	msg  string

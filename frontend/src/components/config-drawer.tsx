@@ -28,7 +28,12 @@ import {
 } from '@/components/ui/sheet'
 import { useSidebar } from './ui/sidebar'
 
-export function ConfigDrawer() {
+type ConfigDrawerProps = {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export function ConfigDrawer({ open, onOpenChange }: ConfigDrawerProps) {
   const { t } = useTranslation()
   const { setOpen } = useSidebar()
   const { resetDir } = useDirection()
@@ -43,17 +48,19 @@ export function ConfigDrawer() {
   }
 
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button
-          size='icon'
-          variant='ghost'
-          aria-label={t('theme.openSettings')}
-          className='rounded-full'
-        >
-          <Settings aria-hidden='true' />
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      {open !== undefined ? null : (
+        <SheetTrigger asChild>
+          <Button
+            size='icon'
+            variant='ghost'
+            aria-label={t('theme.openSettings')}
+            className='rounded-full'
+          >
+            <Settings aria-hidden='true' />
+          </Button>
+        </SheetTrigger>
+      )}
       <SheetContent className='flex flex-col'>
         <SheetHeader className='pb-0 text-start'>
           <SheetTitle>{t('theme.title')}</SheetTitle>
@@ -186,7 +193,7 @@ function ThemeConfig() {
         {[
           {
             value: 'system',
-            label: t('theme.system'),
+            label: t('common.followSystem'),
             icon: IconThemeSystem,
           },
           {

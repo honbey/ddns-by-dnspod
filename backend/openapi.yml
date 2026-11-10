@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: DDNS by DNSPod
-  version: "2.0.1"
+  version: "2.1.0"
   description: >-
     DNSPod record management and DDNS in one process. Every authenticated route
     takes `Authorization: Bearer <access token>`; the routes under `/api/v1`
@@ -147,6 +147,21 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/EnvelopeOfDomainList" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/domain-groups:
+    get:
+      tags: [domains]
+      operationId: listDomainGroups
+      summary: Lists the account's domain groups, which span domains.
+      parameters:
+        - { $ref: "#/components/parameters/AccountId" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfDomainGroupList" }
         "401": { $ref: "#/components/responses/Unauthorized" }
 
   /api/domains/{domain}/records:
@@ -361,6 +376,24 @@ paths:
               schema: { $ref: "#/components/schemas/EnvelopeOfDDNSTask" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /api/ddns/tasks/batch:
+    post:
+      tags: [tasks]
+      operationId: batchCreateTasks
+      summary: Creates one task per sub domain and skips the ones that already exist.
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BatchTaskInput" }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EnvelopeOfTaskBatchResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
   /api/ddns/tasks/{id}:
     parameters:
       - { $ref: "#/components/parameters/Id" }
@@ -389,6 +422,7 @@ paths:
               schema: { $ref: "#/components/schemas/EnvelopeOfDDNSTask" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/Conflict" }
     delete:
       tags: [tasks]
       operationId: deleteTask
@@ -943,7 +977,7 @@ components:
         # Adding a value is a contract change: clients switch on it.
         code:
           type: string
-          enum: [no_account]
+          enum: [no_account, duplicate_task]
         request_id: { type: string }
 
     FrontendConfig:
@@ -995,7 +1029,7 @@ components:
 
     Domain:
       type: object
-      required: [domain_id, name, status, ttl, grade, records]
+      required: [domain_id, name, status, ttl, grade, records, group_id]
       properties:
         domain_id: { type: integer }
         name: { type: string }
@@ -1003,6 +1037,14 @@ components:
         ttl: { type: integer }
         grade: { type: string }
         records: { type: integer }
+        group_id: { type: integer, description: 0 means the domain is in no group. }
+    DomainGroup:
+      type: object
+      required: [id, name, size]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        size: { type: integer, description: How many domains the group holds. }
 
     DnsRecord:
       type: object
@@ -1108,7 +1150,7 @@ components:
         account_id: { type: integer }
         domain: { type: string }
         sub_domain: { type: string }
-        record_type: { type: string }
+        record_type: { type: string, enum: [A, AAAA], description: Only address records are kept up to date. }
         record_line: { type: string }
         ttl: { type: integer }
         enabled: { type: boolean }
@@ -1120,7 +1162,7 @@ components:
       properties:
         group_id: { type: integer }
         account_id: { type: integer }
-        record_type: { type: string }
+        record_type: { type: string, enum: [A, AAAA], description: Only address records are kept up to date. }
         cron_expr: { type: string }
         enabled: { type: boolean }
     ImportResult:
@@ -1129,6 +1171,31 @@ components:
       properties:
         created: { type: integer }
         skipped: { type: integer }
+        task_ids: { type: array, items: { type: integer } }
+    BatchTaskInput:
+      type: object
+      required: [account_id, domain, sub_domains]
+      properties:
+        account_id: { type: integer }
+        domain: { type: string }
+        sub_domains:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { type: string }
+          description: One task per entry, at most 100; the caller has already split and trimmed them.
+        record_type: { type: string, enum: [A, AAAA], description: Only address records are kept up to date. }
+        record_line: { type: string }
+        ttl: { type: integer }
+        enabled: { type: boolean }
+        cron_expr: { type: string }
+        notify_on_change: { type: boolean }
+    TaskBatchResult:
+      type: object
+      required: [created, skipped, task_ids]
+      properties:
+        created: { type: integer }
+        skipped: { type: integer, description: Hosts that already had a task. }
         task_ids: { type: array, items: { type: integer } }
     IPHistoryImportError:
       type: object
@@ -1425,6 +1492,14 @@ components:
             data:
               type: array
               items: { $ref: "#/components/schemas/Domain" }
+    EnvelopeOfDomainGroupList:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/DomainGroup" }
     EnvelopeOfDnsRecord:
       allOf:
         - $ref: "#/components/schemas/Envelope"
@@ -1471,6 +1546,12 @@ components:
         - type: object
           properties:
             data: { $ref: "#/components/schemas/ImportResult" }
+    EnvelopeOfTaskBatchResult:
+      allOf:
+        - $ref: "#/components/schemas/Envelope"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/TaskBatchResult" }
     EnvelopeOfRunResult:
       allOf:
         - $ref: "#/components/schemas/Envelope"

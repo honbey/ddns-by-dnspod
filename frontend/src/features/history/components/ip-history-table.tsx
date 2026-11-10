@@ -167,7 +167,7 @@ export function IPHistoryTable({
           </TableBody>
         </Table>
       </div>
-      <DataTablePagination table={table} className='mt-auto' />
+      <DataTablePagination table={table} totalRows={total} className='mt-auto' />
     </div>
   )
 }

@@ -141,6 +141,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/domain-groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists the account's domain groups, which span domains. */
+        get: operations["listDomainGroups"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/domains/{domain}/records": {
         parameters: {
             query?: {
@@ -309,6 +326,23 @@ export interface paths {
         get: operations["listTasks"];
         put?: never;
         post: operations["createTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ddns/tasks/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates one task per sub domain and skips the ones that already exist. */
+        post: operations["batchCreateTasks"];
         delete?: never;
         options?: never;
         head?: never;
@@ -647,7 +681,7 @@ export interface components {
         Error: {
             error: string;
             /** @enum {string} */
-            code?: "no_account";
+            code?: "no_account" | "duplicate_task";
             request_id?: string;
         };
         FrontendConfig: {
@@ -692,6 +726,14 @@ export interface components {
             ttl: number;
             grade: string;
             records: number;
+            /** @description 0 means the domain is in no group. */
+            group_id: number;
+        };
+        DomainGroup: {
+            id: number;
+            name: string;
+            /** @description How many domains the group holds. */
+            size: number;
         };
         DnsRecord: {
             record_id: number;
@@ -769,7 +811,11 @@ export interface components {
             account_id: number;
             domain: string;
             sub_domain: string;
-            record_type?: string;
+            /**
+             * @description Only address records are kept up to date.
+             * @enum {string}
+             */
+            record_type?: "A" | "AAAA";
             record_line?: string;
             ttl?: number;
             enabled?: boolean;
@@ -779,12 +825,38 @@ export interface components {
         ImportInput: {
             group_id: number;
             account_id: number;
-            record_type?: string;
+            /**
+             * @description Only address records are kept up to date.
+             * @enum {string}
+             */
+            record_type?: "A" | "AAAA";
             cron_expr?: string;
             enabled?: boolean;
         };
         ImportResult: {
             created: number;
+            skipped: number;
+            task_ids: number[];
+        };
+        BatchTaskInput: {
+            account_id: number;
+            domain: string;
+            /** @description One task per entry, at most 100; the caller has already split and trimmed them. */
+            sub_domains: string[];
+            /**
+             * @description Only address records are kept up to date.
+             * @enum {string}
+             */
+            record_type?: "A" | "AAAA";
+            record_line?: string;
+            ttl?: number;
+            enabled?: boolean;
+            cron_expr?: string;
+            notify_on_change?: boolean;
+        };
+        TaskBatchResult: {
+            created: number;
+            /** @description Hosts that already had a task. */
             skipped: number;
             task_ids: number[];
         };
@@ -966,6 +1038,9 @@ export interface components {
         EnvelopeOfDomainList: components["schemas"]["Envelope"] & {
             data?: components["schemas"]["Domain"][];
         };
+        EnvelopeOfDomainGroupList: components["schemas"]["Envelope"] & {
+            data?: components["schemas"]["DomainGroup"][];
+        };
         EnvelopeOfDnsRecord: components["schemas"]["Envelope"] & {
             data?: components["schemas"]["DnsRecord"];
         };
@@ -986,6 +1061,9 @@ export interface components {
         };
         EnvelopeOfImportResult: components["schemas"]["Envelope"] & {
             data?: components["schemas"]["ImportResult"];
+        };
+        EnvelopeOfTaskBatchResult: components["schemas"]["Envelope"] & {
+            data?: components["schemas"]["TaskBatchResult"];
         };
         EnvelopeOfRunResult: components["schemas"]["Envelope"] & {
             data?: components["schemas"]["RunResult"];
@@ -1349,6 +1427,30 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
         };
     };
+    listDomainGroups: {
+        parameters: {
+            query?: {
+                /** @description Which account to talk through; empty means the default one. */
+                account_id?: components["parameters"]["AccountId"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ok */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOfDomainGroupList"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
     listRecords: {
         parameters: {
             query?: {
@@ -1663,6 +1765,33 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    batchCreateTasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["BatchTaskInput"];
+            };
+        };
+        responses: {
+            /** @description ok */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnvelopeOfTaskBatchResult"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
         };
     };
     getTask: {
@@ -1714,6 +1843,7 @@ export interface operations {
             };
             400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
+            409: components["responses"]["Conflict"];
         };
     };
     deleteTask: {

@@ -7,6 +7,51 @@ v1.1.0 及更早版本是 Python 实现，变更记录以各自 tag 为准。
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-10
+
+### 新增
+
+- DNSPod 域名分组：`GET /api/domain-groups` 按账号列出分组，`Domain` 带回
+  `group_id`，域名页新增分组列与分组筛选。域名分组与单域名内的记录分组互不混淆。
+- DDNS 任务批量创建：`POST /api/ddns/tasks/batch` 一次事务创建多个子域名并返回
+  `created` / `skipped` / `task_ids`，只重建一次调度。任务弹窗支持空格或英文逗号
+  分隔多个子域名，编辑模式仍是单值。
+- 任务去重：`(账号, 域名, 子域名, 记录类型, 线路)` 判定同一任务，调度表达式不参与；
+  新建、编辑、分组导入与批量创建共用一套判定。单条冲突返回带 `duplicate_task`
+  码的 409 并按码翻译，批量与导入跳过已存在的主机。
+- 主题在首帧就位：`public/theme-init.js` 在模块启动前确定配色，消除深色用户的白闪；
+  `:root` 与 `.dark` 声明 `color-scheme`，原生滚动条、日期控件与自动填充一起切换；
+  `theme-color` 由 `ThemeProvider` 维护并与 `--background` 对齐。
+- 主题偏好契约：`lib/theme.ts` 收拢枚举、默认值、存储键与 `parseTheme`，首帧脚本
+  保留等价白名单。存储降级按写探测与 `lib/storage.ts` 对齐，`Toaster` 改用
+  `resolvedTheme`。
+- 按时段招呼语：Dashboard 副标题在本地 05/12/18/23 点切换中英文案，按整点重排
+  定时器并在标签页恢复可见时校准；`msUntilNextHour` 覆盖 DST 与时钟回拨。
+- 主题切换动画：太阳与月亮旋转 180 度并淡入淡出，`prefers-reduced-motion` 下关闭。
+- 手绘线性图标（证书、域名、账号、语言、IPv4、IPv6）接入侧栏、个人资料下拉与
+  仪表盘；证书印章改为五角星。toast 新增 success / warning / info 配色令牌。
+- i18n 覆盖测试与设置菜单重排，语言与主题可跟随系统，偏好存储按可用性三级降级。
+
+### 变更
+
+- 版本号从 `2.0.1` 升到 `2.1.0`；`backend/openapi.yml` 的 `info.version` 仍是唯一
+  来源，`frontend/package.json` 与 `package-lock.json` 同步，CI 继续校验三者一致。
+- 契约收紧：`BatchTaskInput.sub_domains` 声明 `minItems: 1` / `maxItems: 100`，三个
+  任务输入的 `record_type` 限定为 `A` / `AAAA`，`api-types.gen.ts` 随契约重新生成。
+- 分组导入改用请求体的 `account_id`；API Key 调用仍钉在密钥所属账号。
+- 分页器重做为页码输入，侧栏分区改名 General，品牌标与 favicon 改为手绘 D，
+  个人资料页与 Dashboard 空态重新排版。
+- Playwright 升到 `1.65.0`；ESLint 只对首屏脚本声明浏览器全局，node globals
+  不再泄漏到该文件；测试补上 DST 回归、上限漂移与 afterEach 隔离。
+
+### 修复
+
+- 登录跳转不再产生嵌套重定向。
+- `displayName` 遇到空 claim 继续往下找，招呼语不会再缺名字。
+- 非法的主题存储值与空串统一降级为 `system`，避免空类名触发
+  `classList.add('')` 异常，也避免首帧与挂载后配色不一致。
+- `theme-color` 不再残留与背景不符的旧色值；时钟回拨时定时器不再以 1ms 空转。
+
 ## [2.0.1] - 2026-11-09
 
 ### 新增

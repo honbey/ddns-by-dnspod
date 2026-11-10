@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { Loader2, Radio } from 'lucide-react'
 import { signIn } from '@/lib/auth'
+import { returnPathOf } from '@/lib/redirect'
 import { useTranslation } from 'react-i18next'
 import { authRequired, getConfig, providerName } from '@/lib/config'
 import { Button } from '@/components/ui/button'
@@ -26,7 +27,7 @@ export function SignIn() {
     setPending(true)
     // Full-page redirect; the button stays disabled so a slow provider cannot
     // be triggered twice from a double click.
-    void signIn(redirect).catch(() => setPending(false))
+    void signIn(returnPathOf(redirect ?? '/')).catch(() => setPending(false))
   }
 
   return (

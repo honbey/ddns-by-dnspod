@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { safeReturnPath } from './redirect'
+import { returnPathOf, safeReturnPath } from './redirect'
 
 describe('safeReturnPath', () => {
   it('keeps a path on this origin', () => {
@@ -41,5 +41,37 @@ describe('safeReturnPath', () => {
     expect(safeReturnPath(null)).toBe('/')
     expect(safeReturnPath(42)).toBe('/')
     expect(safeReturnPath('')).toBe('/')
+  })
+})
+
+describe('returnPathOf', () => {
+  it('keeps a path that is not the sign-in page', () => {
+    expect(returnPathOf('/accounts')).toBe('/accounts')
+    expect(returnPathOf('/history?page=2&status=FAIL')).toBe('/history?page=2&status=FAIL')
+  })
+
+  it('unwraps sign-in redirects, however deep', () => {
+    expect(returnPathOf('/sign-in?redirect=%2Faccounts')).toBe('/accounts')
+    expect(returnPathOf('/sign-in?redirect=%2Fsign-in%3Fredirect%3D%252Faccounts')).toBe(
+      '/accounts'
+    )
+    expect(
+      returnPathOf(
+        '/sign-in?redirect=%2Fsign-in%3Fredirect%3D%252Fsign-in%253Fredirect%253D%25252Faccounts'
+      )
+    ).toBe('/accounts')
+  })
+
+  it('falls back to the root when there is nothing to unwrap', () => {
+    expect(returnPathOf('/sign-in')).toBe('/')
+    expect(returnPathOf('//evil.example')).toBe('/')
+    expect(returnPathOf('/sign-in?redirect=https%3A%2F%2Fevil.example')).toBe('/')
+  })
+
+  // `new URL` normalises before the result is returned, so a path that looks
+  // harmless on the way in can come back protocol-relative.
+  it('refuses a path that normalises back to protocol-relative', () => {
+    expect(returnPathOf('/a/..//evil.example')).toBe('/')
+    expect(returnPathOf('/x/%2E%2E//evil.example')).toBe('/')
   })
 })

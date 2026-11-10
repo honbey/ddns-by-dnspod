@@ -1,11 +1,9 @@
-import { createContext, useContext, useEffect, useState, useMemo } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useState } from 'react'
 import { readStored, removeStored, subscribeStored, writeStored } from '@/lib/storage'
+import { DEFAULT_THEME, parseTheme, THEME_STORAGE_KEY, type Theme } from '@/lib/theme'
 
-type Theme = 'dark' | 'light' | 'system'
 type ResolvedTheme = Exclude<Theme, 'system'>
 
-const DEFAULT_THEME = 'system'
-const THEME_STORAGE_KEY = 'vite-ui-theme'
 /** How long the colour change is allowed to take; the CSS below matches it. */
 const THEME_TRANSITION_MS = 200
 
@@ -33,52 +31,55 @@ const initialState: ThemeProviderState = {
 
 const ThemeContext = createContext<ThemeProviderState>(initialState)
 
+function systemTheme(): ResolvedTheme {
+  if (typeof window === 'undefined') return 'light'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
 export function ThemeProvider({
   children,
   defaultTheme = DEFAULT_THEME,
   storageKey = THEME_STORAGE_KEY,
   ...props
 }: ThemeProviderProps) {
-  const [theme, _setTheme] = useState<Theme>(
-    () => (readStored(storageKey) as Theme | null) || defaultTheme
+  const [theme, _setTheme] = useState<Theme>(() => parseTheme(readStored(storageKey), defaultTheme))
+
+  // The colour on screen is state, not a value memoised off `theme`: with the
+  // preference set to "system" it has to change when the OS does, so the
+  // switch, the theme-color meta and anything else reading it stay in step
+  // with the class applied to <html>.
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
+    theme === 'system' ? systemTheme() : theme
   )
 
-  // Optimized: Memoize the resolved theme calculation to prevent unnecessary re-computations
-  const resolvedTheme = useMemo((): ResolvedTheme => {
-    if (theme === 'system') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-    return theme as ResolvedTheme
+  useLayoutEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const sync = () =>
+      setResolvedTheme(theme === 'system' ? (mediaQuery.matches ? 'dark' : 'light') : theme)
+
+    sync()
+    mediaQuery.addEventListener('change', sync)
+    return () => mediaQuery.removeEventListener('change', sync)
   }, [theme])
 
-  useEffect(() => {
+  // The class and the browser chrome move in the same layout effect: a meta
+  // updated by a page component would lag a frame, and pages without that
+  // component would never get the right address bar colour at all.
+  useLayoutEffect(() => {
     const root = window.document.documentElement
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-
-    const applyTheme = (currentResolvedTheme: ResolvedTheme) => {
-      root.classList.remove('light', 'dark') // Remove existing theme classes
-      root.classList.add(currentResolvedTheme) // Add the new theme class
+    root.classList.remove('light', 'dark')
+    root.classList.add(resolvedTheme)
+    const meta = window.document.querySelector("meta[name='theme-color']")
+    if (meta) {
+      meta.setAttribute('content', resolvedTheme === 'dark' ? '#000000' : '#ffffff')
     }
-
-    const handleChange = () => {
-      if (theme === 'system') {
-        const systemTheme = mediaQuery.matches ? 'dark' : 'light'
-        applyTheme(systemTheme)
-      }
-    }
-
-    applyTheme(resolvedTheme)
-
-    mediaQuery.addEventListener('change', handleChange)
-
-    return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [theme, resolvedTheme])
+  }, [resolvedTheme])
 
   // Every surface takes its colour from the same tokens, but they do not all
   // repaint in the same frame, and the ones that lag read as a flicker. The
   // transition is switched on for the length of the change and no longer, so
   // a dialog opening a second later is not slowed by it.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = window.document.documentElement
     root.classList.add('theme-transition')
     const timer = window.setTimeout(
@@ -91,8 +92,7 @@ export function ThemeProvider({
   // A theme set in another tab applies here too, which is the point of
   // keeping it somewhere every tab can see.
   useEffect(
-    () =>
-      subscribeStored(storageKey, (value) => _setTheme((value as Theme | null) ?? defaultTheme)),
+    () => subscribeStored(storageKey, (value) => _setTheme(parseTheme(value, defaultTheme))),
     [storageKey, defaultTheme]
   )
 

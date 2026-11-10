@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import { type LucideIcon } from 'lucide-react'
+import { CircleHelp, WifiOff } from 'lucide-react'
 import { formatDuration } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Paste } from '@/components/paste'
 
@@ -8,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 type AddressCardProps = {
   family: 'v4' | 'v6'
-  icon: LucideIcon
+  icon: React.ElementType
   ip?: string
   available?: boolean
   message?: string
@@ -23,8 +24,10 @@ type AddressCardProps = {
 /**
  * The address this host is reachable on, right now.
  *
- * It leads the page because it is the one thing every task exists to chase:
- * the number a person checks first, and the one they paste somewhere next.
+ * `available === false` is the server saying this family has no egress; it is
+ * a settled state, so the card is marked disabled and dimmed. A missing
+ * payload is different - the request has not answered - and stays a plain
+ * "unknown" so a failure never looks like a disabled feature.
  */
 export function AddressCard({
   family,
@@ -37,12 +40,23 @@ export function AddressCard({
 }: AddressCardProps) {
   const { t } = useTranslation()
   const label = family === 'v4' ? t('dashboard.publicIpv4') : t('dashboard.publicIpv6')
+  const noEgress = available === false
+  const StateIcon = noEgress ? WifiOff : CircleHelp
 
   return (
-    <Card>
+    <Card
+      aria-disabled={noEgress || undefined}
+      data-disabled={noEgress || undefined}
+      className={cn(noEgress && 'border-muted bg-muted/30')}
+    >
       <CardHeader className='flex flex-row items-center justify-between gap-2 space-y-0'>
-        <CardTitle className='text-sm font-medium'>{label}</CardTitle>
-        <Icon aria-hidden='true' className='text-muted-foreground size-4' />
+        <CardTitle className={cn('text-sm font-medium', noEgress && 'text-muted-foreground')}>
+          {label}
+        </CardTitle>
+        <Icon
+          aria-hidden='true'
+          className={cn('size-4', noEgress ? 'text-muted-foreground/60' : 'text-muted-foreground')}
+        />
       </CardHeader>
       <CardContent className='space-y-1'>
         {loading ? (
@@ -57,9 +71,17 @@ export function AddressCard({
             </p>
           </>
         ) : (
-          <p className='text-muted-foreground text-sm'>
-            {message || t('dashboard.noEgress', { family: family === 'v4' ? '4' : '6' })}
-          </p>
+          <div
+            className='text-muted-foreground flex items-center gap-2 text-sm'
+            title={message || undefined}
+          >
+            <StateIcon aria-hidden='true' className='size-4 shrink-0' />
+            <span>
+              {noEgress
+                ? t('dashboard.noEgress', { family: family === 'v4' ? '4' : '6' })
+                : t('dashboard.addressUnknown')}
+            </span>
+          </div>
         )}
       </CardContent>
     </Card>

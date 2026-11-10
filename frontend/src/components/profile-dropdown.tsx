@@ -1,11 +1,15 @@
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { BadgeCheck, Check, DoorOpen, Languages, LogOut, Palette } from 'lucide-react'
+import { Check, DoorOpen, LogOut, Palette, Settings, UserCog } from 'lucide-react'
+import { TranslateIcon } from '@/components/icons/nav-icons'
 import { useAuthStore } from '@/stores/auth-store'
 import { displayName, type LogoutScope } from '@/lib/auth'
 import { getDisplayNameInitials } from '@/lib/utils'
-import { currentLocale, LOCALE_LABELS, LOCALES, setLocale } from '@/i18n'
+import { LOCALE_LABELS, LOCALES, setLocalePreference } from '@/i18n'
+import { useLocalePreference } from '@/hooks/use-locale-preference'
 import useDialogState from '@/hooks/use-dialog-state'
+import { ConfigDrawer } from '@/components/config-drawer'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,12 +35,13 @@ import { SignOutDialog } from '@/components/sign-out-dialog'
 export function ProfileDropdown() {
   const { t } = useTranslation()
   const [scope, setScope] = useDialogState<LogoutScope>()
+  const [configOpen, setConfigOpen] = useState(false)
   const user = useAuthStore((state) => state.auth.user)
   const providerLogout = useAuthStore((state) => state.auth.providerLogout)
   const name = displayName(user)
   const email = user?.profile.email ?? ''
   const initials = getDisplayNameInitials(name)
-  const locale = currentLocale()
+  const preference = useLocalePreference()
 
   return (
     <>
@@ -66,7 +71,7 @@ export function ProfileDropdown() {
           <DropdownMenuGroup>
             <DropdownMenuItem asChild>
               <Link to='/settings'>
-                <BadgeCheck />
+                <UserCog />
                 {t('auth.profile')}
               </Link>
             </DropdownMenuItem>
@@ -76,24 +81,38 @@ export function ProfileDropdown() {
                 {t('auth.appearance')}
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuSub>
+              {/* SubTrigger has no [&_svg] rules of its own, unlike Item, so
+                  the mark is sized and toned here to match the two links. */}
               <DropdownMenuSubTrigger>
-                <Languages />
-                {t('common.language')}
+                <TranslateIcon className='size-4 text-muted-foreground' />
+                {t('common.switchLanguage')}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
+                <DropdownMenuItem
+                  onClick={() => setLocalePreference('system')}
+                  className={preference === 'system' ? 'font-semibold' : ''}
+                >
+                  {t('common.followSystem')}
+                  {preference === 'system' ? <Check className='ms-auto size-4' /> : null}
+                </DropdownMenuItem>
                 {LOCALES.map((item) => (
                   <DropdownMenuItem
                     key={item}
-                    onClick={() => setLocale(item)}
-                    className={locale === item ? 'font-semibold' : ''}
+                    onClick={() => setLocalePreference(item)}
+                    className={preference === item ? 'font-semibold' : ''}
                   >
                     {LOCALE_LABELS[item]}
-                    {locale === item ? <Check className='ms-auto size-4' /> : null}
+                    {preference === item ? <Check className='ms-auto size-4' /> : null}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
+            <DropdownMenuItem onClick={() => setConfigOpen(true)}>
+              <Settings />
+              {t('theme.title')}
+            </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant='destructive' onClick={() => setScope('app')}>
@@ -109,6 +128,7 @@ export function ProfileDropdown() {
         </DropdownMenuContent>
       </DropdownMenu>
 
+      <ConfigDrawer open={configOpen} onOpenChange={setConfigOpen} />
       <SignOutDialog scope={scope} onClose={() => setScope(null)} />
     </>
   )

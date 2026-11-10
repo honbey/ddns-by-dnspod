@@ -35,8 +35,19 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     // Build scripts and the Playwright harness run in Node, not the browser.
+    // Flat config merges globals across matching blocks, so public/ has to be
+    // excluded here or `process` would leak into the browser bootstrap's
+    // no-undef scope.
     files: ['**/*.{js,mjs,cjs}'],
+    ignores: ['public/**'],
     languageOptions: { globals: { ...globals.node } },
+  },
+  {
+    // Vite copies public/ verbatim: the theme bootstrap is a classic browser
+    // script with no module scope. Give it browser globals rather than taking
+    // the whole directory out of every rule.
+    files: ['public/theme-init.js'],
+    languageOptions: { globals: { ...globals.browser } },
   },
   {
     files: ['e2e/**/*.ts', 'scripts/**/*.ts'],

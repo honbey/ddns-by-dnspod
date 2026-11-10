@@ -11,7 +11,9 @@ import { listDomains } from '@/features/domains/api'
 import { listRecordLines } from '@/features/records/api'
 import { type TaskInput } from '@/features/tasks/api'
 import { cronPresets, describeCron, isValidCron, RECORD_TYPES, TTL_OPTIONS } from '@/lib/cron'
+import { MAX_BATCH_ITEMS } from '@/lib/limits'
 import { type DDNSTask } from '@/lib/types'
+import { fitsSubDomainBatch } from '../subdomains'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -45,11 +47,20 @@ import { Switch } from '@/components/ui/switch'
 /**
  * Built per render so the validation messages are translated too.
  */
-function taskSchema(t: TFunction) {
+function taskSchema(t: TFunction, multiple: boolean) {
   return z.object({
     account_id: z.number().int().positive(t('tasks.accountRequired')),
     domain: z.string().trim().min(1, t('tasks.domainRequired')),
-    sub_domain: z.string().trim(),
+    // Editing one row has one host; adding can take a space or comma separated
+    // list, but only up to the same cap the batch endpoint enforces.
+    sub_domain: multiple
+      ? z
+          .string()
+          .trim()
+          .refine(fitsSubDomainBatch, {
+            message: t('tasks.tooManySubdomains', { max: MAX_BATCH_ITEMS }),
+          })
+      : z.string().trim(),
     record_type: z.enum(RECORD_TYPES),
     record_line: z.string(),
     ttl: z.number().int().positive(),
@@ -113,7 +124,7 @@ type TaskDialogProps = {
 export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskDialogProps) {
   const { t } = useTranslation()
   const form = useForm<FormValues>({
-    resolver: zodResolver(taskSchema(t)),
+    resolver: zodResolver(taskSchema(t, task === null)),
     defaultValues: EMPTY,
   })
 
@@ -167,10 +178,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
       <SheetContent className='w-full gap-0 p-0 sm:max-w-xl'>
         <SheetHeader className='border-b pe-10'>
           <SheetTitle>{task ? t('tasks.editTitle') : t('tasks.addTitle')}</SheetTitle>
-          <SheetDescription>
-            A task compares one record against this host&apos;s public address and updates it when
-            they differ.
-          </SheetDescription>
+          <SheetDescription>{t('tasks.dialogHint')}</SheetDescription>
         </SheetHeader>
 
         <Form {...form}>
@@ -290,7 +298,9 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                       <FormControl>
                         <Input placeholder={t('tasks.subdomainPlaceholder')} {...field} />
                       </FormControl>
-                      <FormDescription>{t('tasks.subdomainHint')}</FormDescription>
+                      <FormDescription>
+                        {task ? t('tasks.subdomainHint') : t('tasks.subdomainMultiHint')}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

@@ -14,7 +14,6 @@ import {
 import { handleServerError } from '@/lib/handle-server-error'
 import { type APIKey } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -112,7 +111,6 @@ export function APIKeys() {
       <Header>
         <Search className='me-auto' />
         <ThemeSwitch />
-        <ConfigDrawer />
         <ProfileDropdown />
       </Header>
 

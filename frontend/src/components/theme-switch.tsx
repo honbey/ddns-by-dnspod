@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Moon, Sun } from 'lucide-react'
 import { useTheme } from '@/context/theme-provider'
@@ -19,14 +18,6 @@ export function ThemeSwitch() {
   const { t } = useTranslation()
   const { resolvedTheme, setTheme } = useTheme()
 
-  /* Update theme-color meta tag
-   * when theme is updated */
-  useEffect(() => {
-    const themeColor = resolvedTheme === 'dark' ? '#020817' : '#fff'
-    const metaThemeColor = document.querySelector("meta[name='theme-color']")
-    if (metaThemeColor) metaThemeColor.setAttribute('content', themeColor)
-  }, [resolvedTheme])
-
   const next = resolvedTheme === 'dark' ? 'light' : 'dark'
 
   return (
@@ -36,8 +27,8 @@ export function ThemeSwitch() {
       className='scale-95 rounded-full'
       onClick={() => setTheme(next)}
     >
-      <Sun className='size-[1.2rem] scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90' />
-      <Moon className='absolute size-[1.2rem] scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0' />
+      <Sun className='theme-switch-icon size-[1.2rem] scale-100 rotate-0 opacity-100 dark:scale-0 dark:-rotate-180 dark:opacity-0' />
+      <Moon className='theme-switch-icon absolute size-[1.2rem] scale-0 rotate-180 opacity-0 dark:scale-100 dark:rotate-0 dark:opacity-100' />
       <span className='sr-only'>{t('common.switchTheme', { theme: next })}</span>
     </Button>
   )

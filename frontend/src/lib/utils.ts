@@ -6,56 +6,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Generates page numbers for pagination with ellipsis
- * @param currentPage - Current page number (1-based)
- * @param totalPages - Total number of pages
- * @returns Array of page numbers and ellipsis strings
- *
- * Examples:
- * - Small dataset (<=5 pages): [1, 2, 3, 4, 5]
- * - Near beginning: [1, 2, 3, 4, '...', 10]
- * - In middle: [1, '...', 4, 5, 6, '...', 10]
- * - Near end: [1, '...', 7, 8, 9, 10]
- */
-export function getPageNumbers(currentPage: number, totalPages: number) {
-  const maxVisiblePages = 5 // Maximum number of page buttons to show
-  const rangeWithDots = []
-
-  if (totalPages <= maxVisiblePages) {
-    // If total pages is 5 or less, show all pages
-    for (let i = 1; i <= totalPages; i++) {
-      rangeWithDots.push(i)
-    }
-  } else {
-    // Always show first page
-    rangeWithDots.push(1)
-
-    if (currentPage <= 3) {
-      // Near the beginning: [1] [2] [3] [4] ... [10]
-      for (let i = 2; i <= 4; i++) {
-        rangeWithDots.push(i)
-      }
-      rangeWithDots.push('...', totalPages)
-    } else if (currentPage >= totalPages - 2) {
-      // Near the end: [1] ... [7] [8] [9] [10]
-      rangeWithDots.push('...')
-      for (let i = totalPages - 3; i <= totalPages; i++) {
-        rangeWithDots.push(i)
-      }
-    } else {
-      // In the middle: [1] ... [4] [5] [6] ... [10]
-      rangeWithDots.push('...')
-      for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-        rangeWithDots.push(i)
-      }
-      rangeWithDots.push('...', totalPages)
-    }
-  }
-
-  return rangeWithDots
-}
-
-/**
  * Initials from a display name: first character of the first word + first
  * character of the last word. One word only: first two characters. Empty: `?`.
  */
@@ -68,4 +18,39 @@ export function getDisplayNameInitials(displayName: string): string {
   const first = parts[0][0] ?? ''
   const last = parts[parts.length - 1]?.[0] ?? ''
   return (first + last).toUpperCase()
+}
+
+/**
+ * The page a typed value asks for, clamped to the pages the table actually has.
+ *
+ * Blank, non-numeric and out-of-range-low values keep the current page: the
+ * input is a shortcut, not a place to report errors. Values past the end go to
+ * the last page, which also keeps a huge number (parseInt may return one past
+ * Number.MAX_SAFE_INTEGER) from reaching the table.
+ *
+ * Both ends are clamped here rather than trusting the caller: a table with no
+ * rows still has one page, and an index of -1 is not a page.
+ */
+export function parsePageTarget(value: string, currentPage: number, totalPages: number): number {
+  const lastPage = Math.max(1, totalPages)
+  const current = Math.min(Math.max(1, currentPage), lastPage)
+  const next = Number.parseInt(value, 10)
+  if (Number.isNaN(next) || next < 1) return current
+  return Math.min(next, lastPage)
+}
+
+/**
+ * Whether focus moved into the pager's own navigation group.
+ *
+ * Used on blur: clicking or tabbing to a page button must not also commit a
+ * half-typed page, or one interaction would navigate twice. `relatedTarget`
+ * covers mouse, touch and keyboard, and leaves no flag behind to swallow the
+ * next legitimate commit.
+ */
+export function isNavigationTarget(
+  relatedTarget: EventTarget | null,
+  container: Node | null
+): boolean {
+  if (!(relatedTarget instanceof Node) || container === null) return false
+  return container.contains(relatedTarget)
 }

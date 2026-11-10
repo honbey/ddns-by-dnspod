@@ -66,7 +66,7 @@ export function RecentChanges({ entries, loading, total }: RecentChangesProps) {
             ))}
           </div>
         ) : entries.length === 0 ? (
-          <p className='text-muted-foreground py-6 text-center text-sm'>
+          <p className='text-muted-foreground flex h-64 items-center justify-center text-sm'>
             {t('dashboard.nothingRecorded')}
           </p>
         ) : (

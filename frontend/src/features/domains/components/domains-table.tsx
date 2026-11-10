@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   type SortingState,
   type VisibilityState,
@@ -11,7 +11,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { type Domain } from '@/lib/types'
+import { type Domain, type DomainGroup } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -30,15 +30,22 @@ type DomainsTableProps = {
   data: Domain[]
   loading: boolean
   actions: DomainRowActions
+  /** Empty while the group list is loading or unavailable; the table still renders. */
+  groups: DomainGroup[]
 }
 
-export function DomainsTable({ data, loading, actions }: DomainsTableProps) {
+export function DomainsTable({ data, loading, actions, groups }: DomainsTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [globalFilter, setGlobalFilter] = useState('')
 
   const { t } = useTranslation()
-  const columns = useDomainsColumns(actions)
+  const groupNames = useMemo(() => new Map(groups.map((group) => [group.id, group.name])), [groups])
+  const groupOptions = useMemo(
+    () => groups.map((group) => ({ label: group.name, value: String(group.id) })),
+    [groups]
+  )
+  const columns = useDomainsColumns(actions, groupNames)
   const statusOptions = [
     { label: t('status.enabled'), value: 'enable' },
     { label: t('status.disabled'), value: 'disable' },
@@ -67,7 +74,10 @@ export function DomainsTable({ data, loading, actions }: DomainsTableProps) {
       <DataTableToolbar
         table={table}
         searchPlaceholder={t('table.filter')}
-        filters={[{ columnId: 'status', title: t('domains.statusColumn'), options: statusOptions }]}
+        filters={[
+          { columnId: 'status', title: t('domains.statusColumn'), options: statusOptions },
+          { columnId: 'group', title: t('domains.groupColumn'), options: groupOptions },
+        ]}
       />
       <div className='overflow-hidden rounded-md border'>
         <Table>

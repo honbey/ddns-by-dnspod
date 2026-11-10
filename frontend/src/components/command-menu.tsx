@@ -84,7 +84,7 @@ export function CommandMenu() {
             </CommandItem>
             <CommandItem onSelect={() => runCommand(() => setTheme('system'))}>
               <Laptop />
-              <span>{t('theme.system')}</span>
+              <span>{t('common.followSystem')}</span>
             </CommandItem>
           </CommandGroup>
         </ScrollArea>

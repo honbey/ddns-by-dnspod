@@ -332,7 +332,10 @@ export function profileOf(user: User | null): ProfileClaims {
  * without a claims policy this is an opaque UUID that reads badly in the UI.
  */
 export function displayName(user: User | null): string {
-  if (!user) return 'Signed out'
+  if (!user) return 'User'
   const profile = profileOf(user)
-  return profile.name ?? profile.preferred_username ?? profile.email ?? profile.sub ?? 'Signed in'
+  // || rather than ?? because an empty claim is not a name: some providers send
+  // every field as an empty string, which would otherwise render as a greeting
+  // with nobody at the end of it.
+  return profile.name || profile.preferred_username || profile.email || profile.sub || 'User'
 }

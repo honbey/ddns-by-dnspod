@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -45,6 +46,90 @@ type importResult struct {
 	TaskIDs []uint `json:"task_ids"`
 }
 
+// batchTaskInput is the payload for creating one task per sub domain.
+type batchTaskInput struct {
+	AccountID      uint     `json:"account_id"`
+	Domain         string   `json:"domain"`
+	SubDomains     []string `json:"sub_domains"`
+	RecordType     string   `json:"record_type"`
+	RecordLine     string   `json:"record_line"`
+	TTL            int      `json:"ttl"`
+	Enabled        *bool    `json:"enabled"`
+	CronExpr       string   `json:"cron_expr"`
+	NotifyOnChange *bool    `json:"notify_on_change"`
+}
+
+// taskBatchResult reports what one batch create did.
+type taskBatchResult struct {
+	Created int    `json:"created"`
+	Skipped int    `json:"skipped"`
+	TaskIDs []uint `json:"task_ids"`
+}
+
+// taskExists reports whether another row already describes the same host.
+//
+// The schedule, TTL and enabled flag are deliberately absent: changing how
+// often, how long or whether a host is checked does not make it a second host.
+// The account and the line are present because one account owns its own copy
+// of a zone, and a line is a separate DNS record on that host.
+// Pass the transaction's handle so a batch sees the rows it just inserted, and
+// excludeID so an update does not collide with itself.
+func taskExists(db *gorm.DB, task *model.DDNSTask, excludeID uint) (bool, error) {
+	query := db.Model(&model.DDNSTask{}).Where(
+		"account_id = ? AND domain = ? AND sub_domain = ? AND record_type = ? AND record_line = ?",
+		task.AccountID, task.Domain, task.SubDomain, task.RecordType, task.RecordLine,
+	)
+	if excludeID != 0 {
+		query = query.Where("id <> ?", excludeID)
+	}
+	var count int64
+	if err := query.Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// hostKey is what makes two tasks the same task. The pipe cannot appear in a
+// sub domain (ValidateSubDomain forbids it) or in a DNSPod line name.
+func hostKey(subDomain, line string) string {
+	return subDomain + "|" + line
+}
+
+// existingHosts reads, in one query, every host/line pair that already has a
+// task for this account, domain and address family.
+//
+// A whole batch or import asks once instead of issuing a COUNT per row. Callers
+// add a pair as soon as they insert it, so a host repeated inside the same
+// batch is also skipped without a second read.
+func existingHosts(db *gorm.DB, accountID uint, domain, recordType string) (map[string]struct{}, error) {
+	var rows []model.DDNSTask
+	if err := db.Model(&model.DDNSTask{}).
+		Select("sub_domain", "record_line").
+		Where("account_id = ? AND domain = ? AND record_type = ?", accountID, domain, recordType).
+		Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	hosts := make(map[string]struct{}, len(rows))
+	for _, row := range rows {
+		hosts[hostKey(row.SubDomain, row.RecordLine)] = struct{}{}
+	}
+	return hosts, nil
+}
+
+// errDuplicateTask lets a transaction abort on a collision without turning it
+// into a 500. The check is best effort only: there is no unique index on the
+// table, so two concurrent writers can both read an empty set, and SQLite may
+// answer the loser with a busy error rather than a duplicate. A unique index
+// would close that window, but it needs a cleanup migration for existing
+// duplicate rows first.
+var errDuplicateTask = errors.New("duplicate task")
+
+// duplicateTask refuses a second row for the same host. The code, not the
+// wording, is what lets the UI show the sentence in the reader's language.
+func duplicateTask(c *gin.Context) {
+	failWithCode(c, http.StatusConflict, CodeDuplicateTask, "a task for this host already exists")
+}
+
 // importTasksFromGroup turns every address record of one group into a DDNS task.
 //
 // Only A and AAAA records can be kept up to date, so other types are ignored.
@@ -79,6 +164,11 @@ func (s *Server) importTasksFromGroup(c *gin.Context) {
 	if !valid {
 		return
 	}
+	// The import dialog sends its choice in the body, not the query. A key-bound
+	// call still cannot choose: parseAccountID pinned it to the key's account.
+	if _, keyed := middleware.APIKeyFrom(c); !keyed && input.AccountID > 0 {
+		accountID = input.AccountID
+	}
 	account, err := s.resolveAccount(accountID)
 	if err != nil {
 		badRequest(c, err.Error())
@@ -99,18 +189,6 @@ func (s *Server) importTasksFromGroup(c *gin.Context) {
 	if err != nil {
 		upstreamError(c, err)
 		return
-	}
-
-	// Existing tasks, keyed by host + type, so the import stays idempotent
-	var existing []model.DDNSTask
-	if err := s.store.DB().Where("domain = ? AND record_type = ?", domain, recordType).
-		Find(&existing).Error; err != nil {
-		serverError(c, err)
-		return
-	}
-	seen := make(map[string]struct{}, len(existing))
-	for _, t := range existing {
-		seen[t.SubDomain+"|"+t.RecordType] = struct{}{}
 	}
 
 	cronExpr := input.CronExpr
@@ -141,20 +219,25 @@ func (s *Server) importTasksFromGroup(c *gin.Context) {
 	// it in and offers no way to finish.
 	result := importResult{TaskIDs: []uint{}}
 	if err := s.store.DB().Transaction(func(tx *gorm.DB) error {
+		hosts, err := existingHosts(tx, account.ID, domain, recordType)
+		if err != nil {
+			return err
+		}
 		for _, r := range page.Records {
 			if r.RecordType != recordType {
 				continue
 			}
-			if _, dup := seen[r.SubDomain+"|"+r.RecordType]; dup {
-				result.Skipped++
-				continue
-			}
-
 			subDomain := normalizeSubDomain(r.SubDomain)
 			// Values read back from DNSPod are held to the same rule as typed
 			// ones: they reach the change history and the log, which is exactly
 			// what the restriction exists to protect.
 			if err := model.ValidateSubDomain(subDomain); err != nil {
+				result.Skipped++
+				continue
+			}
+			line := defaultLine(r.Line)
+			key := hostKey(subDomain, line)
+			if _, duplicate := hosts[key]; duplicate {
 				result.Skipped++
 				continue
 			}
@@ -164,7 +247,7 @@ func (s *Server) importTasksFromGroup(c *gin.Context) {
 				Domain:         domain,
 				SubDomain:      subDomain,
 				RecordType:     r.RecordType,
-				RecordLine:     defaultLine(r.Line),
+				RecordLine:     line,
 				TTL:            int(r.TTL),
 				Enabled:        enabled,
 				CronExpr:       cronExpr,
@@ -177,7 +260,7 @@ func (s *Server) importTasksFromGroup(c *gin.Context) {
 			if err := tx.Create(&task).Error; err != nil {
 				return err
 			}
-			seen[r.SubDomain+"|"+r.RecordType] = struct{}{}
+			hosts[key] = struct{}{}
 			result.Created++
 			result.TaskIDs = append(result.TaskIDs, task.ID)
 		}
@@ -312,7 +395,21 @@ func (s *Server) createTask(c *gin.Context) {
 		return
 	}
 
-	if err := s.store.DB().Create(&task).Error; err != nil {
+	err = s.store.DB().Transaction(func(tx *gorm.DB) error {
+		duplicate, err := taskExists(tx, &task, 0)
+		if err != nil {
+			return err
+		}
+		if duplicate {
+			return errDuplicateTask
+		}
+		return tx.Create(&task).Error
+	})
+	if errors.Is(err, errDuplicateTask) {
+		duplicateTask(c)
+		return
+	}
+	if err != nil {
 		serverError(c, err)
 		return
 	}
@@ -324,6 +421,121 @@ func (s *Server) createTask(c *gin.Context) {
 	slog.Info("task created", "task", task.ID, "name", task.SubDomain+"."+task.Domain,
 		"caller", middleware.CurrentUser(c), "rid", middleware.RequestIDFrom(c))
 	created(c, task)
+}
+
+// batchCreateTasks creates one task per sub domain in a single transaction.
+//
+// A host that already has a task is skipped rather than refused: one duplicate
+// in a list of ten should not throw away the other nine. The caller has already
+// split and trimmed the hosts; this side still validates every one of them,
+// because they reach the change history and the log.
+func (s *Server) batchCreateTasks(c *gin.Context) {
+	var input batchTaskInput
+	if !bindJSON(c, &input) {
+		return
+	}
+	if input.Domain == "" {
+		badRequest(c, "domain is required")
+		return
+	}
+	if err := model.ValidateDomain(input.Domain); err != nil {
+		badRequest(c, err.Error())
+		return
+	}
+	if len(input.SubDomains) == 0 {
+		badRequest(c, "sub_domains is required")
+		return
+	}
+	if !batchSizeOK(c, len(input.SubDomains), "") {
+		return
+	}
+
+	subDomains := make([]string, 0, len(input.SubDomains))
+	for _, raw := range input.SubDomains {
+		sub := normalizeSubDomain(strings.TrimSpace(raw))
+		if err := model.ValidateSubDomain(sub); err != nil {
+			badRequest(c, err.Error())
+			return
+		}
+		subDomains = append(subDomains, sub)
+	}
+
+	recordType, err := normalizeRecordType(input.RecordType)
+	if err != nil {
+		badRequest(c, err.Error())
+		return
+	}
+	account, err := s.resolveAccount(input.AccountID)
+	if err != nil {
+		badRequest(c, err.Error())
+		return
+	}
+
+	enabled := true
+	if input.Enabled != nil {
+		enabled = *input.Enabled
+	}
+	notifyOnChange := true
+	if input.NotifyOnChange != nil {
+		notifyOnChange = *input.NotifyOnChange
+	}
+	cronExpr := defaultCronExpr(input.CronExpr)
+	if _, err := cron.ParseStandard(cronExpr); err != nil {
+		badRequest(c, "invalid cron expression")
+		return
+	}
+	ttl := input.TTL
+	if ttl <= 0 {
+		ttl = 600
+	}
+	line := defaultLine(input.RecordLine)
+
+	result := taskBatchResult{TaskIDs: []uint{}}
+	if err := s.store.DB().Transaction(func(tx *gorm.DB) error {
+		hosts, err := existingHosts(tx, account.ID, input.Domain, recordType)
+		if err != nil {
+			return err
+		}
+		for _, sub := range subDomains {
+			key := hostKey(sub, line)
+			if _, duplicate := hosts[key]; duplicate {
+				result.Skipped++
+				continue
+			}
+			task := model.DDNSTask{
+				AccountID:      account.ID,
+				Domain:         input.Domain,
+				SubDomain:      sub,
+				RecordType:     recordType,
+				RecordLine:     line,
+				TTL:            ttl,
+				Enabled:        enabled,
+				CronExpr:       cronExpr,
+				NotifyOnChange: notifyOnChange,
+			}
+			if err := tx.Create(&task).Error; err != nil {
+				return err
+			}
+			hosts[key] = struct{}{}
+			result.Created++
+			result.TaskIDs = append(result.TaskIDs, task.ID)
+		}
+		return nil
+	}); err != nil {
+		serverError(c, err)
+		return
+	}
+
+	// One reload for the whole batch: each row would otherwise rebuild the
+	// cron schedule N times for the same final state.
+	if err := s.scheduler.Reload(); err != nil {
+		slog.Error("could not reload the scheduler after the batch", "rid", middleware.RequestIDFrom(c), "error", err)
+	}
+
+	slog.Info("tasks created in a batch", "domain", input.Domain,
+		"created", result.Created, "skipped", result.Skipped,
+		"caller", middleware.CurrentUser(c), "rid", middleware.RequestIDFrom(c))
+	ok(c, result)
 }
 
 // updateTask updates a task
@@ -399,17 +611,31 @@ func (s *Server) updateTask(c *gin.Context) {
 
 	// Only user-editable columns are written. The scheduler and executor concurrently update
 	// runtime fields such as last_run_at / fail_count / current_ip, which a full Save would overwrite.
-	if err := s.store.DB().Model(&model.DDNSTask{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
-		"account_id":       task.AccountID,
-		"domain":           task.Domain,
-		"sub_domain":       task.SubDomain,
-		"record_type":      task.RecordType,
-		"record_line":      task.RecordLine,
-		"ttl":              task.TTL,
-		"enabled":          task.Enabled,
-		"cron_expr":        task.CronExpr,
-		"notify_on_change": task.NotifyOnChange,
-	}).Error; err != nil {
+	err := s.store.DB().Transaction(func(tx *gorm.DB) error {
+		duplicate, err := taskExists(tx, &task, task.ID)
+		if err != nil {
+			return err
+		}
+		if duplicate {
+			return errDuplicateTask
+		}
+		return tx.Model(&model.DDNSTask{}).Where("id = ?", task.ID).Updates(map[string]interface{}{
+			"account_id":       task.AccountID,
+			"domain":           task.Domain,
+			"sub_domain":       task.SubDomain,
+			"record_type":      task.RecordType,
+			"record_line":      task.RecordLine,
+			"ttl":              task.TTL,
+			"enabled":          task.Enabled,
+			"cron_expr":        task.CronExpr,
+			"notify_on_change": task.NotifyOnChange,
+		}).Error
+	})
+	if errors.Is(err, errDuplicateTask) {
+		duplicateTask(c)
+		return
+	}
+	if err != nil {
 		serverError(c, err)
 		return
 	}

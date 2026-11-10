@@ -4,7 +4,7 @@ import { Loader2, ListTree, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { listAccounts } from '@/features/accounts/api'
-import { listDomains } from '@/features/domains/api'
+import { listDomainGroups, listDomains } from '@/features/domains/api'
 import { listRecordGroups } from '@/features/records/api'
 import { importTasksFromGroup } from '@/features/tasks/api'
 import { handleServerError } from '@/lib/handle-server-error'
@@ -53,6 +53,12 @@ export function Domains() {
   const domains = useQuery({
     queryKey: ['domains', accountId],
     queryFn: () => listDomains(accountId || undefined),
+  })
+  // Groups label and filter the rows; they are not the rows. A failure here
+  // leaves the domain list on screen instead of taking the whole page down.
+  const groups = useQuery({
+    queryKey: ['domain-groups', accountId],
+    queryFn: () => listDomainGroups(accountId || undefined),
   })
   const [importFor, setImportFor] = useState<Domain | null>(null)
 
@@ -104,11 +110,15 @@ export function Domains() {
         {domains.isError ? (
           <ErrorState onRetry={() => void domains.refetch()} />
         ) : (
-          <DomainsTable
-            data={domains.data ?? []}
-            loading={domains.isPending}
-            actions={{ onImport: setImportFor, accountId }}
-          />
+          <>
+            {groups.isError ? <ErrorState onRetry={() => void groups.refetch()} /> : null}
+            <DomainsTable
+              data={domains.data ?? []}
+              loading={domains.isPending}
+              actions={{ onImport: setImportFor, accountId }}
+              groups={groups.data ?? []}
+            />
+          </>
         )}
       </Main>
 

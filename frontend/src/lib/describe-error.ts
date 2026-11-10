@@ -18,7 +18,11 @@ export function describeError(
     return error instanceof Error && error.message ? error.message : fallback
   }
 
-  const text = error.message || fallback
+  // A code names the failures a UI can put in the reader's language. Other
+  // conflicts keep the server's words: they say which resource collided, and
+  // a generic translation would lose that.
+  const text =
+    error.code === 'duplicate_task' ? i18n.t('common.duplicateTask') : error.message || fallback
   return error.requestId
     ? i18n.t('common.withRequestId', { message: text, requestId: error.requestId })
     : text

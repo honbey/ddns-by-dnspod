@@ -189,11 +189,13 @@ func TestCreateTaskRefusesANonPositiveTTL(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 
-	for _, ttl := range []int{-5, 0} {
+	// A distinct host per case: the same host twice is now a duplicate, and
+	// this test is about TTL defaults, not about the conflict response.
+	for i, ttl := range []int{-5, 0} {
 		rec := do(t, srv, cfg, http.MethodPost, "/api/ddns/tasks", map[string]any{
 			"account_id": account.Data.ID,
 			"domain":     "example.com",
-			"sub_domain": "a",
+			"sub_domain": "ttl" + itoa(uint(i)),
 			"ttl":        ttl,
 		})
 		if rec.Code != http.StatusCreated {
@@ -208,5 +210,174 @@ func TestCreateTaskRefusesANonPositiveTTL(t *testing.T) {
 		if body.Data.TTL != 600 {
 			t.Fatalf("ttl %d stored as %d, want the default 600", ttl, body.Data.TTL)
 		}
+	}
+}
+
+// A different schedule is still the same host. Without this, clicking save
+// twice with a new interval would leave two executors fighting over one record.
+func TestCreateTaskRejectsADuplicateWithADifferentSchedule(t *testing.T) {
+	srv, cfg := newTestServer(t)
+	newTestAccount(t, srv)
+
+	first := do(t, srv, cfg, http.MethodPost, "/api/ddns/tasks", taskPayload(nil))
+	if first.Code != http.StatusCreated {
+		t.Fatalf("first create: want 201, got %d (%s)", first.Code, first.Body.String())
+	}
+	second := do(t, srv, cfg, http.MethodPost, "/api/ddns/tasks", taskPayload(map[string]any{
+		"cron_expr": "*/10 * * * *",
+	}))
+	if second.Code != http.StatusConflict {
+		t.Fatalf("duplicate with another cron: want 409, got %d (%s)", second.Code, second.Body.String())
+	}
+	// The UI keys on this code to pick a translated sentence. Without it, a
+	// Chinese page would print the server's English wording.
+	var conflict struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(second.Body.Bytes(), &conflict); err != nil {
+		t.Fatalf("decode conflict: %v", err)
+	}
+	if conflict.Code != CodeDuplicateTask {
+		t.Fatalf("conflict code = %q, want %q", conflict.Code, CodeDuplicateTask)
+	}
+
+	var count int64
+	if err := srv.store.DB().Model(&model.DDNSTask{}).Count(&count).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("duplicate was stored, got %d rows", count)
+	}
+}
+
+// The dedup key is the host identity, not the whole row: an empty host and @
+// are one host, while a different line or address family is a different record.
+func TestCreateTaskDuplicateKeyBoundaries(t *testing.T) {
+	srv, cfg := newTestServer(t)
+	newTestAccount(t, srv)
+
+	create := func(overrides map[string]any) int {
+		return do(t, srv, cfg, http.MethodPost, "/api/ddns/tasks", taskPayload(overrides)).Code
+	}
+	if got := create(map[string]any{"sub_domain": ""}); got != http.StatusCreated {
+		t.Fatalf("empty host: want 201, got %d", got)
+	}
+	if got := create(map[string]any{"sub_domain": "@"}); got != http.StatusConflict {
+		t.Fatalf("apex after empty host: want 409, got %d", got)
+	}
+	if got := create(map[string]any{"record_line": "电信"}); got != http.StatusCreated {
+		t.Fatalf("another line: want 201, got %d", got)
+	}
+	if got := create(map[string]any{"record_type": "AAAA"}); got != http.StatusCreated {
+		t.Fatalf("another address family: want 201, got %d", got)
+	}
+}
+
+func TestUpdateTaskRejectsADuplicateButAcceptsItself(t *testing.T) {
+	srv, cfg := newTestServer(t)
+	newTestAccount(t, srv)
+
+	created := do(t, srv, cfg, http.MethodPost, "/api/ddns/tasks", taskPayload(map[string]any{
+		"sub_domain": "b",
+	}))
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create b: want 201, got %d (%s)", created.Code, created.Body.String())
+	}
+	var body struct {
+		Data model.DDNSTask `json:"data"`
+	}
+	if err := json.Unmarshal(created.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	path := "/api/ddns/tasks/" + itoa(body.Data.ID)
+
+	if got := do(t, srv, cfg, http.MethodPost, "/api/ddns/tasks", taskPayload(nil)).Code; got != http.StatusCreated {
+		t.Fatalf("create ddns: want 201, got %d", got)
+	}
+
+	self := do(t, srv, cfg, http.MethodPut, path, taskPayload(map[string]any{
+		"sub_domain": "b", "cron_expr": "*/10 * * * *",
+	}))
+	if self.Code != http.StatusOK {
+		t.Fatalf("updating only the schedule: want 200, got %d (%s)", self.Code, self.Body.String())
+	}
+
+	collision := do(t, srv, cfg, http.MethodPut, path, taskPayload(nil))
+	if collision.Code != http.StatusConflict {
+		t.Fatalf("renaming onto another task: want 409, got %d (%s)", collision.Code, collision.Body.String())
+	}
+}
+
+func batchPayload(subDomains []string) map[string]any {
+	return map[string]any{
+		"account_id":  0,
+		"domain":      "example.com",
+		"sub_domains": subDomains,
+		"record_type": "A",
+		"cron_expr":   "*/5 * * * *",
+	}
+}
+
+// A batch is judged as a whole: an existing host and a host repeated inside
+// the same request are both skipped, and the rest still get created.
+func TestBatchCreateTasksSkipsExistingAndRepeatedHosts(t *testing.T) {
+	srv, cfg := newTestServer(t)
+	newTestAccount(t, srv)
+
+	if got := do(t, srv, cfg, http.MethodPost, "/api/ddns/tasks", taskPayload(map[string]any{
+		"sub_domain": "b",
+	})).Code; got != http.StatusCreated {
+		t.Fatalf("seed b: want 201, got %d", got)
+	}
+
+	rec := do(t, srv, cfg, http.MethodPost, "/api/ddns/tasks/batch",
+		batchPayload([]string{"a", "b", "a", "@"}))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("batch: want 200, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		Data taskBatchResult `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body.Data.Created != 2 || body.Data.Skipped != 2 || len(body.Data.TaskIDs) != 2 {
+		t.Fatalf("got created=%d skipped=%d ids=%v, want 2/2/2",
+			body.Data.Created, body.Data.Skipped, body.Data.TaskIDs)
+	}
+	var count int64
+	if err := srv.store.DB().Model(&model.DDNSTask{}).Count(&count).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if count != 3 {
+		t.Fatalf("want 3 rows after the batch, got %d", count)
+	}
+}
+
+func TestBatchCreateTasksRefusesOversizedAndMalformedInput(t *testing.T) {
+	srv, cfg := newTestServer(t)
+	newTestAccount(t, srv)
+
+	many := make([]string, 101)
+	for i := range many {
+		many[i] = "h" + itoa(uint(i))
+	}
+	if got := do(t, srv, cfg, http.MethodPost, "/api/ddns/tasks/batch", batchPayload(many)).Code; got != http.StatusBadRequest {
+		t.Fatalf("101 hosts: want 400, got %d", got)
+	}
+	if got := do(t, srv, cfg, http.MethodPost, "/api/ddns/tasks/batch",
+		batchPayload([]string{"a b"})).Code; got != http.StatusBadRequest {
+		t.Fatalf("host with a space: want 400, got %d", got)
+	}
+	if got := do(t, srv, cfg, http.MethodPost, "/api/ddns/tasks/batch",
+		batchPayload(nil)).Code; got != http.StatusBadRequest {
+		t.Fatalf("empty host list: want 400, got %d", got)
+	}
+	var count int64
+	if err := srv.store.DB().Model(&model.DDNSTask{}).Count(&count).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("a rejected batch stored %d rows", count)
 	}
 }

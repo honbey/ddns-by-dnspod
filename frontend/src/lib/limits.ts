@@ -1,10 +1,10 @@
 /**
  * How many records one batch call may carry.
  *
- * The API refuses a longer list outright - its own cap is maxBatchItems in the
- * backend - and every batch path uses the same number. Kept here so a dialog or
- * a table can name the limit before the call, instead of each one learning it
- * from a 400 after a confirmation that could not have worked.
+ * The contract states this as BatchTaskInput.sub_domains.maxItems and the
+ * server as maxBatchItems. Generated TypeScript types cannot carry a numeric
+ * bound, so the UI still needs a constant to name the limit before a call
+ * instead of learning it from a 400. limits.test.ts ties the three together.
  */
 export const MAX_BATCH_ITEMS = 100
 

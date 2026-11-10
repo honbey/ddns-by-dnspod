@@ -5,16 +5,17 @@ import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { listAccounts } from '@/features/accounts/api'
 import {
-  createTask,
+  batchCreateTasks,
   deleteTask,
   listAllTasks,
   runTask,
   type TaskInput,
   updateTask,
 } from '@/features/tasks/api'
+import { parseSubDomains } from './subdomains'
 import { handleServerError } from '@/lib/handle-server-error'
 import { mapBounded } from '@/lib/lists'
-import { type DDNSTask } from '@/lib/types'
+import { type DDNSTask, type TaskBatchResult } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Header } from '@/components/layout/header'
@@ -85,13 +86,58 @@ export function Tasks() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['tasks'] })
 
+  // An edit answers with the one row it saved; a create answers with a whole
+  // batch, even when that batch held just one host.
+  type SaveOutcome =
+    { kind: 'edited'; task: DDNSTask } | { kind: 'created'; result: TaskBatchResult }
+
   const { mutateAsync: save, isPending: saving } = useMutation({
-    mutationFn: async ({ id, input }: { id?: number; input: TaskInput }) =>
-      id ? updateTask(id, input) : createTask(input),
-    onSuccess: async (task) => {
+    mutationFn: async ({
+      id,
+      input,
+      subDomains,
+    }: {
+      id?: number
+      input: TaskInput
+      subDomains?: string[]
+    }): Promise<SaveOutcome> => {
+      if (id !== undefined) return { kind: 'edited', task: await updateTask(id, input) }
+      // Every create goes through the batch endpoint, even one host. Otherwise
+      // a single duplicate host would be a 409 that keeps the dialog open while
+      // the same host in a longer list is simply skipped.
+      const result = await batchCreateTasks({
+        account_id: input.account_id,
+        domain: input.domain,
+        sub_domains: subDomains ?? ['@'],
+        record_type: input.record_type,
+        record_line: input.record_line,
+        ttl: input.ttl,
+        enabled: input.enabled,
+        cron_expr: input.cron_expr,
+        notify_on_change: input.notify_on_change,
+      })
+      return { kind: 'created', result }
+    },
+    onSuccess: async (outcome) => {
       await invalidate()
       setDialogOpen(false)
-      toast.success(t('tasks.saved', { host: `${task.sub_domain || '@'}.${task.domain}` }))
+      if (outcome.kind === 'created') {
+        const { created, skipped } = outcome.result
+        if (created === 0) {
+          // Nothing was added: an all-duplicate list is information, not a
+          // success, and "Created 0 tasks" reads like a bug.
+          toast.info(t('tasks.batchNothingCreated'))
+          return
+        }
+        const message =
+          t('tasks.batchCreated', { count: created }) +
+          (skipped > 0 ? t('tasks.batchSkipped', { count: skipped }) : '')
+        toast.success(message)
+        return
+      }
+      toast.success(
+        t('tasks.saved', { host: `${outcome.task.sub_domain || '@'}.${outcome.task.domain}` })
+      )
     },
   })
 
@@ -250,7 +296,11 @@ export function Tasks() {
         onSubmit={async (input) => {
           try {
             const id = editing?.id
-            await save({ id, input })
+            await save({
+              id,
+              input,
+              subDomains: id ? undefined : parseSubDomains(input.sub_domain),
+            })
           } catch {
             // Swallowed: the global mutation handler has already reported the
             // failure, with the server's own wording, and the dialog is left

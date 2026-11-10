@@ -168,6 +168,30 @@ func (s *Server) listDomains(c *gin.Context) {
 	ok(c, domains)
 }
 
+// listDomainGroups lists the account's domain groups.
+//
+// Unlike record groups, these span domains: the domain list reports one group
+// id per domain, and this list is what turns that id into a name the UI can
+// show and filter on.
+func (s *Server) listDomainGroups(c *gin.Context) {
+	accountID, valid := parseAccountID(c)
+	if !valid {
+		return
+	}
+	cli, err := s.clientFor(accountID)
+	if err != nil {
+		credentialError(c, err)
+		return
+	}
+
+	groups, err := cli.ListDomainGroups(c.Request.Context())
+	if err != nil {
+		upstreamError(c, err)
+		return
+	}
+	ok(c, groups)
+}
+
 // listRecords lists records, filterable by host, type and keyword
 func (s *Server) listRecords(c *gin.Context) {
 	domain := pathDomain(c)

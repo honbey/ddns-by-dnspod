@@ -28,12 +28,17 @@ function Glyph({ children, ...props }: GlyphProps) {
   )
 }
 
-/** A certificate: the sheet it is printed on, its seal, and the ribbon. */
+/** A certificate: the sheet it is printed on, its star seal, and the ribbon. */
 export function CertificateIcon(props: GlyphProps) {
   return (
     <Glyph {...props}>
       <rect x='3' y='4' width='18' height='12' rx='2' />
-      <circle cx='12' cy='10' r='2.5' />
+      {/* Five points this small close up under a 2px stroke, so the seal alone
+          takes a thinner line to keep its notches readable. */}
+      <path
+        strokeWidth={1.5}
+        d='M12 6.6 12.85 8.83 15.23 8.95 13.38 10.45 14 12.75 12 11.45 10 12.75 10.62 10.45 8.77 8.95 11.15 8.83Z'
+      />
       <path d='M9 16v5l3-2 3 2v-5' />
     </Glyph>
   )

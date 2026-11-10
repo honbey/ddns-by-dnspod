@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { ChevronDownIcon } from '@radix-ui/react-icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { fonts } from '@/config/fonts'
+import { currentLocale, LOCALE_LABELS, LOCALES, setLocale, type Locale } from '@/i18n'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useFont } from '@/context/font-provider'
@@ -13,7 +14,6 @@ import { buttonVariants } from '@/components/ui/button'
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -30,6 +30,8 @@ type AppearanceFormValues = z.infer<typeof appearanceFormSchema>
 
 export function AppearanceForm() {
   const { t } = useTranslation()
+  const locale = currentLocale()
+  const languageLabelId = useId()
   // The theme cards are radio buttons rather than form fields, so the group
   // and each card name their label instead of being pointed at with `for`.
   const themeLabelId = useId()
@@ -67,6 +69,30 @@ export function AppearanceForm() {
     <Form {...form}>
       {/* Both choices apply as they are made, so there is nothing to submit. */}
       <form onSubmit={(event) => event.preventDefault()} className='space-y-8'>
+        <FormItem>
+          <FormLabel id={languageLabelId} htmlFor={undefined}>
+            {t('common.language')}
+          </FormLabel>
+          <div className='relative w-max'>
+            <select
+              aria-labelledby={languageLabelId}
+              className={cn(
+                buttonVariants({ variant: 'outline' }),
+                'w-50 appearance-none font-normal',
+                'dark:bg-background dark:hover:bg-background'
+              )}
+              value={locale}
+              onChange={(event) => setLocale(event.target.value as Locale)}
+            >
+              {LOCALES.map((item) => (
+                <option key={item} value={item}>
+                  {LOCALE_LABELS[item]}
+                </option>
+              ))}
+            </select>
+            <ChevronDownIcon className='absolute inset-e-3 top-2.5 h-4 w-4 opacity-50' />
+          </div>
+        </FormItem>
         <FormField
           control={form.control}
           name='font'
@@ -97,7 +123,6 @@ export function AppearanceForm() {
                 </FormControl>
                 <ChevronDownIcon className='absolute inset-e-3 top-2.5 h-4 w-4 opacity-50' />
               </div>
-              <FormDescription className='font-manrope'>{t('settings.fontHint')}</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -110,7 +135,6 @@ export function AppearanceForm() {
               <FormLabel id={themeLabelId} htmlFor={undefined}>
                 {t('theme.themeSection')}
               </FormLabel>
-              <FormDescription>{t('settings.themeHint')}</FormDescription>
               <FormMessage />
               <RadioGroup
                 name={field.name}

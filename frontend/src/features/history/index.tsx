@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { PageHeading } from '@/components/layout/page-heading'
@@ -26,7 +25,6 @@ export function History() {
       <Header>
         <Search className='me-auto' />
         <ThemeSwitch />
-        <ConfigDrawer />
         <ProfileDropdown />
       </Header>
 

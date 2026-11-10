@@ -63,7 +63,7 @@ export function SettingsProfile() {
                   </Badge>
                 ))
               ) : (
-                <span className='text-muted-foreground'>none</span>
+                <span className='text-muted-foreground'>{t('ui.none')}</span>
               )}
             </dd>
           </div>
@@ -72,11 +72,7 @@ export function SettingsProfile() {
         <Separator />
 
         <div className='flex items-center justify-between gap-4'>
-          <p className='text-sm text-muted-foreground'>
-            Signing out ends this browser&apos;s session and revokes this application&apos;s access.
-            Your {provider} session stays active; use &ldquo;Sign Out Everywhere&rdquo; in the user
-            menu to end that too.
-          </p>
+          <p className='text-sm text-muted-foreground'>{t('auth.signOutNote', { provider })}</p>
           <Button
             variant='outline'
             disabled={signingOut}
@@ -86,7 +82,7 @@ export function SettingsProfile() {
             }}
           >
             {signingOut && <Loader2 className='animate-spin' />}
-            Sign Out
+            {t('auth.signOut')}
           </Button>
         </div>
       </div>

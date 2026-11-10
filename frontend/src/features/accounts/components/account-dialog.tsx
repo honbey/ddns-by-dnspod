@@ -109,7 +109,7 @@ export function AccountDialog({
       <DialogContent className='sm:max-w-lg'>
         <DialogHeader>
           <DialogTitle>{account ? t('accounts.editTitle') : t('accounts.addTitle')}</DialogTitle>
-          <DialogDescription>A DNSPod API key pair, encrypted at rest.</DialogDescription>
+          <DialogDescription>{t('accounts.dialogHint')}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>

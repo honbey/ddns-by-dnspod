@@ -166,8 +166,8 @@ export function APIKeyDialog({ open, onOpenChange, apiKey, saving, onSubmit }: A
                   </Select>
                   <FormDescription>
                     {field.value === API_KEY_ANY_DOMAIN
-                      ? 'Every domain of that account can be read or changed.'
-                      : "Only this domain's records can be read or changed."}
+                      ? t('apiKeys.scopeEveryDomain')
+                      : t('apiKeys.scopeOneDomain')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

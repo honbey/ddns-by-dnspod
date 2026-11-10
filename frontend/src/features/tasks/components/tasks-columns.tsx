@@ -71,7 +71,7 @@ export function useTasksColumns(
         <div className='min-w-0'>
           <div className='truncate font-medium'>{hostOf(row.original)}</div>
           <div className='text-muted-foreground truncate text-xs'>
-            {row.original.record_line || 'default line'}
+            {row.original.record_line || t('ui.defaultLine')}
           </div>
         </div>
       ),
@@ -112,10 +112,11 @@ export function useTasksColumns(
           <div className='truncate font-mono text-xs'>{row.original.current_ip || '-'}</div>
           {row.original.ip_since ? (
             <div className='text-muted-foreground truncate text-xs'>
-              for{' '}
-              {formatDuration(
-                Math.floor((Date.now() - new Date(row.original.ip_since).getTime()) / 1000)
-              )}
+              {t('ui.duration', {
+                duration: formatDuration(
+                  Math.floor((Date.now() - new Date(row.original.ip_since).getTime()) / 1000)
+                ),
+              })}
             </div>
           ) : null}
         </div>
@@ -151,17 +152,17 @@ export function useTasksColumns(
                 <div className='truncate text-sm'>{formatTime(task.last_run_at)}</div>
                 <div className='truncate text-xs'>
                   <Badge variant={statusVariant(task.last_status)}>
-                    {task.last_status || 'NEW'}
+                    {task.last_status || t('ui.neverRun')}
                   </Badge>
                   {task.fail_count > 0 ? (
                     <span className='text-muted-foreground ms-1'>
-                      {task.fail_count} failed in a row
+                      {t('ui.failedInRow', { count: task.fail_count })}
                     </span>
                   ) : null}
                 </div>
               </>
             ) : (
-              <span className='text-muted-foreground text-sm'>never</span>
+              <span className='text-muted-foreground text-sm'>{t('ui.neverRun')}</span>
             )}
           </div>
         )

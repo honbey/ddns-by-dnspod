@@ -26,7 +26,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -160,7 +159,6 @@ export function Records() {
       <Header>
         <Search className='me-auto' />
         <ThemeSwitch />
-        <ConfigDrawer />
         <ProfileDropdown />
       </Header>
 

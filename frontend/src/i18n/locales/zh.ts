@@ -36,7 +36,30 @@ export const zh = {
     skipToMain: '跳到主要内容',
     switchTheme: '切换到{theme}主题',
     language: '语言',
+    switchLanguage: '切换语言',
     somethingWentWrong: '出错了，请稍后重试。',
+  },
+  ui: {
+    key: '密钥',
+    type: '类型',
+    lastRun: '上次运行',
+    neverRun: '从未运行',
+    failedInRow: '连续失败 {count} 次',
+    defaultLine: '默认线路',
+    duration: '已持续 {duration}',
+    whyFailed: '失败原因：',
+    whySkipped: '跳过原因：',
+    none: '无',
+    more: '更多',
+    sidebar: '侧边栏',
+    sidebarMobileHint: '显示移动端侧边栏。',
+    toggleSidebar: '切换侧边栏',
+    commandPalette: '命令面板',
+    commandSearch: '搜索要执行的命令...',
+    selectedCount: '已选 {count} 项',
+    filterBy: '按{title}筛选',
+    headerName: '请求头名称 {index}',
+    headerValue: '请求头值 {index}',
   },
   nav: {
     general: '通用',
@@ -59,6 +82,8 @@ export const zh = {
     noResults: '没有匹配结果。',
   },
   auth: {
+    signOutNote:
+      '退出登录会结束本浏览器的会话并撤销本应用的授权。{provider} 会话仍然有效，可在用户菜单选择「退出所有会话」一并结束。',
     profile: '个人资料',
     appearance: '外观',
     signOut: '退出登录',
@@ -69,6 +94,7 @@ export const zh = {
       '这也会结束你在 {provider} 的会话。依赖该会话的应用会重新要求你认证。',
   },
   accounts: {
+    dialogHint: 'DNSPod API 密钥对，落盘加密。',
     verified: 'DNSPod 已接受该凭据。',
     refused: 'DNSPod 拒绝该凭据。',
     subtitle: 'DNSPod 凭据，落盘加密。',
@@ -126,6 +152,7 @@ export const zh = {
     open: '打开 {name}',
   },
   tasks: {
+    dialogHint: '任务会比较一条记录与本机公网地址，不同则更新。',
     runNow: '立即运行',
     accountHint: '有权修改该域名的 DNSPod 凭据。',
     presets: '常用预设',
@@ -270,9 +297,7 @@ export const zh = {
   settings: {
     groupsLabel: '分组',
     appearanceTitle: '外观',
-    appearanceDesc: '自定义应用外观，可按日夜主题自动切换。',
-    fontHint: '选择仪表盘使用的字体。',
-    themeHint: '选择仪表盘的主题。',
+    appearanceDesc: '按个人偏好自行选择应用外观。',
     subjectLabel: '主体标识',
     providerLabel: '身份提供方',
     subtitle: '管理个人资料与界面外观。',
@@ -338,6 +363,8 @@ export const zh = {
     notifyHint: '告知签发结果；失败则一定会通知。',
   },
   apiKeys: {
+    scopeEveryDomain: '可读写该账号下的全部域名。',
+    scopeOneDomain: '只能读写该域名下的记录。',
     revoke: '吊销',
     copyNow: '请立刻复制：服务端只保存前缀，关闭后就再也看不到了。',
     dialogHint: '脚本用这个代替登录，作用域限于下方选择的请求范围。',
@@ -376,6 +403,7 @@ export const zh = {
     createKey: '创建密钥',
   },
   notifications: {
+    defaultJsonHint: '留空则发送默认 JSON。',
     addressPlaceholder: 'https://hooks.example.com/ddns',
     sendTest: '发送测试',
     subtitle: '地址变更在哪里被通知。',
@@ -481,6 +509,8 @@ export const zh = {
     resetDirection: '把文字方向重置为默认值',
   },
   table: {
+    selectedSummary_one: '已选 {count} 个{entity}',
+    selectedSummary_other: '已选 {count} 个{entity}',
     rowsPerPage: '每页行数',
     totalRows: '共 {total} 条',
     totalRowsOne: '共 1 条',
@@ -505,6 +535,10 @@ export const zh = {
     bulkActions: '对已选的 {count} 项批量操作',
   },
   entity: {
+    task: '任务',
+    record: '记录',
+    key: '密钥',
+    channel: '渠道',
     account: '账号',
   },
   dashboard: {

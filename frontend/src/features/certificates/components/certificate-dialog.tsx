@@ -232,7 +232,7 @@ export function CertificateDialog({
                   name='key_type'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Key</FormLabel>
+                      <FormLabel>{t('ui.key')}</FormLabel>
                       <Select name={field.name} value={field.value} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger className='w-full'>

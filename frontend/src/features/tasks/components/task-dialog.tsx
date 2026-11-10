@@ -167,10 +167,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
       <SheetContent className='w-full gap-0 p-0 sm:max-w-xl'>
         <SheetHeader className='border-b pe-10'>
           <SheetTitle>{task ? t('tasks.editTitle') : t('tasks.addTitle')}</SheetTitle>
-          <SheetDescription>
-            A task compares one record against this host&apos;s public address and updates it when
-            they differ.
-          </SheetDescription>
+          <SheetDescription>{t('tasks.dialogHint')}</SheetDescription>
         </SheetHeader>
 
         <Form {...form}>

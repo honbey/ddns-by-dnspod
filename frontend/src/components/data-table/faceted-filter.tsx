@@ -81,7 +81,7 @@ export function DataTableFacetedFilter<TData, TValue>({
               <div className='hidden gap-1 lg:flex'>
                 {selectedValues.size > 2 ? (
                   <Badge variant='secondary' className='rounded-sm px-1 font-normal'>
-                    {selectedValues.size} selected
+                    {t('ui.selectedCount', { count: selectedValues.size })}
                   </Badge>
                 ) : (
                   offered
@@ -104,7 +104,7 @@ export function DataTableFacetedFilter<TData, TValue>({
       <PopoverContent className='w-50 p-0' align='start'>
         <Command>
           {/* A placeholder is not a name: it disappears on the first keystroke */}
-          <CommandInput placeholder={title} aria-label={`Filter by ${title}`} />
+          <CommandInput placeholder={title} aria-label={t('ui.filterBy', { title })} />
           <CommandList>
             <CommandEmpty>{t('nav.noResults')}</CommandEmpty>
             <CommandGroup>

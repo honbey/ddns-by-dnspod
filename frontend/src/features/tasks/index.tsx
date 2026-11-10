@@ -16,7 +16,6 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { mapBounded } from '@/lib/lists'
 import { type DDNSTask } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -188,7 +187,6 @@ export function Tasks() {
       <Header>
         <Search className='me-auto' />
         <ThemeSwitch />
-        <ConfigDrawer />
         <ProfileDropdown />
       </Header>
 

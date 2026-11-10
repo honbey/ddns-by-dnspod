@@ -174,7 +174,7 @@ export function APIKeysTable({
         </Table>
       </div>
       <DataTablePagination table={table} className='mt-auto' />
-      <DataTableBulkActions table={table} entityName='key'>
+      <DataTableBulkActions table={table} entityName={t('entity.key')}>
         <Button
           variant='outline'
           size='sm'

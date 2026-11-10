@@ -86,6 +86,9 @@ describe('locales', () => {
  */
 const DYNAMIC_PREFIXES = ['notifications.priority']
 
+/** i18next resolves these from the base key the call site names. */
+const PLURAL_SUFFIX = /_(zero|one|two|few|many|other)$/
+
 /** Every source file the scan reads. */
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
@@ -143,14 +146,22 @@ describe('dictionary coverage', () => {
   it('defines every key the code names', () => {
     // `t` takes a plain string, so a missing key renders as itself and no type
     // error is raised. This is what makes deleting a key fail here instead.
-    expect([...referenced].filter((key) => !known.has(key)).sort()).toEqual([])
+    // Plural keys are named by their base; i18next appends the suffix at runtime.
+    const missing = [...referenced].filter(
+      (key) =>
+        !known.has(key) && ![...known].some((entry) => entry.replace(PLURAL_SUFFIX, '') === key)
+    )
+    expect(missing.sort()).toEqual([])
   })
 
   it('carries no key nothing refers to', () => {
     // A dictionary that only grows is one nobody prunes: a key left behind by a
     // removed feature reads as support for it.
     const unused = [...known].filter(
-      (key) => !referenced.has(key) && !DYNAMIC_PREFIXES.some((prefix) => key.startsWith(prefix))
+      (key) =>
+        !referenced.has(key) &&
+        !referenced.has(key.replace(PLURAL_SUFFIX, '')) &&
+        !DYNAMIC_PREFIXES.some((prefix) => key.startsWith(prefix))
     )
     expect(unused.sort()).toEqual([])
   })

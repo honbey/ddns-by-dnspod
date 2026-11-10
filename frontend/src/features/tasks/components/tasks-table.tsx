@@ -108,7 +108,7 @@ export function TasksTable({
         table={table}
         searchPlaceholder={t('table.filter')}
         filters={[
-          { columnId: 'record_type', title: 'Type', options: typeOptions },
+          { columnId: 'record_type', title: t('ui.type'), options: typeOptions },
           { columnId: 'enabled', title: t('tasks.stateColumn'), options: stateOptions },
         ]}
       />
@@ -182,7 +182,7 @@ export function TasksTable({
         </Table>
       </div>
       <DataTablePagination table={table} className='mt-auto' />
-      <DataTableBulkActions table={table} entityName='task'>
+      <DataTableBulkActions table={table} entityName={t('entity.task')}>
         <Button
           variant='outline'
           size='sm'

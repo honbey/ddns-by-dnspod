@@ -183,7 +183,7 @@ export function ChannelsTable({
         </Table>
       </div>
       <DataTablePagination table={table} className='mt-auto' />
-      <DataTableBulkActions table={table} entityName='channel'>
+      <DataTableBulkActions table={table} entityName={t('entity.channel')}>
         <Button
           variant='outline'
           size='sm'

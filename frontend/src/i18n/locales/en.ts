@@ -40,7 +40,30 @@ export const en: typeof zh = {
     skipToMain: 'Skip to Main',
     switchTheme: 'Switch to the {theme} theme',
     language: 'Language',
+    switchLanguage: 'Switch language',
     somethingWentWrong: 'Something went wrong. Please try again later.',
+  },
+  ui: {
+    key: 'Key',
+    type: 'Type',
+    lastRun: 'Last run',
+    neverRun: 'Never run',
+    failedInRow: '{count} failures in a row',
+    defaultLine: 'default line',
+    duration: 'for {duration}',
+    whyFailed: 'Why it failed: ',
+    whySkipped: 'Why it was skipped: ',
+    none: 'none',
+    more: 'More',
+    sidebar: 'Sidebar',
+    sidebarMobileHint: 'Displays the mobile sidebar.',
+    toggleSidebar: 'Toggle Sidebar',
+    commandPalette: 'Command Palette',
+    commandSearch: 'Search for a command to run...',
+    selectedCount: '{count} selected',
+    filterBy: 'Filter by {title}',
+    headerName: 'Header name {index}',
+    headerValue: 'Header value {index}',
   },
   nav: {
     general: 'General',
@@ -63,6 +86,8 @@ export const en: typeof zh = {
     noResults: 'No results found.',
   },
   auth: {
+    signOutNote:
+      "Signing out ends this browser session and revokes this application's access. Your {provider} session stays active; use Sign Out Everywhere in the user menu to end that too.",
     profile: 'Profile',
     appearance: 'Appearance',
     signOut: 'Sign Out',
@@ -74,6 +99,7 @@ export const en: typeof zh = {
       'This also ends your session at {provider}. Apps relying on that session will ask you to authenticate again.',
   },
   accounts: {
+    dialogHint: 'A DNSPod API key pair, encrypted at rest.',
     verified: 'DNSPod accepted those credentials.',
     refused: 'DNSPod refused those credentials.',
     subtitle: 'DNSPod credentials, encrypted at rest.',
@@ -131,6 +157,8 @@ export const en: typeof zh = {
     open: 'Open {name}',
   },
   tasks: {
+    dialogHint:
+      'A task compares one record against this host public address and updates it when they differ.',
     runNow: 'Run now',
     accountHint: 'The DNSPod credentials that may change the domain.',
     presets: 'Presets',
@@ -276,10 +304,7 @@ export const en: typeof zh = {
   settings: {
     groupsLabel: 'Groups',
     appearanceTitle: 'Appearance',
-    appearanceDesc:
-      'Customize the appearance of the app. Automatically switch between day and night themes.',
-    fontHint: 'Set the font you want to use in the dashboard.',
-    themeHint: 'Select the theme for the dashboard.',
+    appearanceDesc: 'Choose how the app looks to suit your preferences.',
     subjectLabel: 'Subject',
     providerLabel: 'Provider',
     subtitle: 'Manage your profile and how the app looks.',
@@ -348,6 +373,8 @@ export const en: typeof zh = {
     notifyHint: 'Announce the result; a failure is announced anyway.',
   },
   apiKeys: {
+    scopeEveryDomain: 'Every domain of that account can be read or changed.',
+    scopeOneDomain: 'Only this domain records can be read or changed.',
     revoke: 'Revoke',
     copyNow: 'Copy it now: only its prefix is stored, so closing this loses it.',
     dialogHint:
@@ -387,6 +414,7 @@ export const en: typeof zh = {
     createKey: 'Create Key',
   },
   notifications: {
+    defaultJsonHint: 'Empty sends the default JSON.',
     addressPlaceholder: 'https://hooks.example.com/ddns',
     sendTest: 'Send Test',
     subtitle: 'Where a change of address is announced.',
@@ -494,6 +522,8 @@ export const en: typeof zh = {
     resetDirection: 'Reset text direction to default',
   },
   table: {
+    selectedSummary_one: '{count} {entity} selected',
+    selectedSummary_other: '{count} {entity}s selected',
     rowsPerPage: 'Rows per page',
     totalRows: '{total} rows',
     totalRowsOne: '1 row',
@@ -518,6 +548,10 @@ export const en: typeof zh = {
     bulkActions: 'Bulk actions for {count} selected',
   },
   entity: {
+    task: 'task',
+    record: 'record',
+    key: 'key',
+    channel: 'channel',
     account: 'account',
   },
   dashboard: {

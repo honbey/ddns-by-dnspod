@@ -15,7 +15,6 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { clearMissingAccountNotice } from '@/lib/query-client'
 import { type Account } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -110,7 +109,6 @@ export function Accounts() {
       <Header>
         <Search className='me-auto' />
         <ThemeSwitch />
-        <ConfigDrawer />
         <ProfileDropdown />
       </Header>
 

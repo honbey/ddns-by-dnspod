@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { BadgeCheck, Check, DoorOpen, Languages, LogOut, Palette } from 'lucide-react'
+import { Check, DoorOpen, Globe, LogOut, Palette, Settings, UserCog } from 'lucide-react'
 import { useAuthStore } from '@/stores/auth-store'
 import { displayName, type LogoutScope } from '@/lib/auth'
 import { getDisplayNameInitials } from '@/lib/utils'
 import { currentLocale, LOCALE_LABELS, LOCALES, setLocale } from '@/i18n'
 import useDialogState from '@/hooks/use-dialog-state'
+import { ConfigDrawer } from '@/components/config-drawer'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -31,6 +33,7 @@ import { SignOutDialog } from '@/components/sign-out-dialog'
 export function ProfileDropdown() {
   const { t } = useTranslation()
   const [scope, setScope] = useDialogState<LogoutScope>()
+  const [configOpen, setConfigOpen] = useState(false)
   const user = useAuthStore((state) => state.auth.user)
   const providerLogout = useAuthStore((state) => state.auth.providerLogout)
   const name = displayName(user)
@@ -66,7 +69,7 @@ export function ProfileDropdown() {
           <DropdownMenuGroup>
             <DropdownMenuItem asChild>
               <Link to='/settings'>
-                <BadgeCheck />
+                <UserCog />
                 {t('auth.profile')}
               </Link>
             </DropdownMenuItem>
@@ -76,10 +79,13 @@ export function ProfileDropdown() {
                 {t('auth.appearance')}
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuSub>
+              {/* SubTrigger has no [&_svg] rules of its own, unlike Item, so
+                  the mark is sized and toned here to match the two links. */}
               <DropdownMenuSubTrigger>
-                <Languages />
-                {t('common.language')}
+                <Globe className='size-4 text-muted-foreground' />
+                {t('common.switchLanguage')}
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 {LOCALES.map((item) => (
@@ -94,6 +100,10 @@ export function ProfileDropdown() {
                 ))}
               </DropdownMenuSubContent>
             </DropdownMenuSub>
+            <DropdownMenuItem onClick={() => setConfigOpen(true)}>
+              <Settings />
+              {t('theme.title')}
+            </DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant='destructive' onClick={() => setScope('app')}>
@@ -109,6 +119,7 @@ export function ProfileDropdown() {
         </DropdownMenuContent>
       </DropdownMenu>
 
+      <ConfigDrawer open={configOpen} onOpenChange={setConfigOpen} />
       <SignOutDialog scope={scope} onClose={() => setScope(null)} />
     </>
   )

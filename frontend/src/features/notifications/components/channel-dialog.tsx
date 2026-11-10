@@ -241,7 +241,7 @@ export function ChannelDialog({
                   name='name'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Name</FormLabel>
+                      <FormLabel>{t('common.name')}</FormLabel>
                       <FormControl>
                         <Input placeholder={t('notifications.namePlaceholder')} {...field} />
                       </FormControl>
@@ -492,7 +492,7 @@ export function ChannelDialog({
                         </FormControl>
                         <FormDescription>
                           {t('notifications.bodyHint')} <code>{'{{.Domain}} is {{.Status}}'}</code>.
-                          Empty sends the default JSON.
+                          {t('notifications.defaultJsonHint')}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -523,7 +523,7 @@ export function ChannelDialog({
                           <FormControl>
                             <Input
                               placeholder={t('notifications.headerNamePlaceholder')}
-                              aria-label={`Header name ${index + 1}`}
+                              aria-label={t('ui.headerName', { index: index + 1 })}
                               {...field}
                             />
                           </FormControl>
@@ -539,7 +539,7 @@ export function ChannelDialog({
                           <FormControl>
                             <Input
                               placeholder={t('notifications.headerValuePlaceholder')}
-                              aria-label={`Header value ${index + 1}`}
+                              aria-label={t('ui.headerValue', { index: index + 1 })}
                               {...field}
                             />
                           </FormControl>

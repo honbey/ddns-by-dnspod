@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { RowSwitch } from '@/components/data-table/row-switch'
+import { i18n } from '@/i18n'
 
 export type APIKeyRowActions = {
   onEdit: (key: APIKey) => void
@@ -28,7 +29,7 @@ export type APIKeyRowActions = {
  * is stored as the character itself, which reads badly in a table.
  */
 function keyScope(key: APIKey): string {
-  return key.domain === API_KEY_ANY_DOMAIN ? 'every domain' : key.domain
+  return key.domain === API_KEY_ANY_DOMAIN ? i18n.t('apiKeys.everyDomain') : key.domain
 }
 
 /**

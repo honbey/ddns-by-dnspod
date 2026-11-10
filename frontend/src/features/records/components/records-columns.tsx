@@ -91,7 +91,7 @@ export function useRecordsColumns(actions: RecordRowActions): ColumnDef<DnsRecor
     {
       id: 'line',
       accessorFn: (record) => record.line,
-      header: () => <div className='text-sm font-medium'>Line</div>,
+      header: () => <div className='text-sm font-medium'>{t('records.lineLabel')}</div>,
       cell: ({ row }) => (
         <span className='text-muted-foreground truncate text-sm'>{row.original.line}</span>
       ),

@@ -44,7 +44,7 @@ export function APIKeyCreatedDialog({ open, onOpenChange, domain, secret }: APIK
 
         <div className='space-y-4'>
           <div className='space-y-2'>
-            <Label>Key</Label>
+            <Label>{t('ui.key')}</Label>
             <div className='rounded-md border bg-muted/40 px-3 py-2'>
               {/* Wrapping, not truncating: a key you cannot read whole is a key
                   you cannot copy with confidence. */}

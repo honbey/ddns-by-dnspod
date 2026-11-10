@@ -98,7 +98,7 @@ export function CertificatesTable({
         table={table}
         searchPlaceholder={t('table.filter')}
         filters={[
-          { columnId: 'last_status', title: 'Last run', options: resultOptions },
+          { columnId: 'last_status', title: t('ui.lastRun'), options: resultOptions },
           {
             columnId: 'auto_renew',
             title: t('certificates.renewLabel'),

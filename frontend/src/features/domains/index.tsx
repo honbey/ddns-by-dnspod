@@ -11,7 +11,6 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { cronPresets, RECORD_TYPES, describeCron } from '@/lib/cron'
 import { type Domain } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { ConfigDrawer } from '@/components/config-drawer'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ErrorState } from '@/components/error-state'
@@ -65,7 +64,6 @@ export function Domains() {
       <Header>
         <Search className='me-auto' />
         <ThemeSwitch />
-        <ConfigDrawer />
         <ProfileDropdown />
       </Header>
 

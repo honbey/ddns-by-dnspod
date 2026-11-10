@@ -5,7 +5,9 @@ import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import { discardSession, initAuth, refreshProviderLogoutAvailability } from '@/lib/auth'
 import { setApiBaseUrl } from '@/lib/http'
+import { createLatch } from '@/lib/latch'
 import { createQueryClient } from '@/lib/query-client'
+import { safeReturnPath } from '@/lib/redirect'
 import { onRemoteSignOut } from '@/lib/session-events'
 import { authRequired, loadConfig } from '@/lib/config'
 import { i18n, i18nReady } from '@/i18n'
@@ -36,9 +38,9 @@ declare module '@tanstack/react-router' {
 
 // While one expiry is in flight, the others stay quiet: "Run All" fires a
 // mutation per task, and without this each one would toast and navigate on its
-// own. The flag clears when the navigation settles so a later sign-in is not
-// greeted by an expiry that already happened.
-let reportingExpiry = false
+// own. The latch opens when the navigation settles - or never on the sign-in
+// page, where a successful login reloads this module and the latch with it.
+const expiryLatch = createLatch()
 
 /**
  * The one way out of a dead session, shared by queries and mutations alike.
@@ -47,25 +49,34 @@ let reportingExpiry = false
  * card gets: reset the session and offer to come back to where the user was.
  */
 function sessionExpired(): void {
-  if (reportingExpiry) return
+  if (!expiryLatch.tryAcquire()) return
   if (!authRequired()) {
     // Nothing was ever signed, so there is no session to expire and nowhere to
     // send the user. The failure was diverted here by the mutation handler,
     // which has already decided not to toast it, so it has to be reported here
     // - and a request that was turned away is not an expiry.
+    expiryLatch.release()
     toast.error(i18n.t('common.serverRejected'))
     return
   }
 
-  reportingExpiry = true
   toast.error(i18n.t('common.sessionExpired'))
   // The stored session goes as well, not just the one in memory: otherwise a
   // reload reads the same rejected token back out of sessionStorage, the guard
   // lets the page through on it, and every request fails again.
   void discardSession()
-  const redirect = `${router.history.location.href}`
+
+  // Already on the sign-in page: there is nowhere to navigate, and a successful
+  // login is a full-page redirect that reloads this module, so the latch is
+  // released with the page rather than here.
+  if (router.history.location.pathname === '/sign-in') return
+
+  const redirect = safeReturnPath(router.history.location.href)
   void router.navigate({ to: '/sign-in', search: { redirect } }).finally(() => {
-    reportingExpiry = false
+    // A navigation that failed left the user on the old page, where a later
+    // 401 still has to be reported. Once on /sign-in, only the login reload
+    // opens the latch.
+    if (router.history.location.pathname !== '/sign-in') expiryLatch.release()
   })
 }
 

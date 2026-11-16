@@ -754,6 +754,7 @@ export interface components {
             record_type: string;
             value: string;
             line?: string;
+            /** @description On create, 0 or omitted means 600. On update, 0 means leave the TTL alone. */
             ttl?: number;
             mx?: number;
             /** @description Shares the answer between records of the same host and type; 0 is even. */

@@ -1071,7 +1071,7 @@ components:
         record_type: { type: string }
         value: { type: string }
         line: { type: string }
-        ttl: { type: integer }
+        ttl: { type: integer, description: "On create, 0 or omitted means 600. On update, 0 means leave the TTL alone." }
         mx: { type: integer }
         weight: { type: integer, description: Shares the answer between records of the same host and type; 0 is even. }
         status: { type: string }

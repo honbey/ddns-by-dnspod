@@ -13,6 +13,12 @@ import (
 	"ddns-by-dnspod/internal/model"
 )
 
+// defaultRecordTTL is the TTL a create asks for when the caller sends none.
+// Without it DNSPod would fall back to the zone default, which is not the 600
+// the SPA has always sent. An update keeps 0, which the client layer reads as
+// "leave the TTL alone".
+const defaultRecordTTL uint64 = 600
+
 // recordInput is the payload for creating or updating a record
 type recordInput struct {
 	SubDomain  string `json:"sub_domain"`
@@ -297,6 +303,11 @@ func (s *Server) createRecord(c *gin.Context) {
 		badRequest(c, "mx is required for MX, HTTPS and SVCB records")
 		return
 	}
+	// A create without a TTL is the 600 the form has always sent, not the zone
+	// default the provider would otherwise apply.
+	if input.TTL == 0 {
+		input.TTL = defaultRecordTTL
+	}
 
 	accountID, valid := parseAccountID(c)
 	if !valid {
@@ -370,6 +381,9 @@ func (s *Server) batchCreateRecords(c *gin.Context) {
 
 	var succeeded, failed []gin.H
 	for _, item := range input.Items {
+		if item.TTL == 0 {
+			item.TTL = defaultRecordTTL
+		}
 		recordID, err := cli.CreateRecord(domain, dnspod.CreateRecordInput{
 			SubDomain:  item.SubDomain,
 			RecordType: item.RecordType,

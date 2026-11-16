@@ -1,14 +1,17 @@
 package api
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	tcCommon "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 
 	"ddns-by-dnspod/internal/api/middleware"
 	"ddns-by-dnspod/internal/model"
@@ -25,6 +28,53 @@ func batchCreatePayload(n int) map[string]any {
 		})
 	}
 	return map[string]any{"items": items}
+}
+
+// recordStub answers record writes the way DNSPod does and keeps the request
+// bodies, so a test can see exactly what would have been sent. The SDK always
+// speaks https, hence a TLS server and DefaultHttpClient for its certificate.
+type recordStub struct {
+	server *httptest.Server
+	mu     sync.Mutex
+	bodies []map[string]any
+}
+
+func newRecordStub(t *testing.T) *recordStub {
+	t.Helper()
+
+	stub := &recordStub{}
+	stub.server = httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Errorf("decode DNSPod request: %v", err)
+		}
+		stub.mu.Lock()
+		stub.bodies = append(stub.bodies, body)
+		stub.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"Response":{"RecordId":123,"RequestId":"test"}}`))
+	}))
+	t.Cleanup(stub.server.Close)
+
+	previous := tcCommon.DefaultHttpClient
+	tcCommon.DefaultHttpClient = &http.Client{
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+	}
+	t.Cleanup(func() { tcCommon.DefaultHttpClient = previous })
+
+	return stub
+}
+
+// endpoint is what cfg.DNSPod.Endpoint takes: a host and port, no scheme.
+func (s *recordStub) endpoint() string {
+	return strings.TrimPrefix(s.server.URL, "https://")
+}
+
+// requests returns the bodies received so far.
+func (s *recordStub) requests() []map[string]any {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return append([]map[string]any(nil), s.bodies...)
 }
 
 // The batch calls issue one DNSPod request per item, so an unbounded list would
@@ -480,4 +530,163 @@ func TestRecordStatusIsCheckedLocally(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "ENABLE") {
 		t.Fatalf("the refusal does not name the two values it accepts: %s", rec.Body.String())
 	}
+}
+
+// A create that names no TTL must not leave the choice to the zone default:
+// the API has always meant 600 by omission, which is what the form sends.
+func TestCreateRecordDefaultsTTLTo600(t *testing.T) {
+	cases := []struct {
+		name string
+		body map[string]any
+		want float64
+	}{
+		{"no ttl", map[string]any{"sub_domain": "home", "record_type": "A", "value": "1.2.3.4"}, 600},
+		{"ttl 0", map[string]any{"sub_domain": "home", "record_type": "A", "value": "1.2.3.4", "ttl": 0}, 600},
+		{"explicit ttl", map[string]any{"sub_domain": "home", "record_type": "A", "value": "1.2.3.4", "ttl": 300}, 300},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			stub := newRecordStub(t)
+			srv, cfg := newTestServer(t)
+			cfg.DNSPod.Endpoint = stub.endpoint()
+			cfg.DNSPod.Timeout = 2
+			newTestAccount(t, srv)
+
+			rec := do(t, srv, cfg, http.MethodPost, "/api/domains/example.com/records", tc.body)
+			if rec.Code != http.StatusCreated {
+				t.Fatalf("want 201, got %d (%s)", rec.Code, rec.Body.String())
+			}
+
+			reqs := stub.requests()
+			if len(reqs) != 1 {
+				t.Fatalf("want one DNSPod create, got %d", len(reqs))
+			}
+			got, ok := reqs[0]["TTL"].(float64)
+			if !ok {
+				t.Fatalf("the create carried no TTL: %v", reqs[0])
+			}
+			if got != tc.want {
+				t.Fatalf("TTL = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// The batch path builds its own create input per item, so it has to apply the
+// same default - an item that names no TTL cannot fall back to the zone.
+func TestBatchCreateDefaultsTTLTo600(t *testing.T) {
+	stub := newRecordStub(t)
+	srv, cfg := newTestServer(t)
+	cfg.DNSPod.Endpoint = stub.endpoint()
+	cfg.DNSPod.Timeout = 2
+	newTestAccount(t, srv)
+
+	rec := do(t, srv, cfg, http.MethodPost, "/api/domains/example.com/records/batch",
+		map[string]any{"items": []map[string]any{
+			{"sub_domain": "one", "record_type": "A", "value": "1.2.3.4"},
+			{"sub_domain": "two", "record_type": "A", "value": "1.2.3.5", "ttl": 300},
+		}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d (%s)", rec.Code, rec.Body.String())
+	}
+
+	reqs := stub.requests()
+	if len(reqs) != 2 {
+		t.Fatalf("want two DNSPod creates, got %d", len(reqs))
+	}
+	for i, want := range []float64{600, 300} {
+		got, ok := reqs[i]["TTL"].(float64)
+		if !ok {
+			t.Fatalf("item %d carried no TTL: %v", i, reqs[i])
+		}
+		if got != want {
+			t.Fatalf("item %d TTL = %v, want %v", i, got, want)
+		}
+	}
+}
+
+// Update is the one write path where 0 keeps its meaning: ModifyRecord leaves
+// the field out, which is what leaves the record's TTL alone.
+func TestUpdateRecordKeepsZeroTTL(t *testing.T) {
+	t.Run("no ttl leaves it alone", func(t *testing.T) {
+		stub := newRecordStub(t)
+		srv, cfg := newTestServer(t)
+		cfg.DNSPod.Endpoint = stub.endpoint()
+		cfg.DNSPod.Timeout = 2
+		newTestAccount(t, srv)
+
+		rec := do(t, srv, cfg, http.MethodPut, "/api/domains/example.com/records/1", map[string]any{
+			"sub_domain":  "home",
+			"record_type": "A",
+			"value":       "1.2.3.4",
+			"line":        "默认",
+		})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("want 200, got %d (%s)", rec.Code, rec.Body.String())
+		}
+
+		reqs := stub.requests()
+		if len(reqs) != 1 {
+			t.Fatalf("want one DNSPod modify, got %d", len(reqs))
+		}
+		if ttl, ok := reqs[0]["TTL"]; ok {
+			t.Fatalf("an update without a TTL sent TTL %v, want it left out", ttl)
+		}
+	})
+
+	t.Run("explicit zero leaves it alone", func(t *testing.T) {
+		stub := newRecordStub(t)
+		srv, cfg := newTestServer(t)
+		cfg.DNSPod.Endpoint = stub.endpoint()
+		cfg.DNSPod.Timeout = 2
+		newTestAccount(t, srv)
+
+		rec := do(t, srv, cfg, http.MethodPut, "/api/domains/example.com/records/1", map[string]any{
+			"sub_domain":  "home",
+			"record_type": "A",
+			"value":       "1.2.3.4",
+			"line":        "默认",
+			"ttl":         0,
+		})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("want 200, got %d (%s)", rec.Code, rec.Body.String())
+		}
+
+		reqs := stub.requests()
+		if len(reqs) != 1 {
+			t.Fatalf("want one DNSPod modify, got %d", len(reqs))
+		}
+		if ttl, ok := reqs[0]["TTL"]; ok {
+			t.Fatalf("an explicit zero TTL sent TTL %v, want it left out", ttl)
+		}
+	})
+
+	t.Run("explicit ttl is forwarded", func(t *testing.T) {
+		stub := newRecordStub(t)
+		srv, cfg := newTestServer(t)
+		cfg.DNSPod.Endpoint = stub.endpoint()
+		cfg.DNSPod.Timeout = 2
+		newTestAccount(t, srv)
+
+		rec := do(t, srv, cfg, http.MethodPut, "/api/domains/example.com/records/1", map[string]any{
+			"sub_domain":  "home",
+			"record_type": "A",
+			"value":       "1.2.3.4",
+			"line":        "默认",
+			"ttl":         300,
+		})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("want 200, got %d (%s)", rec.Code, rec.Body.String())
+		}
+
+		reqs := stub.requests()
+		if len(reqs) != 1 {
+			t.Fatalf("want one DNSPod modify, got %d", len(reqs))
+		}
+		got, ok := reqs[0]["TTL"].(float64)
+		if !ok || got != 300 {
+			t.Fatalf("TTL = %v, want 300", reqs[0]["TTL"])
+		}
+	})
 }

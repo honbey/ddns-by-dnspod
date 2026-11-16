@@ -3,12 +3,13 @@
  * A tiny OpenID Connect provider for local development, with no dependencies.
  *
  * It speaks exactly the flows this app uses - authorization code with PKCE for
- * the browser, a signed JWT access token for the resource server - and nothing
- * more: no registration, no refresh tokens, no consent screen. A login form
- * that accepts any username stands in for the real authentication step.
+ * the browser, a signed JWT access token for the resource server, refresh
+ * tokens that rotate on every use - and nothing more: no registration, no
+ * consent screen. A login form that accepts any username stands in for the
+ * real authentication step.
  *
- *   node e2e/mock-idp.mjs            # listens on 127.0.0.1:9443
- *   PORT=9444 node e2e/mock-idp.mjs  # or wherever
+ *   node scripts/mock-idp.mjs            # listens on 127.0.0.1:9443
+ *   PORT=9444 node scripts/mock-idp.mjs  # or wherever
  *
  * Point the frontend's config.local.json and the backend's OIDC_ISSUER at
  * http://127.0.0.1:9443 and both ends talk to this process.
@@ -25,7 +26,7 @@ import { createServer } from 'node:http'
 
 const PORT = Number(process.env.PORT || 9443)
 const ISSUER = process.env.ISSUER || `http://127.0.0.1:${PORT}`
-const CLIENT_ID = process.env.CLIENT_ID || 'local-client'
+const CLIENT_ID = process.env.CLIENT_ID || 'ddns-by-dnspod'
 const ACCESS_TOKEN_TTL = Number(process.env.TOKEN_TTL || 3600)
 const CODE_TTL = 120
 

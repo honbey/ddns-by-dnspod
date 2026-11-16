@@ -96,4 +96,4 @@ clean:
 	rm -rf bin backend/internal/frontend/dist $(FRONTEND_DIR)/test-results $(FRONTEND_DIR)/playwright-report
 
 dev-idp:
-	CLIENT_ID=ddns-by-dnspod node $(FRONTEND_DIR)/e2e/mock-idp.mjs
+	CLIENT_ID=ddns-by-dnspod node scripts/mock-idp.mjs

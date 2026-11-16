@@ -38,7 +38,7 @@ npm run build
 cd "$ROOT/backend"
 go build -o "$DATA/ddns-server" ./cmd/server
 
-PORT="$IDP_PORT" CLIENT_ID="$CLIENT_ID" node "$ROOT/frontend/e2e/mock-idp.mjs" &
+PORT="$IDP_PORT" CLIENT_ID="$CLIENT_ID" node "$ROOT/scripts/mock-idp.mjs" &
 idp_pid=$!
 
 # The verifier discovers the issuer once at startup and does not retry on a

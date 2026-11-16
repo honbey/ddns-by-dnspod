@@ -31,14 +31,19 @@ export const sidebarData: SidebarData = {
           icon: LayoutDashboard,
         },
         {
-          titleKey: 'nav.tasks',
-          url: '/tasks',
-          icon: ListChecks,
-        },
-        {
           titleKey: 'nav.domains',
           url: '/domains',
           icon: DomainIcon,
+        },
+        {
+          titleKey: 'nav.certificates',
+          url: '/certificates',
+          icon: CertificateIcon,
+        },
+        {
+          titleKey: 'nav.tasks',
+          url: '/tasks',
+          icon: ListChecks,
         },
         {
           titleKey: 'nav.history',
@@ -54,11 +59,6 @@ export const sidebarData: SidebarData = {
           titleKey: 'nav.accounts',
           url: '/accounts',
           icon: AccountIcon,
-        },
-        {
-          titleKey: 'nav.certificates',
-          url: '/certificates',
-          icon: CertificateIcon,
         },
         {
           titleKey: 'nav.apiKeys',

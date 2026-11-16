@@ -38,7 +38,10 @@ export function CommandMenu() {
         <ScrollArea type='hover' className='h-72 pe-1'>
           <CommandEmpty>{t('nav.noResults')}</CommandEmpty>
           {sidebarData.navGroups.map((group) => (
-            <CommandGroup key={group.titleKey} heading={t(group.titleKey)}>
+            <CommandGroup
+              key={group.titleKey ?? group.items[0]?.titleKey ?? 'group'}
+              heading={group.titleKey ? t(group.titleKey) : undefined}
+            >
               {group.items.map((navItem, i) => {
                 if (navItem.url)
                   return (

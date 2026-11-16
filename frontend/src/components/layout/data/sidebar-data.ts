@@ -24,7 +24,6 @@ import { type SidebarData } from '../types'
 export const sidebarData: SidebarData = {
   navGroups: [
     {
-      titleKey: 'nav.general',
       items: [
         {
           titleKey: 'nav.dashboard',

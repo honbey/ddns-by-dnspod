@@ -68,7 +68,6 @@ export const en: typeof zh = {
     headerValue: 'Header value {index}',
   },
   nav: {
-    general: 'General',
     configuration: 'Configuration',
     other: 'Other',
     dashboard: 'Dashboard',

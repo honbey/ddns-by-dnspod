@@ -64,7 +64,6 @@ export const zh = {
     headerValue: '请求头值 {index}',
   },
   nav: {
-    general: '通用',
     configuration: '配置',
     other: '其他',
     dashboard: '仪表盘',

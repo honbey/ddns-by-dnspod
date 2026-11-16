@@ -23,8 +23,8 @@ export function AppSidebar() {
         <AppBrand />
       </SidebarHeader>
       <SidebarContent>
-        {sidebarData.navGroups.map((props) => (
-          <NavGroup key={props.titleKey} {...props} />
+        {sidebarData.navGroups.map((group) => (
+          <NavGroup key={group.titleKey ?? group.items[0]?.titleKey ?? 'group'} {...group} />
         ))}
       </SidebarContent>
       <SidebarFooter>

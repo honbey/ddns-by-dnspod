@@ -26,7 +26,8 @@ type NavCollapsible = BaseNavItem & {
 type NavItem = NavCollapsible | NavLink
 
 type NavGroup = {
-  titleKey: MessageKey
+  /** A group without a title renders no label, e.g. the first group. */
+  titleKey?: MessageKey
   items: NavItem[]
 }
 

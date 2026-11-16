@@ -52,6 +52,13 @@ jobs:
           echo "openapi.yml=$spec package.json=$pkg"
           test "$spec" = "$pkg"
 
+      # Dev and demo scripts live outside the frontend lint scope.
+      - name: Scripts parse
+        run: |
+          for file in scripts/*.mjs; do
+            node --check "$file"
+          done
+
       - name: Build the SPA
         working-directory: frontend
         run: npm run build

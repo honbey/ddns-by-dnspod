@@ -5,8 +5,9 @@ import { signIn } from '@/lib/auth'
 import { returnPathOf } from '@/lib/redirect'
 import { useTranslation } from 'react-i18next'
 import { authRequired, getConfig, providerName } from '@/lib/config'
+import signInIllustration from '@/assets/sign-in-illustration.svg'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AuthLayout } from '../auth-layout'
 
 /**
@@ -35,9 +36,9 @@ export function SignIn() {
       <Card className='w-full max-w-sm gap-6'>
         <CardHeader className='items-center text-center'>
           <CardTitle className='text-2xl font-bold tracking-tight'>{t('signIn.welcome')}</CardTitle>
-          <CardDescription>{t('signIn.description', { provider })}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className='space-y-4'>
+          <img src={signInIllustration} alt='' aria-hidden='true' className='mx-auto h-48 w-auto' />
           {authRequired() ? (
             <Button variant='outline' className='w-full' disabled={pending} onClick={handleSignIn}>
               {pending && <Loader2 className='animate-spin' />}
@@ -51,11 +52,11 @@ export function SignIn() {
               </a>
             </Button>
           )}
+          <p className='text-muted-foreground text-center text-sm'>
+            {t('signIn.blurb', { app: appName })}
+          </p>
         </CardContent>
       </Card>
-      <p className='text-muted-foreground mt-6 max-w-sm px-4 text-center text-sm'>
-        {t('signIn.blurb', { app: appName })}
-      </p>
     </AuthLayout>
   )
 }

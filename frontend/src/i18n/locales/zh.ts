@@ -318,10 +318,9 @@ export const zh = {
   },
   signIn: {
     welcome: '欢迎回来',
-    description: '使用你的 {provider} 账号登录',
     loginWith: '使用 {provider} 登录',
     openDashboard: '进入仪表盘',
-    blurb: '{app} 会让你的 DNSPod 记录始终指向这台主机当前的地址。',
+    blurb: '{app} 用于实现动态 DNS 解析。',
   },
   certificates: {
     filesLabel: '文件',

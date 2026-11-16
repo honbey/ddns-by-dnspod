@@ -325,10 +325,9 @@ export const en: typeof zh = {
   },
   signIn: {
     welcome: 'Welcome back',
-    description: 'Login with your {provider} account',
     loginWith: 'Login with {provider}',
     openDashboard: 'Open the Dashboard',
-    blurb: '{app} keeps your DNSPod records pointed at whatever address this host is on.',
+    blurb: '{app} handles dynamic DNS resolution.',
   },
   certificates: {
     filesLabel: 'Files',

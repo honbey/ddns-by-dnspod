@@ -55,7 +55,6 @@ test.describe('history', () => {
     // Only the line number is asserted: the wording belongs to the locale and
     // a copy edit must not fail the suite.
     await expect(page.getByText(/Line 5/)).toBeVisible()
-    await expect(page.getByText('3 address changes')).toBeVisible()
     await expect(page.locator('tbody tr')).toHaveCount(3)
 
     // The first address of a family is a baseline: it is listed with a dash on

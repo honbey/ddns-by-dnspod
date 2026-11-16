@@ -7,11 +7,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2, Plus, Trash2 } from 'lucide-react'
 import { type ChannelInput } from '@/features/notifications/api'
 import { type NotifyChannel } from '@/lib/types'
+import { FieldHelp } from '@/components/field-help'
 import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -225,7 +225,7 @@ export function ChannelDialog({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className='w-full gap-0 p-0 sm:max-w-xl'>
-        <SheetHeader className='border-b pe-10'>
+        <SheetHeader className='pe-10'>
           <SheetTitle>
             {channel ? t('notifications.editTitle') : t('notifications.addTitle')}
           </SheetTitle>
@@ -245,7 +245,6 @@ export function ChannelDialog({
                       <FormControl>
                         <Input placeholder={t('notifications.namePlaceholder')} {...field} />
                       </FormControl>
-                      <FormDescription>{t('notifications.nameHint')}</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -317,7 +316,6 @@ export function ChannelDialog({
                           <FormControl>
                             <Input placeholder={t('notifications.tagsPlaceholder')} {...field} />
                           </FormControl>
-                          <FormDescription>{t('notifications.tagsHint')}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -346,7 +344,6 @@ export function ChannelDialog({
                               ))}
                             </SelectContent>
                           </Select>
-                          <FormDescription>{t('notifications.priorityHint')}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -366,7 +363,6 @@ export function ChannelDialog({
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription>{t('notifications.usernameHint')}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -376,7 +372,12 @@ export function ChannelDialog({
                       name='password'
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('notifications.passwordLabel')}</FormLabel>
+                          <div className='flex items-center gap-1.5'>
+                            <FormLabel>{t('notifications.passwordLabel')}</FormLabel>
+                            <FieldHelp field={t('notifications.passwordLabel')}>
+                              {t('notifications.passwordHint')}
+                            </FieldHelp>
+                          </div>
                           <FormControl>
                             <Input
                               type='password'
@@ -389,7 +390,6 @@ export function ChannelDialog({
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription>{t('notifications.passwordHint')}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -401,7 +401,12 @@ export function ChannelDialog({
                     name='title_template'
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('notifications.titleTemplateLabel')}</FormLabel>
+                        <div className='flex items-center gap-1.5'>
+                          <FormLabel>{t('notifications.titleTemplateLabel')}</FormLabel>
+                          <FieldHelp field={t('notifications.titleTemplateLabel')}>
+                            {t('notifications.titleTemplateHint')}
+                          </FieldHelp>
+                        </div>
                         <FormControl>
                           <Input
                             placeholder='{{.SubDomain}}.{{.Domain}} {{.Status}}'
@@ -409,7 +414,6 @@ export function ChannelDialog({
                             className='font-mono text-xs'
                           />
                         </FormControl>
-                        <FormDescription>{t('notifications.titleTemplateHint')}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -420,7 +424,12 @@ export function ChannelDialog({
                     name='body_template'
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('notifications.messageTemplateLabel')}</FormLabel>
+                        <div className='flex items-center gap-1.5'>
+                          <FormLabel>{t('notifications.messageTemplateLabel')}</FormLabel>
+                          <FieldHelp field={t('notifications.messageTemplateLabel')}>
+                            {t('notifications.messageTemplateHint')}
+                          </FieldHelp>
+                        </div>
                         <FormControl>
                           <Textarea
                             rows={4}
@@ -429,7 +438,6 @@ export function ChannelDialog({
                             className='font-mono text-xs'
                           />
                         </FormControl>
-                        <FormDescription>{t('notifications.messageTemplateHint')}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -486,14 +494,17 @@ export function ChannelDialog({
                     name='body'
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('notifications.bodyLabel')}</FormLabel>
+                        <div className='flex items-center gap-1.5'>
+                          <FormLabel>{t('notifications.bodyLabel')}</FormLabel>
+                          <FieldHelp field={t('notifications.bodyLabel')}>
+                            {t('notifications.bodyHint')}{' '}
+                            <code>{'{{.Domain}} is {{.Status}}'}</code>.{' '}
+                            {t('notifications.defaultJsonHint')}
+                          </FieldHelp>
+                        </div>
                         <FormControl>
                           <Textarea rows={6} {...field} className='font-mono text-xs' />
                         </FormControl>
-                        <FormDescription>
-                          {t('notifications.bodyHint')} <code>{'{{.Domain}} is {{.Status}}'}</code>.
-                          {t('notifications.defaultJsonHint')}
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -504,14 +515,7 @@ export function ChannelDialog({
               {/* Both channel types take extra headers, so the editor is shared.
                   The headers the notifier sets itself are not editable here. */}
               <div className='space-y-3'>
-                <div className='space-y-0.5'>
-                  <h4 className='text-sm font-medium'>{t('notifications.headersTitle')}</h4>
-                  <p className='text-muted-foreground text-sm'>
-                    {type === 'ntfy'
-                      ? t('notifications.headersHintNtfy')
-                      : t('notifications.headersHintWebhook')}
-                  </p>
-                </div>
+                <h4 className='text-sm font-medium'>{t('notifications.headersTitle')}</h4>
 
                 {fields.map((field, index) => (
                   <div key={field.id} className='flex items-start gap-2'>
@@ -586,10 +590,7 @@ export function ChannelDialog({
                 name='enabled'
                 render={({ field }) => (
                   <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
-                    <div className='space-y-0.5'>
-                      <FormLabel>{t('records.enabledLabel')}</FormLabel>
-                      <FormDescription>{t('notifications.enabledHint')}</FormDescription>
-                    </div>
+                    <FormLabel>{t('records.enabledLabel')}</FormLabel>
                     <FormControl>
                       <Switch checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>

@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
 import { listHistory, type HistoryQuery } from '@/features/history/api'
 import type { PagedHistoryEntry } from '@/lib/types'
 import type { FacetedOption } from '@/components/data-table'
@@ -11,8 +10,7 @@ import { HistoryTable } from './history-table'
  * Enough rows to scroll through, small enough to fetch as one page.
  *
  * The window is bounded on purpose - a flapping record writes a row every few
- * minutes - so the line above the table says which slice is on screen rather
- * than claiming to be all of it.
+ * minutes - so one page holds a recent slice rather than the whole history.
  */
 const PAGE_SIZE = 200
 
@@ -32,7 +30,6 @@ const NO_ENTRIES: PagedHistoryEntry['items'] = []
  * those - otherwise the table would be a flood of "IP unchanged".
  */
 export function TaskHistory() {
-  const { t } = useTranslation()
   const query = useMemo<HistoryQuery>(() => ({ page: 1, page_size: PAGE_SIZE }), [])
   const history = useQuery({
     queryKey: ['history', query],
@@ -40,7 +37,6 @@ export function TaskHistory() {
   })
 
   const entries = history.data?.items ?? NO_ENTRIES
-  const total = history.data?.total ?? 0
   const domainOptions = useMemo<FacetedOption[]>(
     () =>
       [...new Set(entries.map((entry) => entry.domain))]
@@ -49,23 +45,17 @@ export function TaskHistory() {
     [entries]
   )
 
-  const summary = history.isPending
-    ? t('history.loading')
-    : entries.length < total
-      ? t('history.newestOf', {
-          shown: entries.length,
-          total,
-          note: t('history.subtitle'),
-        })
-      : `${total === 1 ? t('history.countOne') : t('history.count', { total })} - ${t('history.subtitle')}`
-
   return (
     <div className='flex flex-1 flex-col gap-4'>
-      <p className='text-muted-foreground text-sm'>{summary}</p>
       {history.isError ? (
         <ErrorState onRetry={() => void history.refetch()} />
       ) : (
-        <HistoryTable data={entries} loading={history.isPending} domainOptions={domainOptions} />
+        <HistoryTable
+          data={entries}
+          total={history.data?.total ?? entries.length}
+          loading={history.isPending}
+          domainOptions={domainOptions}
+        />
       )}
     </div>
   )

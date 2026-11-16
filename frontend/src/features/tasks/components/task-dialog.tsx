@@ -14,6 +14,7 @@ import { cronPresets, describeCron, isValidCron, RECORD_TYPES, TTL_OPTIONS } fro
 import { MAX_BATCH_ITEMS } from '@/lib/limits'
 import { type DDNSTask } from '@/lib/types'
 import { fitsSubDomainBatch } from '../subdomains'
+import { FieldHelp } from '@/components/field-help'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -176,7 +177,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className='w-full gap-0 p-0 sm:max-w-xl'>
-        <SheetHeader className='border-b pe-10'>
+        <SheetHeader className='pe-10'>
           <SheetTitle>{task ? t('tasks.editTitle') : t('tasks.addTitle')}</SheetTitle>
           <SheetDescription>{t('tasks.dialogHint')}</SheetDescription>
         </SheetHeader>
@@ -215,7 +216,6 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                         ))}
                       </SelectContent>
                     </Select>
-                    <FormDescription>{t('tasks.accountHint')}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -252,11 +252,6 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                           <Input placeholder={t('tasks.domainPlaceholder')} {...field} />
                         </FormControl>
                       )}
-                      <FormDescription>
-                        {knownDomains.length === 0
-                          ? t('tasks.domainManualHint')
-                          : t('tasks.domainListHint')}
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -281,7 +276,6 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormDescription>{t('tasks.typeHint')}</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -294,13 +288,15 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                   name='sub_domain'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('tasks.subdomainLabel')}</FormLabel>
+                      <div className='flex items-center gap-1.5'>
+                        <FormLabel>{t('tasks.subdomainLabel')}</FormLabel>
+                        <FieldHelp field={t('tasks.subdomainLabel')}>
+                          {task ? t('tasks.subdomainHint') : t('tasks.subdomainMultiHint')}
+                        </FieldHelp>
+                      </div>
                       <FormControl>
                         <Input placeholder={t('tasks.subdomainPlaceholder')} {...field} />
                       </FormControl>
-                      <FormDescription>
-                        {task ? t('tasks.subdomainHint') : t('tasks.subdomainMultiHint')}
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -310,15 +306,17 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                   name='record_line'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('tasks.lineLabel')}</FormLabel>
+                      <div className='flex items-center gap-1.5'>
+                        <FormLabel>{t('tasks.lineLabel')}</FormLabel>
+                        {lineNames.length ? (
+                          <FieldHelp field={t('tasks.lineLabel')}>
+                            {t('tasks.lineHintOptions', { lines: lineNames.join(', ') })}
+                          </FieldHelp>
+                        ) : null}
+                      </div>
                       <FormControl>
                         <Input placeholder={t('tasks.linePlaceholder')} {...field} />
                       </FormControl>
-                      <FormDescription>
-                        {lineNames.length
-                          ? `one of ${lineNames.slice(0, 3).join(', ')}`
-                          : t('tasks.lineHint')}
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -389,7 +387,6 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormDescription>{t('tasks.ttlHint')}</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -400,10 +397,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                     name='enabled'
                     render={({ field }) => (
                       <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
-                        <div className='space-y-0.5'>
-                          <FormLabel>{t('tasks.enabledLabel')}</FormLabel>
-                          <FormDescription>{t('tasks.enabledHint')}</FormDescription>
-                        </div>
+                        <FormLabel>{t('tasks.enabledLabel')}</FormLabel>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
@@ -415,10 +409,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                     name='notify_on_change'
                     render={({ field }) => (
                       <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
-                        <div className='space-y-0.5'>
-                          <FormLabel>{t('tasks.notifyLabel')}</FormLabel>
-                          <FormDescription>{t('tasks.notifyHint')}</FormDescription>
-                        </div>
+                        <FormLabel>{t('tasks.notifyLabel')}</FormLabel>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>

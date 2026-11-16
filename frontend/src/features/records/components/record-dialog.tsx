@@ -10,11 +10,11 @@ import { currentIP } from '@/features/system/api'
 import { RECORD_TYPES, TTL_OPTIONS } from '@/lib/cron'
 import { MAX_BATCH_ITEMS } from '@/lib/limits'
 import { type DnsRecord } from '@/lib/types'
+import { FieldHelp } from '@/components/field-help'
 import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -198,7 +198,7 @@ export function RecordDialog({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className='w-full gap-0 p-0 sm:max-w-lg'>
-        <SheetHeader className='border-b pe-10'>
+        <SheetHeader className='pe-10'>
           <SheetTitle>{record ? t('records.editTitle') : t('records.addTitle')}</SheetTitle>
           <SheetDescription>{t('records.dialogHint')}</SheetDescription>
         </SheetHeader>
@@ -212,11 +212,15 @@ export function RecordDialog({
                   name='sub_domain'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('records.hostLabel')}</FormLabel>
+                      <div className='flex items-center gap-1.5'>
+                        <FormLabel>{t('records.hostLabel')}</FormLabel>
+                        <FieldHelp field={t('records.hostLabel')}>
+                          {t('records.hostHint')}
+                        </FieldHelp>
+                      </div>
                       <FormControl>
-                        <Input placeholder={t('records.hostPlaceholder')} {...field} />
+                        <Input autoFocus placeholder={t('records.hostPlaceholder')} {...field} />
                       </FormControl>
-                      <FormDescription>{t('records.hostHint')}</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -264,11 +268,6 @@ export function RecordDialog({
                           />
                         </FormControl>
                       )}
-                      <FormDescription>
-                        {typeWritable
-                          ? t('records.typeHint')
-                          : `${type} records are saved with their own type; the rest of the record is still yours to change.`}
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -284,21 +283,17 @@ export function RecordDialog({
                     <FormControl>
                       <Input {...field} className='font-mono' />
                     </FormControl>
-                    <FormDescription>
-                      {addressType && detected.data?.available ? (
+                    {addressType && detected.data?.available ? (
+                      <div>
                         <button
                           type='button'
-                          className='underline underline-offset-4'
+                          className='text-muted-foreground text-sm underline underline-offset-4'
                           onClick={() => field.onChange(detected.data?.ip)}
                         >
                           Use this host&apos;s address ({detected.data.ip})
                         </button>
-                      ) : addressType ? (
-                        t('records.valueHintAddress')
-                      ) : (
-                        t('records.valueHintText')
-                      )}
-                    </FormDescription>
+                      </div>
+                    ) : null}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -311,7 +306,12 @@ export function RecordDialog({
                   name='mx'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('records.priorityLabel')}</FormLabel>
+                      <div className='flex items-center gap-1.5'>
+                        <FormLabel>{t('records.priorityLabel')}</FormLabel>
+                        <FieldHelp field={t('records.priorityLabel')}>
+                          {t('records.priorityHint', { type })}
+                        </FieldHelp>
+                      </div>
                       <FormControl>
                         <Input
                           type='number'
@@ -320,7 +320,6 @@ export function RecordDialog({
                           onChange={(event) => field.onChange(Number(event.target.value) || 0)}
                         />
                       </FormControl>
-                      <FormDescription>{t('records.priorityHint', { type })}</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -333,17 +332,19 @@ export function RecordDialog({
                   name='line'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('records.lineLabel')}</FormLabel>
+                      <div className='flex items-center gap-1.5'>
+                        <FormLabel>{t('records.lineLabel')}</FormLabel>
+                        {lines.data?.length ? (
+                          <FieldHelp field={t('records.lineLabel')}>
+                            {t('records.lineHintOptions', {
+                              lines: lines.data.map((line) => line.name).join(', '),
+                            })}
+                          </FieldHelp>
+                        ) : null}
+                      </div>
                       <FormControl>
                         <Input placeholder={t('tasks.linePlaceholder')} {...field} />
                       </FormControl>
-                      <FormDescription>
-                        {lines.data?.length
-                          ? `one of ${(lines.data ?? []).map((line) => line.name).join(', ')}`
-                          : record
-                            ? t('records.lineHintEdit')
-                            : t('records.lineHintCreate')}
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -372,7 +373,6 @@ export function RecordDialog({
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormDescription>{t('records.ttlHint')}</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -382,7 +382,12 @@ export function RecordDialog({
                   name='weight'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('records.weightLabel')}</FormLabel>
+                      <div className='flex items-center gap-1.5'>
+                        <FormLabel>{t('records.weightLabel')}</FormLabel>
+                        <FieldHelp field={t('records.weightLabel')}>
+                          {t('records.weightHint')}
+                        </FieldHelp>
+                      </div>
                       <FormControl>
                         <Input
                           type='number'
@@ -391,7 +396,6 @@ export function RecordDialog({
                           onChange={(event) => field.onChange(Number(event.target.value) || 0)}
                         />
                       </FormControl>
-                      <FormDescription>{t('records.weightHint')}</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -407,7 +411,6 @@ export function RecordDialog({
                     <FormControl>
                       <Input placeholder={t('notifications.optionalPlaceholder')} {...field} />
                     </FormControl>
-                    <FormDescription>{t('records.remarkHint')}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -420,7 +423,6 @@ export function RecordDialog({
                   <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
                     <div className='space-y-0.5'>
                       <FormLabel>{t('records.enabledLabel')}</FormLabel>
-                      <FormDescription>{t('records.enabledHint')}</FormDescription>
                     </div>
                     <FormControl>
                       <Switch
@@ -503,7 +505,7 @@ export function BatchDialog({ open, onOpenChange, saving, onSubmit }: BatchDialo
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className='w-full gap-0 p-0 sm:max-w-lg'>
-        <SheetHeader className='border-b pe-10'>
+        <SheetHeader className='pe-10'>
           <SheetTitle>{t('records.batchTitle')}</SheetTitle>
           <SheetDescription>
             One host per line, each pointed at {detected.data?.ip || 'this host'}.

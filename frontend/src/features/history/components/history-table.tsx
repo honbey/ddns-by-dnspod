@@ -37,11 +37,13 @@ const STATUS_OPTIONS: FacetedOption[] = [
 
 type HistoryTableProps = {
   data: HistoryEntry[]
+  /** Every matching entry on the server, of which `data` is the newest slice. */
+  total: number
   loading: boolean
   domainOptions: FacetedOption[]
 }
 
-export function HistoryTable({ data, loading, domainOptions }: HistoryTableProps) {
+export function HistoryTable({ data, total, loading, domainOptions }: HistoryTableProps) {
   const [sorting, setSorting] = useState<SortingState>([{ id: 'created_at', desc: true }])
   // 'domain' stays available to the filter without taking a column of its own
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({
@@ -165,6 +167,13 @@ export function HistoryTable({ data, loading, domainOptions }: HistoryTableProps
           </TableBody>
         </Table>
       </div>
+      {/* The footer counts what this table loaded, not what the server holds:
+          say so when the window is full and older entries were left behind. */}
+      {total > data.length ? (
+        <p className='text-muted-foreground text-xs'>
+          {t('history.windowNotice', { shown: data.length, total })}
+        </p>
+      ) : null}
       <DataTablePagination table={table} className='mt-auto' />
     </div>
   )

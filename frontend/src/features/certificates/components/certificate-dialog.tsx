@@ -9,11 +9,11 @@ import { Loader2 } from 'lucide-react'
 import { listAccounts } from '@/features/accounts/api'
 import { type CertificateInput } from '@/features/certificates/api'
 import { type Certificate } from '@/lib/types'
+import { FieldHelp } from '@/components/field-help'
 import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -119,9 +119,6 @@ export function CertificateDialog({
     if (open) form.reset(valuesFor(certificate))
   }, [open, certificate, form])
 
-  const rawNames = form.watch('domains')
-  const names = parseNames(rawNames)
-
   const accounts = useQuery({
     queryKey: ['accounts'],
     queryFn: () => listAccounts(),
@@ -143,7 +140,7 @@ export function CertificateDialog({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className='w-full gap-0 p-0 sm:max-w-xl'>
-        <SheetHeader className='border-b pe-10'>
+        <SheetHeader className='pe-10'>
           <SheetTitle>
             {certificate ? t('certificates.editTitle') : t('certificates.addTitle')}
           </SheetTitle>
@@ -163,7 +160,6 @@ export function CertificateDialog({
                       <FormControl>
                         <Input placeholder={t('certificates.namePlaceholder')} {...field} />
                       </FormControl>
-                      <FormDescription>{t('certificates.directoryHint')}</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -193,7 +189,6 @@ export function CertificateDialog({
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormDescription>{t('certificates.accountHint')}</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -205,7 +200,12 @@ export function CertificateDialog({
                 name='domains'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('certificates.domainsLabel')}</FormLabel>
+                    <div className='flex items-center gap-1.5'>
+                      <FormLabel>{t('certificates.domainsLabel')}</FormLabel>
+                      <FieldHelp field={t('certificates.domainsLabel')}>
+                        {t('certificates.domainsTooltip')}
+                      </FieldHelp>
+                    </div>
                     <FormControl>
                       <Textarea
                         rows={4}
@@ -214,13 +214,6 @@ export function CertificateDialog({
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription>
-                      {t('certificates.domainsHint')}{' '}
-                      {names.length > 0
-                        ? t('certificates.domainsCount', { count: names.length })
-                        : t('certificates.domainsSubject')}{' '}
-                      {t('certificates.domainsWildcard')} <code>*.example.com</code>.
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -247,9 +240,6 @@ export function CertificateDialog({
                           ))}
                         </SelectContent>
                       </Select>
-                      <FormDescription>
-                        {KEY_TYPES.find((option) => option.id === field.value)?.hint ?? ''}
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -259,11 +249,15 @@ export function CertificateDialog({
                   name='output_dir'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('certificates.directoryLabel')}</FormLabel>
+                      <div className='flex items-center gap-1.5'>
+                        <FormLabel>{t('certificates.directoryLabel')}</FormLabel>
+                        <FieldHelp field={t('certificates.directoryLabel')}>
+                          {t('certificates.outputDirHint')}
+                        </FieldHelp>
+                      </div>
                       <FormControl>
                         <Input placeholder={t('certificates.namePlaceholder')} {...field} />
                       </FormControl>
-                      <FormDescription>{t('certificates.outputDirHint')}</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -276,13 +270,13 @@ export function CertificateDialog({
                   name='auto_renew'
                   render={({ field }) => (
                     <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
-                      <div className='space-y-0.5'>
+                      <div className='flex items-center gap-1.5'>
                         <FormLabel>{t('certificates.renewLabel')}</FormLabel>
-                        <FormDescription>
+                        <FieldHelp field={t('certificates.renewLabel')}>
                           {canIssue
                             ? t('certificates.renewHintOn')
                             : t('certificates.renewHintOff')}
-                        </FormDescription>
+                        </FieldHelp>
                       </div>
                       <FormControl>
                         {/* Kept as it stands rather than switched off: it is
@@ -301,9 +295,11 @@ export function CertificateDialog({
                   name='notify_on_issue'
                   render={({ field }) => (
                     <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
-                      <div className='space-y-0.5'>
+                      <div className='flex items-center gap-1.5'>
                         <FormLabel>{t('certificates.notifyLabel')}</FormLabel>
-                        <FormDescription>{t('certificates.notifyHint')}</FormDescription>
+                        <FieldHelp field={t('certificates.notifyLabel')}>
+                          {t('certificates.notifyHint')}
+                        </FieldHelp>
                       </div>
                       <FormControl>
                         <Switch checked={field.value} onCheckedChange={field.onChange} />

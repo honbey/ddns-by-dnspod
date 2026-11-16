@@ -7,6 +7,7 @@ import { type TFunction } from 'i18next'
 import { Loader2 } from 'lucide-react'
 import { type AccountInput } from '@/features/accounts/api'
 import { type Account } from '@/lib/types'
+import { FieldHelp } from '@/components/field-help'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -19,7 +20,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -123,7 +123,6 @@ export function AccountDialog({
                   <FormControl>
                     <Input placeholder={t('accounts.namePlaceholder')} {...field} />
                   </FormControl>
-                  <FormDescription>{t('accounts.nameHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -134,11 +133,15 @@ export function AccountDialog({
               name='secret_id'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('accounts.secretIdLabel')}</FormLabel>
+                  <div className='flex items-center gap-1.5'>
+                    <FormLabel>{t('accounts.secretIdLabel')}</FormLabel>
+                    <FieldHelp field={t('accounts.secretIdLabel')}>
+                      {t('accounts.secretIdHint')}
+                    </FieldHelp>
+                  </div>
                   <FormControl>
                     <Input {...field} className='font-mono' />
                   </FormControl>
-                  <FormDescription>{t('accounts.secretIdHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -149,13 +152,15 @@ export function AccountDialog({
               name='secret_key'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('accounts.secretKeyLabel')}</FormLabel>
+                  <div className='flex items-center gap-1.5'>
+                    <FormLabel>{t('accounts.secretKeyLabel')}</FormLabel>
+                    <FieldHelp field={t('accounts.secretKeyLabel')}>
+                      {account ? t('accounts.secretKeyKeep') : t('accounts.secretKeyEncrypted')}
+                    </FieldHelp>
+                  </div>
                   <FormControl>
                     <Input type='password' {...field} autoComplete='new-password' />
                   </FormControl>
-                  <FormDescription>
-                    {account ? t('accounts.secretKeyKeep') : t('accounts.secretKeyEncrypted')}
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -166,10 +171,7 @@ export function AccountDialog({
               name='is_default'
               render={({ field }) => (
                 <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
-                  <div className='space-y-0.5'>
-                    <FormLabel>{t('common.isDefault')}</FormLabel>
-                    <FormDescription>{t('accounts.defaultHint')}</FormDescription>
-                  </div>
+                  <FormLabel>{t('common.isDefault')}</FormLabel>
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>

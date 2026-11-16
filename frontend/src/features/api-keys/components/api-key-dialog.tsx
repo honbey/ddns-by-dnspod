@@ -10,6 +10,7 @@ import { listAccounts } from '@/features/accounts/api'
 import { API_KEY_ANY_DOMAIN, type APIKeyInput } from '@/features/api-keys/api'
 import { listDomains } from '@/features/domains/api'
 import { type APIKey } from '@/lib/types'
+import { FieldHelp } from '@/components/field-help'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -22,7 +23,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -137,7 +137,6 @@ export function APIKeyDialog({ open, onOpenChange, apiKey, saving, onSubmit }: A
                   <FormControl>
                     <Input placeholder={t('apiKeys.namePlaceholder')} {...field} />
                   </FormControl>
-                  <FormDescription>{t('apiKeys.nameHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -148,7 +147,14 @@ export function APIKeyDialog({ open, onOpenChange, apiKey, saving, onSubmit }: A
               name='domain'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('apiKeys.domainLabel')}</FormLabel>
+                  <div className='flex items-center gap-1.5'>
+                    <FormLabel>{t('apiKeys.domainLabel')}</FormLabel>
+                    <FieldHelp field={t('apiKeys.domainLabel')}>
+                      {field.value === API_KEY_ANY_DOMAIN
+                        ? t('apiKeys.scopeEveryDomain')
+                        : t('apiKeys.scopeOneDomain')}
+                    </FieldHelp>
+                  </div>
                   <Select name={field.name} value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger className='w-full'>
@@ -164,11 +170,6 @@ export function APIKeyDialog({ open, onOpenChange, apiKey, saving, onSubmit }: A
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    {field.value === API_KEY_ANY_DOMAIN
-                      ? t('apiKeys.scopeEveryDomain')
-                      : t('apiKeys.scopeOneDomain')}
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -206,7 +207,6 @@ export function APIKeyDialog({ open, onOpenChange, apiKey, saving, onSubmit }: A
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormDescription>{t('apiKeys.accountHint')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -217,10 +217,7 @@ export function APIKeyDialog({ open, onOpenChange, apiKey, saving, onSubmit }: A
               name='enabled'
               render={({ field }) => (
                 <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
-                  <div className='space-y-0.5'>
-                    <FormLabel>{t('apiKeys.enabledLabel')}</FormLabel>
-                    <FormDescription>{t('apiKeys.enabledHint')}</FormDescription>
-                  </div>
+                  <FormLabel>{t('apiKeys.enabledLabel')}</FormLabel>
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>

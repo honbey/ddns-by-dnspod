@@ -56,12 +56,6 @@ export function IPHistory() {
   const items = history.data?.items ?? NO_CHANGES
   const total = history.data?.total ?? 0
 
-  const summary = history.isPending
-    ? t('history.loading')
-    : total === 1
-      ? t('history.ipCountOne')
-      : t('history.ipCount', { total })
-
   return (
     <div className='flex flex-1 flex-col gap-4'>
       <Card className='flex flex-col'>
@@ -87,7 +81,6 @@ export function IPHistory() {
       ) : (
         <>
           <div className='flex items-center justify-between gap-2'>
-            <p className='text-muted-foreground text-sm'>{summary}</p>
             {/* A failed refresh keeps the rows on screen; the retry sits
                 beside them instead of replacing them. */}
             {history.isError ? (

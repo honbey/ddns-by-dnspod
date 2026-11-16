@@ -5,6 +5,7 @@ import { type Certificate } from '@/lib/types'
 import { formatTime, statusVariant } from '@/lib/format'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Paste } from '@/components/paste'
 import {
   DropdownMenu,
@@ -39,6 +40,31 @@ export function useCertificatesColumns(
 ): ColumnDef<Certificate>[] {
   const { t } = useTranslation()
   return [
+    {
+      id: 'select',
+      header: ({ table }) => (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label={t('common.selectAll')}
+          className='translate-y-[2px]'
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label={t('common.selectRow')}
+          className='translate-y-[2px]'
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+      meta: { className: 'w-8' },
+    },
     {
       id: 'name',
       accessorFn: (cert) => cert.name,

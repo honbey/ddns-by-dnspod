@@ -11,8 +11,10 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { Play, Trash2 } from 'lucide-react'
 import { type Certificate } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -22,7 +24,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { DataTablePagination, DataTableToolbar, type FacetedOption } from '@/components/data-table'
+import {
+  DataTableBulkActions,
+  DataTablePagination,
+  DataTableToolbar,
+  type FacetedOption,
+} from '@/components/data-table'
 import { useTranslation } from 'react-i18next'
 import { useCertificatesColumns, type CertificateRowActions } from './certificates-columns'
 
@@ -33,6 +40,10 @@ type CertificatesTableProps = {
   accountNames: Map<number, string>
   /** False while this deployment has issuance switched off. */
   canIssue: boolean
+  /** True while a bulk issuance request is in flight. */
+  issuing: boolean
+  onBulkIssue: (certs: Certificate[]) => void
+  onBulkDelete: (certs: Certificate[]) => void
 }
 
 /** The certificates this deployment issues and keeps renewed. */
@@ -42,7 +53,11 @@ export function CertificatesTable({
   actions,
   accountNames,
   canIssue,
+  issuing,
+  onBulkIssue,
+  onBulkDelete,
 }: CertificatesTableProps) {
+  const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }])
   // The key type is worth seeing when it matters and worth hiding otherwise:
   // it is the one column that never answers a question about a running system.
@@ -72,7 +87,9 @@ export function CertificatesTable({
     // which happens every two seconds while something is being issued - does
     // not re-key every row.
     getRowId: (row) => String(row.id),
-    state: { sorting, columnVisibility, globalFilter },
+    state: { sorting, columnVisibility, globalFilter, rowSelection },
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: setGlobalFilter,
@@ -92,8 +109,13 @@ export function CertificatesTable({
     getSortedRowModel: getSortedRowModel(),
   })
 
+  const selectedRows = table.getFilteredSelectedRowModel().rows
+  // A running certificate can be selected for deletion, but issuing it again
+  // would only answer with a conflict; the button follows what it can start.
+  const issuableSelected = selectedRows.filter((row) => row.original.last_status !== 'RUNNING')
+
   return (
-    <div className='flex flex-1 flex-col gap-4'>
+    <div className={cn('max-sm:has-[div[role="toolbar"]]:mb-16', 'flex flex-1 flex-col gap-4')}>
       <DataTableToolbar
         table={table}
         searchPlaceholder={t('table.filter')}
@@ -176,6 +198,25 @@ export function CertificatesTable({
         </Table>
       </div>
       <DataTablePagination table={table} className='mt-auto' />
+      <DataTableBulkActions table={table} entityName={t('entity.certificate')}>
+        <Button
+          variant='outline'
+          size='sm'
+          disabled={!canIssue || issuing || issuableSelected.length === 0}
+          onClick={() => onBulkIssue(selectedRows.map((row) => row.original))}
+        >
+          <Play />
+          {t('certificates.issueSelected')}
+        </Button>
+        <Button
+          variant='destructive'
+          size='sm'
+          onClick={() => onBulkDelete(selectedRows.map((row) => row.original))}
+        >
+          <Trash2 />
+          {t('common.delete')}
+        </Button>
+      </DataTableBulkActions>
     </div>
   )
 }

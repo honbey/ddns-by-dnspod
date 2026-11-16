@@ -316,6 +316,7 @@ export const zh = {
     issuerOffDescription:
       '此部署关闭了证书管理（acme.enabled=false）：已写入的文件保持不动，在重新开启之前不会签发或续期任何证书。',
     removeOne: '移除 {name}？',
+    removeMany: '移除 {count} 个证书？',
     removeDescription: '只移除记录，磁盘上的文件留在原处，正在读取它们的应用不受影响。',
     nameColumn: '名称',
     accountColumn: '账号',
@@ -324,6 +325,9 @@ export const zh = {
     directoryAria: '证书目录',
     renewNow: '立即续期',
     issueNow: '立即签发',
+    issueSelected: '签发 / 续期',
+    issueStarted_one: '已开始签发 {count} 个证书。',
+    issueStarted_other: '已开始签发 {count} 个证书。',
     running: '进行中',
     automatic: '自动',
     manual: '手动',
@@ -509,6 +513,7 @@ export const zh = {
   },
   entity: {
     task: '任务',
+    certificate: '证书',
     record: '记录',
     key: '密钥',
     channel: '渠道',

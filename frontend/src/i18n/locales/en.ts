@@ -322,6 +322,7 @@ export const en: typeof zh = {
     issuerOffDescription:
       'This deployment runs with the certificate manager disabled (acme.enabled=false): the files already written are left alone, and nothing is issued or renewed until it is switched back on.',
     removeOne: 'Remove {name}?',
+    removeMany: 'Remove {count} certificates?',
     removeDescription:
       'The record goes; the files on disk stay where they are, so whatever reads them keeps working.',
     nameColumn: 'Name',
@@ -331,6 +332,9 @@ export const en: typeof zh = {
     directoryAria: 'certificate directory',
     renewNow: 'Renew now',
     issueNow: 'Issue now',
+    issueSelected: 'Issue / renew',
+    issueStarted_one: 'Started issuing {count} certificate.',
+    issueStarted_other: 'Started issuing {count} certificates.',
     running: 'Running',
     automatic: 'Automatic',
     manual: 'Manual',
@@ -519,6 +523,7 @@ export const en: typeof zh = {
   },
   entity: {
     task: 'task',
+    certificate: 'certificate',
     record: 'record',
     key: 'key',
     channel: 'channel',

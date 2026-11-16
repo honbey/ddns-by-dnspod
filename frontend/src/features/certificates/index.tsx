@@ -13,6 +13,7 @@ import {
   updateCertificate,
 } from '@/features/certificates/api'
 import { handleServerError } from '@/lib/handle-server-error'
+import { mapBounded } from '@/lib/lists'
 import { acmeEnabled } from '@/lib/config'
 import { type Certificate } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -28,6 +29,14 @@ import { ThemeSwitch } from '@/components/theme-switch'
 import { CertificateDialog } from './components/certificate-dialog'
 import { type CertificateRowActions } from './components/certificates-columns'
 import { CertificatesTable } from './components/certificates-table'
+
+/**
+ * How many issuance requests a bulk action fires at once.
+ *
+ * The runs themselves happen in the background on the server; this only keeps
+ * the console from sending every request in the same instant.
+ */
+const ISSUE_CONCURRENCY = 4
 
 /**
  * The certificates this deployment issues and keeps renewed.
@@ -57,7 +66,7 @@ export function Certificates() {
 
   const [editing, setEditing] = useState<Certificate | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [removing, setRemoving] = useState<Certificate | null>(null)
+  const [removing, setRemoving] = useState<Certificate[] | null>(null)
 
   const accountNames = useMemo(
     () => new Map((accounts.data ?? []).map((account) => [account.id, account.name])),
@@ -89,8 +98,35 @@ export function Certificates() {
     onError: (error) => handleServerError(error, t('certificates.issueFailed')),
   })
 
+  const { mutateAsync: issueMany, isPending: issuing } = useMutation({
+    mutationFn: async (ids: number[]) => {
+      let started = 0
+      let failed = 0
+      let firstError: unknown
+      await mapBounded(ids, ISSUE_CONCURRENCY, async (id) => {
+        try {
+          await issueCertificate(id)
+          started += 1
+        } catch (error) {
+          failed += 1
+          firstError ??= error
+        }
+      })
+      return { started, failed, firstError }
+    },
+    onSuccess: async ({ started, failed, firstError }) => {
+      await invalidate()
+      // One summary rather than one toast per certificate; the server's own
+      // wording still gets through for the first failure.
+      if (started > 0) toast.success(t('certificates.issueStarted', { count: started }))
+      if (failed > 0) handleServerError(firstError, t('certificates.issueFailed'))
+    },
+  })
+
   const { mutateAsync: remove, isPending: removingPending } = useMutation({
-    mutationFn: (cert: Certificate) => deleteCertificate(cert.id),
+    mutationFn: async (certs: Certificate[]) => {
+      for (const cert of certs) await deleteCertificate(cert.id)
+    },
     onSuccess: () => toast.success(t('certificates.removed')),
     onSettled: async () => {
       // Runs on failure too, so a failure after part of the work has gone
@@ -107,7 +143,7 @@ export function Certificates() {
         setEditing(cert)
         setDialogOpen(true)
       },
-      onDelete: (cert) => setRemoving(cert),
+      onDelete: (cert) => setRemoving([cert]),
     }),
     [issue]
   )
@@ -155,6 +191,16 @@ export function Certificates() {
             actions={actions}
             accountNames={accountNames}
             canIssue={canIssue}
+            issuing={issuing}
+            onBulkIssue={(selected) => {
+              const ids = selected
+                .filter((cert) => cert.last_status !== 'RUNNING')
+                .map((cert) => cert.id)
+              // A selection of nothing but running certificates has nothing to
+              // start; every request would answer with a conflict.
+              if (ids.length > 0) void issueMany(ids).catch(() => {})
+            }}
+            onBulkDelete={setRemoving}
           />
         )}
       </Main>
@@ -183,14 +229,16 @@ export function Certificates() {
         }}
         destructive
         isLoading={removingPending}
-        title={t('certificates.removeOne', { name: removing?.name ?? '' })}
+        title={
+          removing?.length === 1
+            ? t('certificates.removeOne', { name: removing[0]?.name ?? '' })
+            : t('certificates.removeMany', { count: removing?.length ?? 0 })
+        }
         desc={t('certificates.removeDescription')}
         confirmText={t('common.remove')}
         // Toasted by the global mutation handler; caught only so the rejection
         // is not left unhandled.
-        handleConfirm={() => {
-          if (removing) void remove(removing).catch(() => {})
-        }}
+        handleConfirm={() => void remove(removing ?? []).catch(() => {})}
       />
     </>
   )

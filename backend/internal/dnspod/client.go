@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	tcCommon "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
@@ -116,6 +117,10 @@ type CreateRecordInput struct {
 	Weight     uint64
 	Status     string
 	Remark     string
+	// GroupID puts the record into one of the domain's record groups; 0 leaves
+	// it in the default one. Only creation can choose: ModifyRecord carries no
+	// group, so a record cannot be moved afterwards.
+	GroupID uint64
 }
 
 // ModifyRecordInput is the input for updating a record.
@@ -152,6 +157,12 @@ type Client struct {
 	domainGroups *cache[[]DomainGroup]
 	records      *cache[*RecordPage]
 	lines        *cache[[]Line]
+	groups       *cache[[]Group]
+
+	// domainWalk serialises the cold path of ListDomains. The listing is read
+	// by certificate writes too, and a miss walks up to twenty pages: without
+	// this, N writers all walk it at once and spend the account's read budget.
+	domainWalk sync.Mutex
 }
 
 // CacheTTL holds the lifetime of cached read results
@@ -200,6 +211,7 @@ func NewClientWithCache(secretID, secretKey, endpoint string, timeoutSec int, tt
 		domainGroups: newCache[[]DomainGroup](ttl.Domains),
 		records:      newCache[*RecordPage](ttl.Records),
 		lines:        newCache[[]Line](ttl.Lines),
+		groups:       newCache[[]Group](ttl.Domains),
 	}, nil
 }
 
@@ -218,6 +230,11 @@ func (c *Client) Verify() error {
 // every caller for the length of the TTL. The context is honoured between
 // pages, which is where a listing of a large account can be abandoned.
 func (c *Client) ListDomains(ctx context.Context) ([]Domain, error) {
+	// Held across the walk, not across a hit: the caller below re-reads the
+	// cache once it has the lock, so a queue of writers becomes one walk.
+	c.domainWalk.Lock()
+	defer c.domainWalk.Unlock()
+
 	if cached, ok := c.domains.get("all"); ok {
 		// A copy, as the record listing does: the entry is shared with every
 		// other request, which silently corrupts the cache if a caller appends
@@ -541,7 +558,14 @@ func (c *Client) invalidateRecords(domain string) {
 //
 // These are tags inside a single domain, used by the DNSPod console to organise
 // records by purpose. They are distinct from domain groups, which span domains.
-func (c *Client) ListRecordGroups(domain string) ([]Group, error) {
+func (c *Client) ListRecordGroups(ctx context.Context, domain string) ([]Group, error) {
+	if cached, ok := c.groups.get(domain); ok {
+		return append([]Group(nil), cached...), nil
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("list record groups (domain=%s): %w", domain, err)
+	}
+
 	req := sdk.NewDescribeRecordGroupListRequest()
 	req.Domain = tcCommon.StringPtr(domain)
 
@@ -561,6 +585,9 @@ func (c *Client) ListRecordGroups(domain string) ([]Group, error) {
 			Type: derefStr(g.GroupType),
 		})
 	}
+	// Groups outlive the records inside them, so the same TTL as the domain
+	// listing is enough; a group created in the console shows up within it.
+	c.groups.set(domain, groups)
 	return groups, nil
 }
 
@@ -593,6 +620,11 @@ func (c *Client) CreateRecord(domain string, in CreateRecordInput) (uint64, erro
 	// type; zero means every one of them carries the same share.
 	if in.Weight > 0 {
 		req.Weight = tcCommon.Uint64Ptr(in.Weight)
+	}
+	// Groups organise the records of one domain; 0 is the default group and is
+	// left out rather than sent as a zero.
+	if in.GroupID > 0 {
+		req.GroupId = tcCommon.Uint64Ptr(in.GroupID)
 	}
 
 	resp, err := c.cli.CreateRecord(req)

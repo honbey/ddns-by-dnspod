@@ -552,6 +552,12 @@ export interface paths {
         };
         get: operations["listCertificates"];
         put?: never;
+        /**
+         * @description Every name has to be one of the account's DNSPod domains, any level of
+         *     subdomain below one, or a wildcard over either: the DNS-01 challenge can
+         *     only be answered for a domain the account owns. A name outside that set
+         *     is refused with 400 rather than stored to fail every issuance.
+         */
         post: operations["createCertificate"];
         delete?: never;
         options?: never;
@@ -569,6 +575,11 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
+        /**
+         * @description The same name rule as creation applies whenever domains or the account
+         *     change: every name has to be one of the account's DNSPod domains, a
+         *     subdomain below one, or a wildcard over either.
+         */
         put: operations["updateCertificate"];
         post?: never;
         /** Removes the record of a certificate; the files on disk are left. */
@@ -760,6 +771,21 @@ export interface components {
             ttl?: number;
             mx?: number;
             /** @description Shares the answer between records of the same host and type; 0 is even. */
+            weight?: number;
+            status?: string;
+            remark?: string;
+            /** @description Record group to create into; 0 or omitted is the default group. Creation only - records cannot be moved afterwards. */
+            group_id?: number;
+        };
+        /** @description The same fields as RecordInput, without group_id - the provider's modify call carries no group, so a record cannot be moved between groups. */
+        RecordUpdateInput: {
+            sub_domain: string;
+            record_type: string;
+            value: string;
+            line?: string;
+            /** @description 0 leaves the TTL alone. */
+            ttl?: number;
+            mx?: number;
             weight?: number;
             status?: string;
             remark?: string;
@@ -1468,6 +1494,8 @@ export interface operations {
                 sub_domain?: string;
                 record_type?: string;
                 keyword?: string;
+                /** @description Only the records of this record group; the listing cannot report a record's own group, so one group is all it can answer for. */
+                group_id?: number;
             };
             header?: never;
             path: {
@@ -1662,7 +1690,7 @@ export interface operations {
         };
         requestBody?: {
             content: {
-                "application/json": components["schemas"]["RecordInput"];
+                "application/json": components["schemas"]["RecordUpdateInput"];
             };
         };
         responses: {

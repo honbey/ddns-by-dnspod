@@ -606,6 +606,36 @@ func TestBatchCreateDefaultsTTLTo600(t *testing.T) {
 	}
 }
 
+// The batch path builds its own create input per item, so a group named on an
+// item has to reach DNSPod - and one that names none must send none.
+func TestBatchCreateCarriesTheGroup(t *testing.T) {
+	stub := newRecordStub(t)
+	srv, cfg := newTestServer(t)
+	cfg.DNSPod.Endpoint = stub.endpoint()
+	cfg.DNSPod.Timeout = 2
+	newTestAccount(t, srv)
+
+	rec := do(t, srv, cfg, http.MethodPost, "/api/domains/example.com/records/batch",
+		map[string]any{"items": []map[string]any{
+			{"sub_domain": "one", "record_type": "A", "value": "1.2.3.4", "group_id": 7},
+			{"sub_domain": "two", "record_type": "A", "value": "1.2.3.5"},
+		}})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("want 200, got %d (%s)", rec.Code, rec.Body.String())
+	}
+
+	reqs := stub.requests()
+	if len(reqs) != 2 {
+		t.Fatalf("want two DNSPod creates, got %d", len(reqs))
+	}
+	if got, ok := reqs[0]["GroupId"].(float64); !ok || got != 7 {
+		t.Fatalf("the first item did not carry its group: %v", reqs[0])
+	}
+	if _, present := reqs[1]["GroupId"]; present {
+		t.Fatalf("an item without a group sent one: %v", reqs[1])
+	}
+}
+
 // Update is the one write path where 0 keeps its meaning: ModifyRecord leaves
 // the field out, which is what leaves the record's TTL alone.
 func TestUpdateRecordKeepsZeroTTL(t *testing.T) {

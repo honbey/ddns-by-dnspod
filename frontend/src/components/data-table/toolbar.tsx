@@ -18,6 +18,8 @@ type DataTableToolbarProps<TData> = {
     /** Omitted when a column's values are not a fixed set; see the filter. */
     options?: FacetedOption[]
   }[]
+  /** Controls for state the table does not own, e.g. a server-side filter. */
+  children?: React.ReactNode
 }
 
 export function DataTableToolbar<TData>({
@@ -25,6 +27,7 @@ export function DataTableToolbar<TData>({
   searchPlaceholder,
   searchKey,
   filters = [],
+  children,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation()
   // The filter is a lone input whose label is only a placeholder; the id is
@@ -55,6 +58,7 @@ export function DataTableToolbar<TData>({
             className='h-8 w-37.5 lg:w-62.5'
           />
         )}
+        {children}
         {filters.map((filter) => (
           <DataTableFacetedFilter
             key={filter.columnId}

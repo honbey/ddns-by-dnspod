@@ -132,8 +132,8 @@ function record(recordId, subDomain, recordType, value, line = '默认', extra =
 
 const recordsByDomain = {
   'example.com': [
-    record(101, 'home', 'A', ipv4),
-    record(102, 'nas', 'A', ipv4),
+    record(101, 'home', 'A', ipv4, '默认', { group_id: 1 }),
+    record(102, 'nas', 'A', ipv4, '默认', { group_id: 2 }),
     record(103, 'www', 'A', ipv4, '电信'),
     record(104, 'api', 'A', '42.193.160.12'),
     record(105, 'vault', 'AAAA', ipv6),
@@ -158,10 +158,14 @@ function pagedRecords(domain, query) {
   const subDomain = query.get('sub_domain')?.trim() ?? ''
   const recordType = query.get('record_type')?.trim() ?? ''
   const keyword = query.get('keyword')?.trim().toLowerCase() ?? ''
+  // The listing cannot report a record's group, so the demo filters on a copy
+  // the fixture keeps for itself.
+  const groupId = Number(query.get('group_id') ?? 0) || 0
 
   const filtered = all.filter((item) => {
     if (subDomain && item.sub_domain !== subDomain) return false
     if (recordType && item.record_type !== recordType) return false
+    if (groupId && item.group_id !== groupId) return false
     if (keyword && !`${item.sub_domain} ${item.value}`.toLowerCase().includes(keyword)) return false
     return true
   })

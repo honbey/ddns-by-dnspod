@@ -13,9 +13,16 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { Trash2 } from 'lucide-react'
-import { type DnsRecord } from '@/lib/types'
+import { type DnsRecord, type Group } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table as TableComponent,
@@ -49,6 +56,11 @@ const TYPE_OPTIONS = [
 type RecordsTableProps = {
   data: DnsRecord[]
   loading: boolean
+  /** The domain's record groups, for the filter above the table. */
+  groups: Group[]
+  /** 0 shows every group. */
+  groupId: number
+  onGroupChange: (groupId: number) => void
   actions: RecordRowActions
   onBulkDelete: (records: DnsRecord[]) => void
 }
@@ -97,7 +109,17 @@ export function TableShell({
   )
 }
 
-export function RecordsTable({ data, loading, actions, onBulkDelete }: RecordsTableProps) {
+const ALL_GROUPS = '0'
+
+export function RecordsTable({
+  data,
+  loading,
+  groups,
+  groupId,
+  onGroupChange,
+  actions,
+  onBulkDelete,
+}: RecordsTableProps) {
   const [rowSelection, setRowSelection] = useState({})
   const [sorting, setSorting] = useState<SortingState>([{ id: 'sub_domain', desc: false }])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -153,7 +175,28 @@ export function RecordsTable({ data, loading, actions, onBulkDelete }: RecordsTa
             options: statusOptions,
           },
         ]}
-      />
+      >
+        {/* A request parameter rather than a column filter: the listing cannot
+            say which group a record is in, so only one group can be asked for
+            at a time. */}
+        <Select
+          value={String(groupId)}
+          onValueChange={(value) => onGroupChange(Number(value))}
+          disabled={groups.length === 0}
+        >
+          <SelectTrigger className='h-8 w-40' aria-label={t('records.groupLabel')}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_GROUPS}>{t('records.groupAll')}</SelectItem>
+            {groups.map((group) => (
+              <SelectItem key={group.id} value={String(group.id)}>
+                {group.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </DataTableToolbar>
       <TableShell table={table}>
         {loading ? (
           Array.from({ length: 5 }).map((_, rowIndex) => (

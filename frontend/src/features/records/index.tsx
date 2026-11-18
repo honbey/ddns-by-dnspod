@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams, useSearch } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FileText, Layers } from 'lucide-react'
@@ -10,6 +10,7 @@ import {
   createRecord,
   deleteRecord,
   listAllRecords,
+  listRecordGroups,
   setRecordStatus,
   type RecordInput,
   updateRecord,
@@ -53,13 +54,28 @@ export function Records() {
     from: '/_authenticated/domains/$domain',
   })
   const queryClient = useQueryClient()
+  // 0 is "every group". The filter is a request parameter rather than a table
+  // state, because the record listing does not report which group a record is
+  // in - the provider can only answer about one group at a time.
+  const [groupId, setGroupId] = useState(0)
   // The whole listing at once: the table filters and paginates client side, so
   // a round trip per filter change would only add latency - but the first page
   // alone is not the listing, and everything past it used to be unreachable.
   const recordsQuery = useQuery({
-    queryKey: ['records', domain, accountId],
-    queryFn: () => listAllRecords(domain, accountId),
+    queryKey: ['records', domain, accountId, groupId],
+    queryFn: () => listAllRecords(domain, accountId, groupId),
   })
+  const groupsQuery = useQuery({
+    queryKey: ['record-groups', domain, accountId],
+    queryFn: () => listRecordGroups(domain, accountId),
+    // Groups are created in the DNSPod console; a tab switch is not a reason to
+    // ask again, and the answer barely changes within a visit.
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+  // The router reuses this component across domains, so a group picked under one
+  // domain would otherwise filter the next one - where it may not even exist.
+  useEffect(() => setGroupId(0), [domain, accountId])
 
   const [editing, setEditing] = useState<DnsRecord | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -218,6 +234,9 @@ export function Records() {
           <RecordsTable
             data={records}
             loading={recordsQuery.isPending}
+            groups={groupsQuery.data ?? []}
+            groupId={groupId}
+            onGroupChange={setGroupId}
             actions={actions}
             onBulkDelete={(selected) => {
               // The API refuses a longer list, and a confirmation it cannot carry
@@ -242,6 +261,7 @@ export function Records() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         domain={domain}
+        groups={groupsQuery.data ?? []}
         accountId={accountId}
         record={editing}
         saving={saving}

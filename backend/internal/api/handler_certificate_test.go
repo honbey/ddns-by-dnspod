@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -509,5 +511,162 @@ func TestNormaliseRenewCron(t *testing.T) {
 		if got != c.want {
 			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
 		}
+	}
+}
+
+// A certificate can only be challenged for a domain the account owns.
+func TestCoveredByAccount(t *testing.T) {
+	owned := []string{"example.com", "example.net", "example.com.cn", "xn--fsqu00a.example"}
+
+	cases := []struct {
+		name string
+		want bool
+	}{
+		{"example.com", true},
+		{"EXAMPLE.COM", true},
+		{"example.com.", true},
+		{"www.example.com", true},
+		{"a.b.example.com", true},
+		{"*.example.com", true},
+		{"*.a.example.com", true},
+		{"example.net", true},
+		// A multi-label public suffix needs no list of its own: what matters is
+		// the zone the account holds, and example.com.cn is that zone.
+		{"example.com.cn", true},
+		{"www.example.com.cn", true},
+		{"a.b.example.com.cn", true},
+		{"*.example.com.cn", true},
+		// An internationalised name is compared in its ASCII spelling, which is
+		// the one DNSPod's domain list carries.
+		{"例子.example", true},
+		{"xn--fsqu00a.example", true},
+		{"www.例子.example", true},
+		{"*.例子.example", true},
+		{"另一个.example", false},
+		// The registrable-looking name is not owned, and neither is the TLD.
+		{"example.cn", false},
+		{"com.cn", false},
+		{"example.com.cn.evil.test", false},
+		{"example.org", false},
+		{"www.example.org", false},
+		// A suffix that is not at a label boundary is another domain entirely.
+		{"notexample.com", false},
+		{"example.com.evil.test", false},
+		{"*.example.org", false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := coveredByAccount(c.name, owned); got != c.want {
+				t.Errorf("coveredByAccount(%q) = %v, want %v", c.name, got, c.want)
+			}
+		})
+	}
+}
+
+// The stored name is the ASCII form, because that is what the CA orders and the
+// challenge is published under.
+func TestNormaliseCertificateNamesIDN(t *testing.T) {
+	got, err := normaliseCertificateNames([]string{"例子.example", "*.例子.example"})
+	if err != nil {
+		t.Fatalf("normaliseCertificateNames: %v", err)
+	}
+	want := []string{"xn--fsqu00a.example", "*.xn--fsqu00a.example"}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+
+	// The two spellings are the same name, so the duplicate is dropped.
+	again, err := normaliseCertificateNames([]string{"例子.example", "xn--fsqu00a.example"})
+	if err != nil {
+		t.Fatalf("normaliseCertificateNames: %v", err)
+	}
+	if len(again) != 1 {
+		t.Fatalf("the same name in two spellings should collapse, got %v", again)
+	}
+}
+
+// A provider that cannot answer must not block a local write: the row is
+// stored, and issuance reports the same problem with a better message.
+func TestCreateCertificateToleratesAnUnreadableDomainList(t *testing.T) {
+	srv, cfg := newTestServer(t)
+	account := newTestAccount(t, srv)
+	srv.ownedDomains = func(context.Context, uint) ([]string, error) {
+		return nil, errors.New("dnspod is down")
+	}
+
+	rec := do(t, srv, cfg, http.MethodPost, "/api/certificates", certificatePayload(account.ID))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("want 201 when the domain list cannot be read, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	view := decodeCertificate(t, rec)
+
+	var stored model.Certificate
+	if err := srv.store.DB().First(&stored, view.ID).Error; err != nil {
+		t.Fatalf("the certificate was not stored: %v", err)
+	}
+}
+
+// A name outside the account's domains is refused before the row exists.
+func TestCreateCertificateRejectsAForeignName(t *testing.T) {
+	srv, cfg := newTestServer(t)
+	account := newTestAccount(t, srv)
+	srv.ownedDomains = func(context.Context, uint) ([]string, error) {
+		return []string{"example.com"}, nil
+	}
+
+	// A subdomain and a wildcard over the owned domain are both fine.
+	for i, name := range []string{"www.example.com", "*.example.com", "a.b.example.com"} {
+		payload := certificatePayload(account.ID)
+		payload["name"] = fmt.Sprintf("site-%d", i)
+		payload["domains"] = []string{name}
+		if rec := do(t, srv, cfg, http.MethodPost, "/api/certificates", payload); rec.Code != http.StatusCreated {
+			t.Fatalf("%s should be accepted, got %d (%s)", name, rec.Code, rec.Body.String())
+		}
+	}
+
+	payload := certificatePayload(account.ID)
+	payload["name"] = "elsewhere"
+	payload["domains"] = []string{"example.org"}
+	rec := do(t, srv, cfg, http.MethodPost, "/api/certificates", payload)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("want 400 for a domain the account does not own, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "example.org") {
+		t.Fatalf("the answer should name the domain: %s", rec.Body.String())
+	}
+}
+
+// Changing only the account must re-check the names the row already carries:
+// otherwise the certificate ends up on an account that cannot challenge for it,
+// which is the state the name check exists to prevent.
+func TestUpdateCertificateChecksNamesAgainstANewAccount(t *testing.T) {
+	srv, cfg := newTestServer(t)
+	first := newTestAccount(t, srv)
+	// A second account with its own name: the helper always inserts "acc".
+	second := model.Account{Name: "second", SecretID: first.SecretID, SecretKey: first.SecretKey, KeyHint: "test"}
+	if err := srv.store.DB().Create(&second).Error; err != nil {
+		t.Fatalf("create the second account: %v", err)
+	}
+	srv.ownedDomains = func(_ context.Context, accountID uint) ([]string, error) {
+		if accountID == second.ID {
+			return []string{"other.example"}, nil
+		}
+		return []string{"example.com"}, nil
+	}
+
+	created := decodeCertificate(t, do(t, srv, cfg, http.MethodPost, "/api/certificates", certificatePayload(first.ID)))
+
+	rec := do(t, srv, cfg, http.MethodPut, "/api/certificates/"+itoa(created.ID),
+		map[string]interface{}{"account_id": second.ID})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("want 400 when the new account does not own the names, got %d (%s)", rec.Code, rec.Body.String())
+	}
+
+	// The same account still works, and so does a target that owns the names.
+	rec = do(t, srv, cfg, http.MethodPut, "/api/certificates/"+itoa(created.ID),
+		map[string]interface{}{"account_id": first.ID})
+	if rec.Code == http.StatusBadRequest {
+		t.Fatalf("an account that owns the names was refused: %s", rec.Body.String())
 	}
 }

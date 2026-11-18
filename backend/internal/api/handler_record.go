@@ -30,6 +30,9 @@ type recordInput struct {
 	Weight     uint64 `json:"weight"`
 	Status     string `json:"status"`
 	Remark     string `json:"remark"`
+	// GroupID is read on create only: the provider's modify call carries no
+	// group, so an update that sent one would be asking for nothing.
+	GroupID *uint64 `json:"group_id"`
 }
 
 // validateStatus refuses a status DNSPod would not accept.
@@ -252,7 +255,7 @@ func (s *Server) listRecordGroups(c *gin.Context) {
 		return
 	}
 
-	groups, err := cli.ListRecordGroups(domain)
+	groups, err := cli.ListRecordGroups(c.Request.Context(), domain)
 	if err != nil {
 		upstreamError(c, err)
 		return
@@ -329,6 +332,7 @@ func (s *Server) createRecord(c *gin.Context) {
 		Weight:     input.Weight,
 		Status:     input.Status,
 		Remark:     input.Remark,
+		GroupID:    valueOrZero(input.GroupID),
 	})
 	if err != nil {
 		upstreamError(c, err)
@@ -394,6 +398,7 @@ func (s *Server) batchCreateRecords(c *gin.Context) {
 			Weight:     item.Weight,
 			Status:     item.Status,
 			Remark:     item.Remark,
+			GroupID:    valueOrZero(item.GroupID),
 		})
 		if err != nil {
 			failed = append(failed, gin.H{"sub_domain": item.SubDomain, "error": upstreamMessage(c, err)})
@@ -425,6 +430,10 @@ func (s *Server) updateRecord(c *gin.Context) {
 		return
 	}
 
+	if input.GroupID != nil {
+		badRequest(c, "group_id can only be set when a record is created")
+		return
+	}
 	// Line required: four fields reach DNSPod unconditionally (see
 	// dnspod.ModifyRecord), so an update that leaves the line out does not leave
 	// the record alone - a blank one is filled in with the default and moves the
@@ -583,4 +592,13 @@ func defaultLine(line string) string {
 		return "默认"
 	}
 	return line
+}
+
+// valueOrZero reads an optional number the way the record input needs it: a
+// missing value and an explicit zero both mean "leave it out".
+func valueOrZero(v *uint64) uint64 {
+	if v == nil {
+		return 0
+	}
+	return *v
 }

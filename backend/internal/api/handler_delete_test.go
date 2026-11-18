@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -75,7 +76,13 @@ func newTestServer(t *testing.T, options ...func(*config.Config)) (*Server, *con
 
 	certManager := acme.NewManager(st, cfg.ACME, cfg.DNSPod, sender)
 
-	return NewServer(cfg, st, scheduler, detector, sender, auth.New(cfg.OIDC), certManager), cfg
+	srv := NewServer(cfg, st, scheduler, detector, sender, auth.New(cfg.OIDC), certManager)
+	// The certificate checks ask which domains the account owns; answering here
+	// keeps the suite off the network. A test that cares overrides this again.
+	srv.ownedDomains = func(context.Context, uint) ([]string, error) {
+		return []string{"example.com", "example.org"}, nil
+	}
+	return srv, cfg
 }
 
 // do performs one request against the real route table

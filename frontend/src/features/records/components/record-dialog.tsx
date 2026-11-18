@@ -9,7 +9,7 @@ import { listRecordLines, type RecordInput } from '@/features/records/api'
 import { currentIP } from '@/features/system/api'
 import { RECORD_TYPES, TTL_OPTIONS } from '@/lib/cron'
 import { MAX_BATCH_ITEMS } from '@/lib/limits'
-import { type DnsRecord } from '@/lib/types'
+import { type DnsRecord, type Group } from '@/lib/types'
 import { FieldHelp, HelpTip } from '@/components/field-help'
 import { Button } from '@/components/ui/button'
 import {
@@ -72,6 +72,8 @@ const formSchema = z.object({
   weight: z.number().int().min(0),
   status: z.enum(['ENABLE', 'DISABLE']),
   remark: z.string(),
+  /** 0 is no group chosen; the field only exists while creating. */
+  group_id: z.number().int().min(0),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -86,6 +88,7 @@ const EMPTY: FormValues = {
   weight: 0,
   status: 'ENABLE',
   remark: '',
+  group_id: 0,
 }
 
 function valuesFor(record: DnsRecord | null): FormValues {
@@ -108,6 +111,9 @@ function valuesFor(record: DnsRecord | null): FormValues {
     weight: record.weight || 0,
     status: record.status === 'DISABLE' ? 'DISABLE' : 'ENABLE',
     remark: record.remark,
+    // The listing cannot report a record's group, so an edit has none to show -
+    // and the provider's modify call has no field for one either.
+    group_id: 0,
   }
 }
 
@@ -115,6 +121,8 @@ type RecordDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   domain: string
+  /** The domain's record groups, offered when a record is created. */
+  groups: Group[]
   /** Which account holds the domain: its lines are read per account too. */
   accountId?: number
   /** The record being edited, or null when a new one is being added. */
@@ -133,6 +141,7 @@ export function RecordDialog({
   open,
   onOpenChange,
   domain,
+  groups,
   accountId,
   record,
   saving,
@@ -192,6 +201,7 @@ export function RecordDialog({
       weight: values.weight,
       status: values.status,
       remark: values.remark,
+      ...(record ? {} : { group_id: values.group_id }),
     })
   }
 
@@ -415,6 +425,46 @@ export function RecordDialog({
                   </FormItem>
                 )}
               />
+
+              {/* Only while creating: a record cannot be moved between groups
+                  after it exists, so offering the field on an edit would be a
+                  setting that silently does nothing. */}
+              {record ? null : (
+                <FormField
+                  control={form.control}
+                  name='group_id'
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className='flex items-center gap-1.5'>
+                        <FormLabel>{t('records.groupLabel')}</FormLabel>
+                        <FieldHelp field={t('records.groupLabel')}>
+                          {t('records.groupHint')}
+                        </FieldHelp>
+                      </div>
+                      <Select
+                        name={field.name}
+                        value={String(field.value)}
+                        onValueChange={(value) => field.onChange(Number(value))}
+                      >
+                        <FormControl>
+                          <SelectTrigger className='w-full'>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value='0'>{t('records.groupDefault')}</SelectItem>
+                          {groups.map((group) => (
+                            <SelectItem key={group.id} value={String(group.id)}>
+                              {group.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}

@@ -51,6 +51,22 @@ func TestRecordPlan(t *testing.T) {
 			wantHost:   "_acme-challenge.a",
 		},
 		{
+			// A multi-label public suffix needs no list of its own: the zone the
+			// account holds is the whole question, and the suffix match sees it.
+			name:       "a zone under a two-label suffix",
+			identifier: "www.example.com.cn",
+			zones:      []string{"example.com.cn"},
+			wantZone:   "example.com.cn",
+			wantHost:   "_acme-challenge.www",
+		},
+		{
+			name:       "the longest of two zones under a two-label suffix",
+			identifier: "a.sub.example.com.cn",
+			zones:      []string{"example.com.cn", "sub.example.com.cn"},
+			wantZone:   "sub.example.com.cn",
+			wantHost:   "_acme-challenge.a",
+		},
+		{
 			name:       "a zone that is not a suffix is skipped",
 			identifier: "a.example.com",
 			zones:      []string{"notexample.com", "example.com"},

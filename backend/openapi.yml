@@ -183,6 +183,10 @@ paths:
         - name: keyword
           in: query
           schema: { type: string }
+        - name: group_id
+          in: query
+          description: Only the records of this record group; the listing cannot report a record's own group, so one group is all it can answer for.
+          schema: { type: integer }
       responses:
         "200":
           description: ok
@@ -300,7 +304,7 @@ paths:
       requestBody:
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/RecordInput" }
+            schema: { $ref: "#/components/schemas/RecordUpdateInput" }
       responses:
         "200": { $ref: "#/components/responses/NullData" }
         "400": { $ref: "#/components/responses/BadRequest" }
@@ -655,6 +659,11 @@ paths:
     post:
       tags: [certificates]
       operationId: createCertificate
+      description: |
+        Every name has to be one of the account's DNSPod domains, any level of
+        subdomain below one, or a wildcard over either: the DNS-01 challenge can
+        only be answered for a domain the account owns. A name outside that set
+        is refused with 400 rather than stored to fail every issuance.
       requestBody:
         content:
           application/json:
@@ -674,6 +683,10 @@ paths:
     put:
       tags: [certificates]
       operationId: updateCertificate
+      description: |
+        The same name rule as creation applies whenever domains or the account
+        change: every name has to be one of the account's DNSPod domains, a
+        subdomain below one, or a wildcard over either.
       requestBody:
         content:
           application/json:
@@ -1078,6 +1091,23 @@ components:
         ttl: { type: integer, description: "On create, 0 or omitted means 600. On update, 0 means leave the TTL alone." }
         mx: { type: integer }
         weight: { type: integer, description: Shares the answer between records of the same host and type; 0 is even. }
+        status: { type: string }
+        remark: { type: string }
+        group_id:
+          type: integer
+          description: Record group to create into; 0 or omitted is the default group. Creation only - records cannot be moved afterwards.
+    RecordUpdateInput:
+      type: object
+      required: [sub_domain, record_type, value]
+      description: The same fields as RecordInput, without group_id - the provider's modify call carries no group, so a record cannot be moved between groups.
+      properties:
+        sub_domain: { type: string }
+        record_type: { type: string }
+        value: { type: string }
+        line: { type: string }
+        ttl: { type: integer, description: "0 leaves the TTL alone." }
+        mx: { type: integer }
+        weight: { type: integer }
         status: { type: string }
         remark: { type: string }
     Line:

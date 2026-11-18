@@ -17,6 +17,8 @@ export interface RecordQuery {
   sub_domain?: string
   record_type?: string
   keyword?: string
+  /** Restricts the listing to one record group; 0 or missing lists them all. */
+  group_id?: number
 }
 
 /**
@@ -46,9 +48,16 @@ export function listRecords(
  */
 export function listAllRecords(
   domain: string,
-  accountId?: number
+  accountId?: number,
+  groupId?: number
 ): Promise<CollectedList<DnsRecord>> {
-  return collectPages((page) => listRecords(domain, { page, page_size: API_PAGE_SIZE }, accountId))
+  return collectPages((page) =>
+    listRecords(
+      domain,
+      { page, page_size: API_PAGE_SIZE, ...(groupId ? { group_id: groupId } : {}) },
+      accountId
+    )
+  )
 }
 
 export function listRecordLines(domain: string, accountId?: number): Promise<Line[]> {
@@ -78,7 +87,19 @@ export interface RecordInput {
   weight?: number
   status?: string
   remark?: string
+  /**
+   * Record group to create into. The provider's modify call carries no group,
+   * so this is read on create only.
+   */
+  group_id?: number
 }
+
+/**
+ * The payload an update takes: the same fields as a create, without the group.
+ * The provider's modify call carries no group, so the contract leaves it out
+ * rather than accepting a field the server would refuse.
+ */
+export type RecordUpdateInput = Omit<RecordInput, 'group_id'>
 
 export function createRecord(
   domain: string,
@@ -96,7 +117,7 @@ export function createRecord(
 export function updateRecord(
   domain: string,
   id: number,
-  input: RecordInput,
+  input: RecordUpdateInput,
   accountId?: number
 ): Promise<null> {
   return request<null>({

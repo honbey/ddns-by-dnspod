@@ -2,6 +2,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -95,11 +96,14 @@ type Server struct {
 	verifier  *auth.Verifier
 	acme      *acme.Manager
 	clients   *clientCache
+	// ownedDomains reads the domains an account answers for. It is a field so a
+	// test can answer without reaching DNSPod; see NewServer for the real one.
+	ownedDomains func(ctx context.Context, accountID uint) ([]string, error)
 }
 
 // NewServer builds the API server
 func NewServer(cfg *config.Config, st *store.Store, sch *ddns.Scheduler, det *ipdetect.Detector, snd *notifier.Sender, v *auth.Verifier, certs *acme.Manager) *Server {
-	return &Server{
+	s := &Server{
 		cfg:       cfg,
 		store:     st,
 		scheduler: sch,
@@ -109,6 +113,22 @@ func NewServer(cfg *config.Config, st *store.Store, sch *ddns.Scheduler, det *ip
 		acme:      certs,
 		clients:   newClientCache(clientCacheTTL),
 	}
+	s.ownedDomains = func(ctx context.Context, accountID uint) ([]string, error) {
+		cli, err := s.clientFor(accountID)
+		if err != nil {
+			return nil, err
+		}
+		domains, err := cli.ListDomains(ctx)
+		if err != nil {
+			return nil, err
+		}
+		names := make([]string, 0, len(domains))
+		for i := range domains {
+			names = append(names, domains[i].Name)
+		}
+		return names, nil
+	}
+	return s
 }
 
 // clientFor builds a DNSPod client for an account; accountID 0 means the default account.

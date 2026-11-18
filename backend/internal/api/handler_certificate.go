@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/idna"
+
 	"github.com/gin-gonic/gin"
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
@@ -18,6 +21,11 @@ import (
 	"ddns-by-dnspod/internal/api/middleware"
 	"ddns-by-dnspod/internal/model"
 )
+
+// certificateNameLookup bounds the provider call the name check makes. Timing
+// out is not an error the caller sees: the check fails open, and the issuance
+// reports the same problem with its own message.
+const certificateNameLookup = 8 * time.Second
 
 // certificateNameRe is what a certificate may be called. The name becomes a
 // directory name under the configured root, so it is kept to characters a file
@@ -169,6 +177,9 @@ func (s *Server) createCertificate(c *gin.Context) {
 		badRequest(c, err.Error())
 		return
 	}
+	if s.rejectUncoveredNames(c, account.ID, domains) {
+		return
+	}
 
 	encoded, err := model.EncodeCertificateNames(domains)
 	if err != nil {
@@ -250,6 +261,13 @@ func (s *Server) updateCertificate(c *gin.Context) {
 			badRequest(c, err.Error())
 			return
 		}
+		target := cert.AccountID
+		if input.AccountID > 0 {
+			target = input.AccountID
+		}
+		if s.rejectUncoveredNames(c, target, domains) {
+			return
+		}
 		encoded, err := model.EncodeCertificateNames(domains)
 		if err != nil {
 			serverError(c, err)
@@ -272,6 +290,19 @@ func (s *Server) updateCertificate(c *gin.Context) {
 		if err := s.store.DB().First(&model.Account{}, input.AccountID).Error; err != nil {
 			badRequest(c, "account not found")
 			return
+		}
+		// The names do not move with the account. When both arrive, the domains
+		// branch above already checked them against this account; an account-only
+		// update is the one that would otherwise slip through unchecked.
+		if input.Domains == nil {
+			names, err := model.CertificateNames(cert.Domains)
+			if err != nil {
+				serverError(c, err)
+				return
+			}
+			if s.rejectUncoveredNames(c, input.AccountID, names) {
+				return
+			}
 		}
 		updates["account_id"] = input.AccountID
 	}
@@ -451,14 +482,20 @@ func normaliseCertificateNames(names []string) ([]string, error) {
 	seen := make(map[string]struct{}, len(names))
 	out := make([]string, 0, len(names))
 	for _, raw := range names {
-		name := strings.ToLower(strings.TrimSpace(raw))
-		if name == "" {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
 			continue
 		}
 		// A wildcard certificate is ordered for the base name; the star is the
-		// only thing the validator below would refuse.
-		if err := model.ValidateDomain(strings.TrimPrefix(name, "*.")); err != nil {
+		// only thing the validator below would refuse, and the only thing the
+		// IDNA conversion cannot carry.
+		starred := strings.HasPrefix(trimmed, "*.")
+		name := asciiName(strings.TrimPrefix(trimmed, "*."))
+		if err := model.ValidateDomain(name); err != nil {
 			return nil, err
+		}
+		if starred {
+			name = "*." + name
 		}
 		if _, duplicate := seen[name]; duplicate {
 			continue
@@ -470,6 +507,23 @@ func normaliseCertificateNames(names []string) ([]string, error) {
 		return nil, fmt.Errorf("at least one domain is required")
 	}
 	return out, nil
+}
+
+// asciiName folds a name into the spelling DNSPod's domain list uses: lower
+// case, no trailing dot, and punycode instead of unicode labels. A name that
+// cannot be converted is returned unchanged, so it simply fails to match
+// rather than becoming something else.
+//
+// The certificate has to be stored the way the CA will order it and the
+// challenge will be published, which is the ASCII form for an internationalised
+// name; comparing the unicode spelling against the domain list would report
+// every such certificate as foreign to its own account.
+func asciiName(name string) string {
+	trimmed := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(name), "."))
+	if ascii, err := idna.ToASCII(trimmed); err == nil {
+		return ascii
+	}
+	return trimmed
 }
 
 // normaliseOutputDir checks the subdirectory a certificate writes to.
@@ -493,6 +547,55 @@ func normaliseOutputDir(sub *string) (string, error) {
 		return "", fmt.Errorf("output_dir must be a relative path inside the certificate directory")
 	}
 	return cleaned, nil
+}
+
+// rejectUncoveredNames answers the request and reports true when one of the
+// names cannot be validated by this account.
+//
+// A certificate is only as good as the DNS-01 challenge behind it, and that
+// challenge can only be answered for a domain the account owns. Checking here
+// keeps a typo from becoming a row that fails every issuance the scheduler
+// tries.
+func (s *Server) rejectUncoveredNames(c *gin.Context, accountID uint, names []string) bool {
+	// Bounded: the listing is a handful of provider calls on a cold cache, and a
+	// request should not sit on them for as long as the provider feels like.
+	ctx, cancel := context.WithTimeout(c.Request.Context(), certificateNameLookup)
+	defer cancel()
+	owned, err := s.ownedDomains(ctx, accountID)
+	if err != nil {
+		// Storing a certificate is a local operation otherwise, so a provider that
+		// cannot be reached must not block it: the issuance reports the same
+		// problem with a message of its own. The check still runs whenever DNSPod
+		// answers, which is every time an issuance could actually happen.
+		slog.Warn("could not check the certificate names against the account's domains",
+			"account", accountID, "error", err, "rid", middleware.RequestIDFrom(c))
+		return false
+	}
+	for _, name := range names {
+		if !coveredByAccount(name, owned) {
+			badRequest(c, fmt.Sprintf(
+				"%s is not one of this account's domains, nor a subdomain of one", name))
+			return true
+		}
+	}
+	return false
+}
+
+// coveredByAccount reports whether a certificate name can be challenged for by
+// an account that owns these domains.
+//
+// The name may be a domain itself, any number of levels below one, or a
+// wildcard over either - the wildcard is asked for at its own level, so
+// *.example.com needs example.com and nothing more.
+func coveredByAccount(name string, domains []string) bool {
+	base := asciiName(strings.TrimPrefix(strings.TrimSpace(name), "*."))
+	for _, domain := range domains {
+		domain = asciiName(domain)
+		if base == domain || strings.HasSuffix(base, "."+domain) {
+			return true
+		}
+	}
+	return false
 }
 
 // normaliseRenewCron accepts an empty expression, which means the check never

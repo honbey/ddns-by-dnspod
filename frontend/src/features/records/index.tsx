@@ -91,9 +91,9 @@ export function Records() {
   const { mutate: toggle } = useMutation({
     mutationFn: (record: DnsRecord) =>
       setRecordStatus(domain, record.record_id, record.status !== 'ENABLE', accountId),
-    onSuccess: async () => {
+    onSuccess: async (_result, record) => {
       await invalidate()
-      toast.success(t('records.switched'))
+      toast.success(t(record.status === 'ENABLE' ? 'records.switchedOff' : 'records.switchedOn'))
     },
   })
 

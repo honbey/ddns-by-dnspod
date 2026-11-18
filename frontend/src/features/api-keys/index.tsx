@@ -76,9 +76,9 @@ export function APIKeys() {
 
   const { mutateAsync: toggle } = useMutation({
     mutationFn: (apiKey: APIKey) => updateAPIKey(apiKey.id, { enabled: !apiKey.enabled }),
-    onSuccess: async () => {
+    onSuccess: async (_updated, apiKey) => {
       await invalidate()
-      toast.success(t('apiKeys.switched'))
+      toast.success(t(apiKey.enabled ? 'apiKeys.switchedOff' : 'apiKeys.switchedOn'))
     },
     onError: (error) => handleServerError(error, t('apiKeys.switchFailed')),
   })
@@ -183,7 +183,7 @@ export function APIKeys() {
         isLoading={removingPending}
         title={
           removing?.length === 1
-            ? t('apiKeys.deleteOne', { name: removing[0]?.name ?? '' })
+            ? t('common.deleteOne', { name: removing[0]?.name ?? '' })
             : t('apiKeys.deleteMany', { count: removing?.length ?? 0 })
         }
         desc={t('apiKeys.deleteDescription')}

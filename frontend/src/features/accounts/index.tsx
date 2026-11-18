@@ -170,11 +170,11 @@ export function Accounts() {
         isLoading={removingPending}
         title={
           removing?.length === 1
-            ? t('common.removeOne', { name: removing[0]?.name ?? '' })
+            ? t('common.deleteOne', { name: removing[0]?.name ?? '' })
             : t('accounts.removeMany', { count: removing?.length ?? 0 })
         }
         desc={t('accounts.removeDescription')}
-        confirmText={t('common.remove')}
+        confirmText={t('common.delete')}
         handleConfirm={() => {
           if (removing) remove(removing)
         }}

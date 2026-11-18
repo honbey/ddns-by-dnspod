@@ -107,9 +107,9 @@ export function Notifications() {
         // still be switched off instead of failing on the way out.
         config: parseConfig(channel),
       }),
-    onSuccess: async () => {
+    onSuccess: async (_updated, channel) => {
       await invalidate()
-      toast.success(t('notifications.switched'))
+      toast.success(t(channel.enabled ? 'notifications.switchedOff' : 'notifications.switchedOn'))
     },
     onError: (error) => handleServerError(error, t('notifications.switchFailed')),
   })
@@ -230,7 +230,7 @@ export function Notifications() {
         isLoading={removingPending}
         title={
           removing?.length === 1
-            ? t('common.removeOne', { name: removing[0]?.name ?? '' })
+            ? t('common.deleteOne', { name: removing[0]?.name ?? '' })
             : t('notifications.removeMany', { count: removing?.length ?? 0 })
         }
         desc={
@@ -240,7 +240,7 @@ export function Notifications() {
               })
             : t('notifications.stopMany')
         }
-        confirmText={t('common.remove')}
+        confirmText={t('common.delete')}
         // Toasted by the global mutation handler; caught only so the rejection
         // is not left unhandled.
         handleConfirm={() => void remove(removing ?? []).catch(() => {})}

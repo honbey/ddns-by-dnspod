@@ -327,7 +327,7 @@ export function Tasks() {
             : t('tasks.removeMany', { count: removing?.length ?? 0 })
         }
         desc={t('tasks.removeDescription')}
-        confirmText={t('common.remove')}
+        confirmText={t('common.delete')}
         // Toasted by the global mutation handler; caught only so the rejection
         // is not left unhandled.
         handleConfirm={() => void remove((removing ?? []).map((task) => task.id)).catch(() => {})}

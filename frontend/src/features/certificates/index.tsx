@@ -250,11 +250,11 @@ export function Certificates() {
         isLoading={removingPending}
         title={
           removing?.length === 1
-            ? t('common.removeOne', { name: removing[0]?.name ?? '' })
+            ? t('common.deleteOne', { name: removing[0]?.name ?? '' })
             : t('certificates.removeMany', { count: removing?.length ?? 0 })
         }
         desc={t('certificates.removeDescription')}
-        confirmText={t('common.remove')}
+        confirmText={t('common.delete')}
         // Toasted by the global mutation handler; caught only so the rejection
         // is not left unhandled.
         handleConfirm={() => void remove(removing ?? []).catch(() => {})}

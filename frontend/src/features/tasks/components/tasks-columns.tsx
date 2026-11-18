@@ -64,9 +64,7 @@ export function useTasksColumns(
     {
       id: 'host',
       accessorFn: hostOf,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('tasks.hostColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.host')} />,
       cell: ({ row }) => (
         <div className='min-w-0'>
           <div className='truncate font-medium'>{hostOf(row.original)}</div>
@@ -81,9 +79,7 @@ export function useTasksColumns(
       id: 'record_type',
       accessorFn: (task) => task.record_type,
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('tasks.typeColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.type')} />,
       cell: ({ row }) => (
         <Badge variant='outline' className='font-mono'>
           {row.original.record_type}
@@ -140,9 +136,7 @@ export function useTasksColumns(
     {
       id: 'last_run',
       accessorFn: (task) => task.last_run_at ?? '',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('tasks.lastRunColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.lastRun')} />,
       cell: ({ row }) => {
         const task = row.original
         return (

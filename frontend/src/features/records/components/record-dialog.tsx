@@ -199,7 +199,7 @@ export function RecordDialog({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className='w-full gap-0 p-0 sm:max-w-lg'>
         <SheetHeader className='pe-10'>
-          <SheetTitle>{record ? t('records.editTitle') : t('records.addTitle')}</SheetTitle>
+          <SheetTitle>{record ? t('records.editTitle') : t('records.addRecord')}</SheetTitle>
           <SheetDescription>{t('records.dialogHint')}</SheetDescription>
         </SheetHeader>
 
@@ -263,7 +263,7 @@ export function RecordDialog({
                             name={field.name}
                             value={field.value}
                             readOnly
-                            aria-label={t('records.typeAria')}
+                            aria-label={t('records.typeLabel')}
                             className='bg-muted text-muted-foreground font-mono'
                           />
                         </FormControl>
@@ -279,7 +279,7 @@ export function RecordDialog({
                 name='value'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('records.valueLabel')}</FormLabel>
+                    <FormLabel>{t('records.valueColumn')}</FormLabel>
                     <FormControl>
                       <Input {...field} className='font-mono' />
                     </FormControl>
@@ -307,8 +307,8 @@ export function RecordDialog({
                   render={({ field }) => (
                     <FormItem>
                       <div className='flex items-center gap-1.5'>
-                        <FormLabel>{t('records.priorityLabel')}</FormLabel>
-                        <FieldHelp field={t('records.priorityLabel')}>
+                        <FormLabel>{t('ui.priority')}</FormLabel>
+                        <FieldHelp field={t('ui.priority')}>
                           {t('records.priorityHint', { type })}
                         </FieldHelp>
                       </div>
@@ -333,10 +333,10 @@ export function RecordDialog({
                   render={({ field }) => (
                     <FormItem>
                       <div className='flex items-center gap-1.5'>
-                        <FormLabel>{t('records.lineLabel')}</FormLabel>
+                        <FormLabel>{t('ui.line')}</FormLabel>
                         {lines.data?.length ? (
-                          <FieldHelp field={t('records.lineLabel')}>
-                            {t('records.lineHintOptions', {
+                          <FieldHelp field={t('ui.line')}>
+                            {t('ui.availableLines', {
                               lines: lines.data.map((line) => line.name).join(', '),
                             })}
                           </FieldHelp>
@@ -354,7 +354,7 @@ export function RecordDialog({
                   name='ttl'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('records.ttlColumn')}</FormLabel>
+                      <FormLabel>{t('ui.ttl')}</FormLabel>
                       <Select
                         name={field.name}
                         value={String(field.value)}
@@ -449,7 +449,7 @@ export function RecordDialog({
               </Button>
               <Button type='submit' size='sm' disabled={saving}>
                 {saving && <Loader2 className='animate-spin' />}
-                {record ? t('common.saveChanges') : t('records.addTitle')}
+                {record ? t('common.saveChanges') : t('records.addRecord')}
               </Button>
             </SheetFooter>
           </form>

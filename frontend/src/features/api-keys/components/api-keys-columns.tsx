@@ -72,9 +72,7 @@ export function useApiKeysColumns(
     {
       id: 'name',
       accessorFn: (key) => key.name,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('apiKeys.nameColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.name')} />,
       cell: ({ row }) => (
         <div className='truncate font-medium' title={`${row.original.key_prefix}...`}>
           {row.original.name}

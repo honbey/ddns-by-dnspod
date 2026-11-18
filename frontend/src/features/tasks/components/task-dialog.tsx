@@ -50,7 +50,7 @@ import { Switch } from '@/components/ui/switch'
  */
 function taskSchema(t: TFunction, multiple: boolean) {
   return z.object({
-    account_id: z.number().int().positive(t('tasks.accountRequired')),
+    account_id: z.number().int().positive(t('common.selectAccount')),
     domain: z.string().trim().min(1, t('tasks.domainRequired')),
     // Editing one row has one host; adding can take a space or comma separated
     // list, but only up to the same cap the batch endpoint enforces.
@@ -178,7 +178,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className='w-full gap-0 p-0 sm:max-w-xl'>
         <SheetHeader className='pe-10'>
-          <SheetTitle>{task ? t('tasks.editTitle') : t('tasks.addTitle')}</SheetTitle>
+          <SheetTitle>{task ? t('tasks.editTitle') : t('tasks.add')}</SheetTitle>
           <SheetDescription>{t('tasks.dialogHint')}</SheetDescription>
         </SheetHeader>
 
@@ -261,7 +261,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                   name='record_type'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('tasks.typeColumn')}</FormLabel>
+                      <FormLabel>{t('ui.type')}</FormLabel>
                       <Select name={field.name} value={field.value} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger className='w-full'>
@@ -307,10 +307,10 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                   render={({ field }) => (
                     <FormItem>
                       <div className='flex items-center gap-1.5'>
-                        <FormLabel>{t('tasks.lineLabel')}</FormLabel>
+                        <FormLabel>{t('ui.line')}</FormLabel>
                         {lineNames.length ? (
-                          <FieldHelp field={t('tasks.lineLabel')}>
-                            {t('tasks.lineHintOptions', { lines: lineNames.join(', ') })}
+                          <FieldHelp field={t('ui.line')}>
+                            {t('ui.availableLines', { lines: lineNames.join(', ') })}
                           </FieldHelp>
                         ) : null}
                       </div>
@@ -368,7 +368,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                   name='ttl'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('tasks.ttlLabel')}</FormLabel>
+                      <FormLabel>{t('ui.ttl')}</FormLabel>
                       <Select
                         name={field.name}
                         value={String(field.value)}

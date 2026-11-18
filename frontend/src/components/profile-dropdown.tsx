@@ -72,13 +72,13 @@ export function ProfileDropdown() {
             <DropdownMenuItem asChild>
               <Link to='/settings'>
                 <UserCog />
-                {t('auth.profile')}
+                {t('nav.profile')}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link to='/settings/appearance'>
                 <Palette />
-                {t('auth.appearance')}
+                {t('nav.appearance')}
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

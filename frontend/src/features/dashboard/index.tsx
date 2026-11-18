@@ -16,7 +16,7 @@ import { greetingKey, msUntilNextHour } from '@/lib/greeting'
 import { type IPChangePoint } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { PageHeading } from '@/components/layout/page-heading'
@@ -138,7 +138,7 @@ export function Dashboard() {
 
   return (
     <>
-      <Header>
+      <Header fixed>
         <Search className='me-auto' />
         <ThemeSwitch />
         <ProfileDropdown />
@@ -227,9 +227,6 @@ export function Dashboard() {
           <Card className='flex h-full flex-col lg:col-span-4'>
             <CardHeader>
               <CardTitle>{t('dashboard.addressLifetime')}</CardTitle>
-              <CardDescription>
-                {t('dashboard.addressLifetimeDescription', { count: CHART_BARS })}
-              </CardDescription>
             </CardHeader>
             <CardContent className='min-h-0 flex-1'>
               <IPChangeChart points={changes.data ?? []} max={CHART_BARS} />

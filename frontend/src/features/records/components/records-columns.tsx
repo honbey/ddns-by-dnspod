@@ -58,9 +58,7 @@ export function useRecordsColumns(actions: RecordRowActions): ColumnDef<DnsRecor
     {
       id: 'sub_domain',
       accessorFn: (record) => record.sub_domain,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('records.hostColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.host')} />,
       cell: ({ row }) => <span className='truncate font-medium'>{row.original.sub_domain}</span>,
       enableHiding: false,
     },
@@ -68,9 +66,7 @@ export function useRecordsColumns(actions: RecordRowActions): ColumnDef<DnsRecor
       id: 'record_type',
       accessorFn: (record) => record.record_type,
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('records.typeColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.type')} />,
       cell: ({ row }) => (
         <Badge variant='outline' className='font-mono'>
           {row.original.record_type}
@@ -91,7 +87,7 @@ export function useRecordsColumns(actions: RecordRowActions): ColumnDef<DnsRecor
     {
       id: 'line',
       accessorFn: (record) => record.line,
-      header: () => <div className='text-sm font-medium'>{t('records.lineLabel')}</div>,
+      header: () => <div className='text-sm font-medium'>{t('ui.line')}</div>,
       cell: ({ row }) => (
         <span className='text-muted-foreground truncate text-sm'>{row.original.line}</span>
       ),
@@ -101,9 +97,7 @@ export function useRecordsColumns(actions: RecordRowActions): ColumnDef<DnsRecor
     {
       id: 'ttl',
       accessorFn: (record) => record.ttl,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('records.ttlColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.ttl')} />,
       cell: ({ row }) => (
         <span className='text-muted-foreground tabular-nums'>{row.original.ttl}</span>
       ),

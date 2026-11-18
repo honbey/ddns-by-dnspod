@@ -57,9 +57,7 @@ export function useChannelsColumns(actions: ChannelRowActions): ColumnDef<Notify
     {
       id: 'name',
       accessorFn: (channel) => channel.name,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('notifications.nameColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.name')} />,
       cell: ({ row }) => <span className='block truncate font-medium'>{row.original.name}</span>,
       enableHiding: false,
     },
@@ -67,9 +65,7 @@ export function useChannelsColumns(actions: ChannelRowActions): ColumnDef<Notify
       id: 'type',
       accessorFn: (channel) => channel.type,
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('notifications.typeColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.type')} />,
       cell: ({ row }) => {
         const kind = CHANNEL_TYPES.find((item) => item.id === row.original.type)
         const Icon = kind?.icon
@@ -95,9 +91,7 @@ export function useChannelsColumns(actions: ChannelRowActions): ColumnDef<Notify
     {
       id: 'updated_at',
       accessorFn: (channel) => channel.updated_at,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('notifications.updatedColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.updated')} />,
       cell: ({ row }) => (
         <span className='text-muted-foreground whitespace-nowrap text-sm'>
           {formatTime(row.original.updated_at)}

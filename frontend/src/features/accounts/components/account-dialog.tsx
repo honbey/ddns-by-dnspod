@@ -35,7 +35,7 @@ import { Switch } from '@/components/ui/switch'
  */
 function accountSchema(t: TFunction) {
   return z.object({
-    name: z.string().trim().min(1, t('accounts.nameRequired')),
+    name: z.string().trim().min(1, t('common.nameRequired')),
     secret_id: z.string().trim().min(1, t('accounts.secretIdRequired')),
     // Blank while editing means "keep the stored one": the API never returns it.
     secret_key: z.string(),
@@ -108,7 +108,7 @@ export function AccountDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className='sm:max-w-lg'>
         <DialogHeader>
-          <DialogTitle>{account ? t('accounts.editTitle') : t('accounts.addTitle')}</DialogTitle>
+          <DialogTitle>{account ? t('accounts.editTitle') : t('accounts.add')}</DialogTitle>
           <DialogDescription>{t('accounts.dialogHint')}</DialogDescription>
         </DialogHeader>
 
@@ -133,12 +133,7 @@ export function AccountDialog({
               name='secret_id'
               render={({ field }) => (
                 <FormItem>
-                  <div className='flex items-center gap-1.5'>
-                    <FormLabel>{t('accounts.secretIdLabel')}</FormLabel>
-                    <FieldHelp field={t('accounts.secretIdLabel')}>
-                      {t('accounts.secretIdHint')}
-                    </FieldHelp>
-                  </div>
+                  <FormLabel>{t('accounts.secretIdLabel')}</FormLabel>
                   <FormControl>
                     <Input {...field} className='font-mono' />
                   </FormControl>
@@ -191,7 +186,7 @@ export function AccountDialog({
               </Button>
               <Button type='submit' size='sm' disabled={saving}>
                 {saving && <Loader2 className='animate-spin' />}
-                {account ? t('common.saveChanges') : t('accounts.addTitle')}
+                {account ? t('common.saveChanges') : t('accounts.add')}
               </Button>
             </DialogFooter>
           </form>

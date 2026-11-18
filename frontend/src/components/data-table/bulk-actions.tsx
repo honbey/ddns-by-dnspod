@@ -38,7 +38,7 @@ export function DataTableBulkActions<TData>({
   // Announce selection changes to screen readers
   useEffect(() => {
     if (selectedCount > 0) {
-      const message = t('table.selected', { count: selectedCount, entity: entityName })
+      const message = t('table.selectedSummary', { count: selectedCount, entity: entityName })
 
       // Tracks whether this run is still the current one: the announcement used
       // to be set after the toolbar had already gone, when the selection was

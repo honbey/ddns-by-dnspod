@@ -26,7 +26,7 @@ export function Settings() {
   return (
     <>
       {/* ===== Top Heading ===== */}
-      <Header>
+      <Header fixed>
         <Search className='me-auto' />
         <ThemeSwitch />
         <ProfileDropdown />

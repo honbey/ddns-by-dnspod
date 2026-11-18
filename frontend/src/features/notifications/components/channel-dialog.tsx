@@ -46,7 +46,7 @@ const METHODS = ['POST', 'PUT', 'PATCH']
 function channelSchema(t: TFunction) {
   return z
     .object({
-      name: z.string().trim().min(1, t('notifications.nameRequired')),
+      name: z.string().trim().min(1, t('common.nameRequired')),
       type: z.enum(['ntfy', 'webhook']),
       enabled: z.boolean(),
       server: z.string(),
@@ -226,9 +226,7 @@ export function ChannelDialog({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className='w-full gap-0 p-0 sm:max-w-xl'>
         <SheetHeader className='pe-10'>
-          <SheetTitle>
-            {channel ? t('notifications.editTitle') : t('notifications.addTitle')}
-          </SheetTitle>
+          <SheetTitle>{channel ? t('notifications.editTitle') : t('notifications.add')}</SheetTitle>
           <SheetDescription>{t('notifications.description')}</SheetDescription>
         </SheetHeader>
 
@@ -254,7 +252,7 @@ export function ChannelDialog({
                   name='type'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('notifications.typeColumn')}</FormLabel>
+                      <FormLabel>{t('ui.type')}</FormLabel>
                       <Select name={field.name} value={field.value} onValueChange={field.onChange}>
                         <FormControl>
                           <SelectTrigger className='w-full'>
@@ -325,7 +323,7 @@ export function ChannelDialog({
                       name='priority'
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>{t('notifications.priorityLabel')}</FormLabel>
+                          <FormLabel>{t('ui.priority')}</FormLabel>
                           <Select
                             name={field.name}
                             value={field.value}

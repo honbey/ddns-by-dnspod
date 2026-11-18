@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { listAccounts } from '@/features/accounts/api'
@@ -15,6 +15,7 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { type APIKey } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { AddIcon } from '@/components/icons/add-icon'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ErrorState } from '@/components/error-state'
@@ -108,7 +109,7 @@ export function APIKeys() {
 
   return (
     <>
-      <Header>
+      <Header fixed>
         <Search className='me-auto' />
         <ThemeSwitch />
         <ProfileDropdown />
@@ -126,8 +127,8 @@ export function APIKeys() {
                 setDialogOpen(true)
               }}
             >
-              <Plus className='size-4' />
-              {t('apiKeys.createButton')}
+              <AddIcon icon={KeyRound} />
+              {t('apiKeys.createKey')}
             </Button>
           }
         />

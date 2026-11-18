@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, PowerOff } from 'lucide-react'
+import { PowerOff } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { listAccounts } from '@/features/accounts/api'
@@ -19,6 +19,8 @@ import { type Certificate } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { AddIcon } from '@/components/icons/add-icon'
+import { CertificateIcon } from '@/components/icons/nav-icons'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ErrorState } from '@/components/error-state'
@@ -150,7 +152,7 @@ export function Certificates() {
 
   return (
     <>
-      <Header>
+      <Header fixed>
         <Search className='me-auto' />
         <ThemeSwitch />
         <ProfileDropdown />
@@ -168,7 +170,7 @@ export function Certificates() {
                 setDialogOpen(true)
               }}
             >
-              <Plus className='size-4' />
+              <AddIcon icon={CertificateIcon} plusPosition='top-left' />
               {t('certificates.add')}
             </Button>
           }
@@ -231,7 +233,7 @@ export function Certificates() {
         isLoading={removingPending}
         title={
           removing?.length === 1
-            ? t('certificates.removeOne', { name: removing[0]?.name ?? '' })
+            ? t('common.removeOne', { name: removing[0]?.name ?? '' })
             : t('certificates.removeMany', { count: removing?.length ?? 0 })
         }
         desc={t('certificates.removeDescription')}

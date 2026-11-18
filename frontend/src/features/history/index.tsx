@@ -22,7 +22,7 @@ export function History() {
 
   return (
     <>
-      <Header>
+      <Header fixed>
         <Search className='me-auto' />
         <ThemeSwitch />
         <ProfileDropdown />

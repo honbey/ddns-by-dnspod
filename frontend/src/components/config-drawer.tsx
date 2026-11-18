@@ -74,7 +74,7 @@ export function ConfigDrawer({ open, onOpenChange }: ConfigDrawerProps) {
         </div>
         <SheetFooter className='gap-2'>
           <Button variant='destructive' onClick={handleReset} aria-label={t('theme.resetAll')}>
-            {t('theme.reset')}
+            {t('common.reset')}
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -223,7 +223,7 @@ function SidebarConfig() {
   return (
     <div className='max-md:hidden'>
       <SectionTitle
-        title={t('theme.sidebarSection')}
+        title={t('ui.sidebar')}
         showReset={defaultVariant !== variant}
         onReset={() => setVariant(defaultVariant)}
         resetAriaLabel={t('theme.resetSidebar')}

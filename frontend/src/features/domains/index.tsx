@@ -67,7 +67,7 @@ export function Domains() {
 
   return (
     <>
-      <Header>
+      <Header fixed>
         <Search className='me-auto' />
         <ThemeSwitch />
         <ProfileDropdown />
@@ -262,11 +262,7 @@ function ImportDialog({ domain, defaultAccountId, onClose, onDone }: ImportDialo
           </Field>
 
           <div className='grid items-start gap-4 sm:grid-cols-[9rem_1fr]'>
-            <Field
-              label={t('domains.type')}
-              hint={t('domains.addressOnlyHint')}
-              htmlFor='import-type'
-            >
+            <Field label={t('ui.type')} hint={t('domains.addressOnlyHint')} htmlFor='import-type'>
               <Select value={recordType} onValueChange={setRecordType}>
                 <SelectTrigger id='import-type' className='w-full'>
                   <SelectValue />

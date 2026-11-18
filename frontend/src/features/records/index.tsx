@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearch } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Layers, Plus } from 'lucide-react'
+import { FileText, Layers } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import {
@@ -18,6 +18,7 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { fitsOneBatch, MAX_BATCH_ITEMS } from '@/lib/limits'
 import { type DnsRecord } from '@/lib/types'
 import { Button } from '@/components/ui/button'
+import { AddIcon } from '@/components/icons/add-icon'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -156,7 +157,7 @@ export function Records() {
 
   return (
     <>
-      <Header>
+      <Header fixed>
         <Search className='me-auto' />
         <ThemeSwitch />
         <ProfileDropdown />
@@ -204,7 +205,7 @@ export function Records() {
                   setDialogOpen(true)
                 }}
               >
-                <Plus className='size-4' />
+                <AddIcon icon={FileText} plusPosition='top-left' />
                 {t('records.addRecord')}
               </Button>
             </>

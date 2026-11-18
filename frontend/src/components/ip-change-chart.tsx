@@ -63,7 +63,7 @@ type IPChangeChartProps = {
 export function IPChangeChart({ points, max = 12 }: IPChangeChartProps) {
   const { t } = useTranslation()
   const chartConfig = {
-    lifetime: { label: t('dashboard.lifetime'), color: chartColor },
+    lifetime: { label: t('ui.lifetime'), color: chartColor },
   } satisfies ChartConfig
   const recent = useMemo(() => points.slice(-max), [points, max])
 

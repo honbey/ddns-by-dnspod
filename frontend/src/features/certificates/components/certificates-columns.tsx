@@ -68,9 +68,7 @@ export function useCertificatesColumns(
     {
       id: 'name',
       accessorFn: (cert) => cert.name,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('certificates.nameColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.name')} />,
       cell: ({ row }) => (
         <div className='min-w-0 space-y-0.5'>
           <div className='truncate font-medium'>{row.original.name}</div>
@@ -133,9 +131,7 @@ export function useCertificatesColumns(
       id: 'last_status',
       accessorFn: (cert) => cert.last_status,
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('certificates.lastRunColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.lastRun')} />,
       cell: ({ row }) => (
         // The message is the only place a failure explains itself in the list,
         // so it sits under the badge and is repeated in full on hover.

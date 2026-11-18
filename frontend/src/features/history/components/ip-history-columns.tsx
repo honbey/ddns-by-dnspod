@@ -58,7 +58,7 @@ export function useIPHistoryColumns(): ColumnDef<IPChange>[] {
     {
       id: 'duration_sec',
       accessorFn: (change) => change.duration_sec ?? null,
-      header: () => <div className='text-sm font-medium'>{t('history.ipDurationColumn')}</div>,
+      header: () => <div className='text-sm font-medium'>{t('ui.lifetime')}</div>,
       cell: ({ row }) => (
         <span className='text-sm'>{formatDuration(row.original.duration_sec)}</span>
       ),

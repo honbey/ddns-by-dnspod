@@ -44,9 +44,7 @@ export function useHistoryColumns(): ColumnDef<HistoryEntry>[] {
     {
       id: 'host',
       accessorFn: hostOf,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('history.hostColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.host')} />,
       cell: ({ row }) => {
         const entry = row.original
         // The detail is a hover away rather than a column: most rows have
@@ -104,9 +102,7 @@ export function useHistoryColumns(): ColumnDef<HistoryEntry>[] {
       id: 'record_type',
       accessorFn: (entry) => entry.record_type,
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('history.typeColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.type')} />,
       cell: ({ row }) => (
         <Badge variant='outline' className='font-mono'>
           {row.original.record_type}

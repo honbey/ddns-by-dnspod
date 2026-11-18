@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import {
@@ -16,6 +15,8 @@ import { clearMissingAccountNotice } from '@/lib/query-client'
 import { type Account } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { AddIcon } from '@/components/icons/add-icon'
+import { AccountIcon } from '@/components/icons/nav-icons'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ErrorState } from '@/components/error-state'
@@ -106,7 +107,7 @@ export function Accounts() {
 
   return (
     <>
-      <Header>
+      <Header fixed>
         <Search className='me-auto' />
         <ThemeSwitch />
         <ProfileDropdown />
@@ -124,7 +125,7 @@ export function Accounts() {
                 setDialogOpen(true)
               }}
             >
-              <Plus className='size-4' />
+              <AddIcon icon={AccountIcon} plusPosition='bottom-left' />
               {t('accounts.add')}
             </Button>
           }
@@ -168,7 +169,7 @@ export function Accounts() {
         isLoading={removingPending}
         title={
           removing?.length === 1
-            ? t('accounts.removeOne', { name: removing[0]?.name ?? '' })
+            ? t('common.removeOne', { name: removing[0]?.name ?? '' })
             : t('accounts.removeMany', { count: removing?.length ?? 0 })
         }
         desc={t('accounts.removeDescription')}

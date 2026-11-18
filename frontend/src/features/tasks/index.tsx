@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Play } from 'lucide-react'
+import { ListChecks, Play } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { listAccounts } from '@/features/accounts/api'
@@ -18,6 +18,7 @@ import { mapBounded } from '@/lib/lists'
 import { type DDNSTask, type TaskBatchResult } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { AddIcon } from '@/components/icons/add-icon'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
 import { ErrorState } from '@/components/error-state'
@@ -230,7 +231,7 @@ export function Tasks() {
 
   return (
     <>
-      <Header>
+      <Header fixed>
         <Search className='me-auto' />
         <ThemeSwitch />
         <ProfileDropdown />
@@ -260,7 +261,7 @@ export function Tasks() {
                   setDialogOpen(true)
                 }}
               >
-                <Plus className='size-4' />
+                <AddIcon icon={ListChecks} plusPosition='bottom-left' />
                 {t('tasks.add')}
               </Button>
             </>

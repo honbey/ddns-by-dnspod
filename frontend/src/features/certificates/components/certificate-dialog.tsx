@@ -47,9 +47,9 @@ function certificateSchema(t: TFunction) {
     name: z
       .string()
       .trim()
-      .min(1, t('certificates.nameRequiredEmpty'))
+      .min(1, t('common.nameRequired'))
       .regex(NAME_RE, t('certificates.nameRequired')),
-    account_id: z.number().int().positive(t('certificates.accountRequired')),
+    account_id: z.number().int().positive(t('common.selectAccount')),
     domains: z.string().trim().min(1, t('certificates.domainsRequired')),
     key_type: z.string().trim().min(1, t('certificates.keyTypeRequired')),
     output_dir: z.string().trim(),
@@ -141,9 +141,7 @@ export function CertificateDialog({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className='w-full gap-0 p-0 sm:max-w-xl'>
         <SheetHeader className='pe-10'>
-          <SheetTitle>
-            {certificate ? t('certificates.editTitle') : t('certificates.addTitle')}
-          </SheetTitle>
+          <SheetTitle>{t('certificates.add')}</SheetTitle>
           <SheetDescription>{t('certificates.dialogHint')}</SheetDescription>
         </SheetHeader>
 
@@ -156,7 +154,7 @@ export function CertificateDialog({
                   name='name'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('certificates.nameLabel')}</FormLabel>
+                      <FormLabel>{t('common.name')}</FormLabel>
                       <FormControl>
                         <Input placeholder={t('certificates.namePlaceholder')} {...field} />
                       </FormControl>
@@ -322,7 +320,7 @@ export function CertificateDialog({
               </Button>
               <Button type='submit' size='sm' disabled={saving}>
                 {saving && <Loader2 className='animate-spin' />}
-                {certificate ? t('common.saveChanges') : t('certificates.addTitle')}
+                {certificate ? t('common.saveChanges') : t('certificates.add')}
               </Button>
             </SheetFooter>
           </form>

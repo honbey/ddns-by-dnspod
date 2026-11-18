@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -41,9 +40,9 @@ import { Switch } from '@/components/ui/switch'
 /** Built per render so the validation messages are translated too. */
 function keySchema(t: TFunction) {
   return z.object({
-    name: z.string().trim().min(1, t('apiKeys.nameRequired')),
+    name: z.string().trim().min(1, t('common.nameRequired')),
     domain: z.string().trim().min(1, t('apiKeys.domainRequired')),
-    account_id: z.number().int().positive(t('apiKeys.accountRequired')),
+    account_id: z.number().int().positive(t('common.selectAccount')),
     enabled: z.boolean(),
   })
 }
@@ -120,10 +119,9 @@ export function APIKeyDialog({ open, onOpenChange, apiKey, saving, onSubmit }: A
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='sm:max-w-lg'>
+      <DialogContent className='sm:max-w-lg' aria-describedby={undefined}>
         <DialogHeader>
-          <DialogTitle>{apiKey ? t('apiKeys.editTitle') : t('apiKeys.addTitle')}</DialogTitle>
-          <DialogDescription>{t('apiKeys.dialogHint')}</DialogDescription>
+          <DialogTitle>{apiKey ? t('apiKeys.editTitle') : t('apiKeys.createKey')}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
@@ -133,7 +131,7 @@ export function APIKeyDialog({ open, onOpenChange, apiKey, saving, onSubmit }: A
               name='name'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('apiKeys.nameLabel')}</FormLabel>
+                  <FormLabel>{t('common.name')}</FormLabel>
                   <FormControl>
                     <Input placeholder={t('apiKeys.namePlaceholder')} {...field} />
                   </FormControl>

@@ -27,7 +27,6 @@ import { IPChangeChart } from '@/components/ip-change-chart'
 import { AddressCard } from './components/address-card'
 import { RecentChanges } from './components/recent-changes'
 import { StatCard } from './components/stat-card'
-import { TaskHealth } from './components/task-health'
 
 /**
  * How many entries the list column will scroll through before the history page
@@ -80,12 +79,12 @@ export function Dashboard() {
     }
   }, [])
 
+  // Nothing on this page reads the task list itself, only how many there are and
+  // whether any of them last failed; both numbers are the server's.
   const tasks = useQuery({
     queryKey: ['tasks', 'dashboard'],
-    queryFn: () => listTasks({ page: 1, page_size: HISTORY_WINDOW }),
+    queryFn: () => listTasks({ page: 1, page_size: 1 }),
   })
-  // Counted by the server instead of inside the window above: that list stops at
-  // two hundred, and anything past that was missing from the count.
   const failingCount = useQuery({
     queryKey: ['tasks', 'dashboard', 'failing'],
     queryFn: () => listTasks({ page: 1, page_size: 1, status: 'FAIL' }),
@@ -120,9 +119,7 @@ export function Dashboard() {
     },
   })
 
-  const all = tasks.data?.items ?? []
   const entries = history.data?.items ?? []
-  const failing = all.filter((task) => task.last_status === 'FAIL')
   const unreachable = tasks.isError || ipv4.isError
 
   /**
@@ -192,13 +189,9 @@ export function Dashboard() {
           />
         </div>
 
-        <TaskHealth tasks={all} failing={failing} loading={tasks.isPending} />
-
         <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
           <StatCard
             title={t('dashboard.statTasks')}
-            // The query reads one window, so the number of tasks is the total
-            // the server reports, not the length of that window.
             value={tasks.isPending ? '-' : (tasks.data?.total ?? 0)}
             icon={ListChecks}
             loading={tasks.isPending}

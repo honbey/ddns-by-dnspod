@@ -1,6 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { getDisplayNameInitials } from '@/lib/utils'
+import { getDisplayNameInitial } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 
@@ -19,7 +19,7 @@ type NavUserProps = {
  */
 export function NavUser({ user }: NavUserProps) {
   const { t } = useTranslation()
-  const initials = getDisplayNameInitials(user.name)
+  const initials = getDisplayNameInitial(user.name)
 
   return (
     <SidebarMenu>

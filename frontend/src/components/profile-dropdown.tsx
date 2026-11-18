@@ -5,7 +5,7 @@ import { Check, DoorOpen, LogOut, Palette, Settings, UserCog } from 'lucide-reac
 import { TranslateIcon } from '@/components/icons/nav-icons'
 import { useAuthStore } from '@/stores/auth-store'
 import { displayName, type LogoutScope } from '@/lib/auth'
-import { getDisplayNameInitials } from '@/lib/utils'
+import { getDisplayNameInitial } from '@/lib/utils'
 import { LOCALE_LABELS, LOCALES, setLocalePreference } from '@/i18n'
 import { useLocalePreference } from '@/hooks/use-locale-preference'
 import useDialogState from '@/hooks/use-dialog-state'
@@ -40,7 +40,7 @@ export function ProfileDropdown() {
   const providerLogout = useAuthStore((state) => state.auth.providerLogout)
   const name = displayName(user)
   const email = user?.profile.email ?? ''
-  const initials = getDisplayNameInitials(name)
+  const initials = getDisplayNameInitial(name)
   const preference = useLocalePreference()
 
   return (

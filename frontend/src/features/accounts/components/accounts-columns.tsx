@@ -81,7 +81,8 @@ export function useAccountsColumns(actions: AccountRowActions): ColumnDef<Accoun
     {
       id: 'key_hint',
       accessorFn: (account) => account.key_hint,
-      header: () => <div className='text-sm font-medium'>{t('ui.key')}</div>,
+      // The product's own word, like SecretId beside it: neither is translated.
+      header: () => <div className='text-sm font-medium'>SecretKey</div>,
       cell: ({ row }) => (
         <span className='text-muted-foreground font-mono text-xs'>
           {row.original.key_hint || '-'}

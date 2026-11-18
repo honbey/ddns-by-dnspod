@@ -59,7 +59,9 @@ export function useRecordsColumns(actions: RecordRowActions): ColumnDef<DnsRecor
       id: 'sub_domain',
       accessorFn: (record) => record.sub_domain,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.host')} />,
-      cell: ({ row }) => <span className='truncate font-medium'>{row.original.sub_domain}</span>,
+      cell: ({ row }) => (
+        <span className='block truncate font-medium'>{row.original.sub_domain}</span>
+      ),
       enableHiding: false,
     },
     {
@@ -89,7 +91,7 @@ export function useRecordsColumns(actions: RecordRowActions): ColumnDef<DnsRecor
       accessorFn: (record) => record.line,
       header: () => <div className='text-sm font-medium'>{t('ui.line')}</div>,
       cell: ({ row }) => (
-        <span className='text-muted-foreground truncate text-sm'>{row.original.line}</span>
+        <span className='text-muted-foreground block truncate text-sm'>{row.original.line}</span>
       ),
       enableSorting: false,
       meta: { className: 'w-32' },

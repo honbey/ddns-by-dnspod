@@ -86,14 +86,14 @@ export function useApiKeysColumns(
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('apiKeys.scopeColumn')} />
       ),
-      cell: ({ row }) => <span className='truncate text-sm'>{keyScope(row.original)}</span>,
+      cell: ({ row }) => <span className='block truncate text-sm'>{keyScope(row.original)}</span>,
     },
     {
       id: 'account_id',
       accessorFn: (key) => accountNames.get(key.account_id) ?? `#${key.account_id}`,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.account')} />,
       cell: ({ row }) => (
-        <span className='text-muted-foreground truncate text-sm'>
+        <span className='text-muted-foreground block truncate text-sm'>
           {accountNames.get(row.original.account_id) ?? `#${row.original.account_id}`}
         </span>
       ),

@@ -6,18 +6,16 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Initials from a display name: first character of the first word + first
- * character of the last word. One word only: first two characters. Empty: `?`.
+ * The letter a person's avatar shows: the first character of the display name.
+ *
+ * One letter, not initials: the circle is 36px, and two characters crowd it
+ * without telling anyone more than the name beside it already does.
  */
-export function getDisplayNameInitials(displayName: string): string {
-  const parts = displayName.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return '?'
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase()
-  }
-  const first = parts[0][0] ?? ''
-  const last = parts[parts.length - 1]?.[0] ?? ''
-  return (first + last).toUpperCase()
+export function getDisplayNameInitial(displayName: string): string {
+  // Spread rather than [0], so a name that starts with an emoji is not cut in
+  // half and rendered as a replacement character.
+  const first = [...displayName.trim()][0]
+  return first ? first.toUpperCase() : '?'
 }
 
 /**

@@ -609,7 +609,7 @@ export function ChannelDialog({
               </Button>
               <Button type='submit' size='sm' disabled={saving}>
                 {saving && <Loader2 className='animate-spin' />}
-                {channel ? t('common.saveChanges') : t('notifications.add')}
+                {t('common.confirm')}
               </Button>
             </SheetFooter>
           </form>

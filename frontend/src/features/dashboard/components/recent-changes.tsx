@@ -2,17 +2,9 @@ import { useTranslation } from 'react-i18next'
 import { Link } from '@tanstack/react-router'
 import { type HistoryEntry } from '@/lib/types'
 import { formatTime, statusVariant } from '@/lib/format'
-import { getDisplayNameInitials } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import {
-  Card,
-  CardAction,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 
@@ -20,8 +12,6 @@ type RecentChangesProps = {
   /** The newest entries, already cut to what the card will scroll through. */
   entries: HistoryEntry[]
   loading: boolean
-  /** How many updates exist in total, which is what the description counts. */
-  total: number
 }
 
 /**
@@ -31,21 +21,12 @@ type RecentChangesProps = {
  * the row, and a list that kept pushing it down would drag the chart taller
  * every time history accumulated.
  */
-export function RecentChanges({ entries, loading, total }: RecentChangesProps) {
+export function RecentChanges({ entries, loading }: RecentChangesProps) {
   const { t } = useTranslation()
   return (
     <Card className='flex h-full flex-col'>
       <CardHeader>
         <CardTitle>{t('dashboard.latestChanges')}</CardTitle>
-        <CardDescription>
-          {total === 0
-            ? t('dashboard.nothingChanged')
-            : entries.length < total
-              ? t('dashboard.newestOf', { shown: entries.length, total })
-              : total === 1
-                ? t('dashboard.oneUpdateRecorded')
-                : t('dashboard.updatesRecorded', { total })}
-        </CardDescription>
         <CardAction>
           <Button asChild variant='ghost' size='sm'>
             <Link to='/history'>{t('dashboard.seeAll')}</Link>
@@ -76,7 +57,11 @@ export function RecentChanges({ entries, loading, total }: RecentChangesProps) {
               return (
                 <li key={entry.id} className='flex items-center gap-3'>
                   <Avatar className='size-9'>
-                    <AvatarFallback>{getDisplayNameInitials(host)}</AvatarFallback>
+                    {/* Three letters rather than initials: a host is one word,
+                        and the first label is what tells them apart. */}
+                    <AvatarFallback className='text-xs font-medium'>
+                      {host.slice(0, 3).toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
                   <div className='min-w-0 flex-1 space-y-0.5'>
                     <p className='truncate text-sm font-medium'>{host}</p>

@@ -9,7 +9,7 @@ import {
 } from '@/features/history/api'
 import { type IPChangePoint, type PagedIPChange } from '@/lib/types'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ErrorState } from '@/components/error-state'
 import { IPChangeChart } from '@/components/ip-change-chart'
 import { IPHistoryTable } from './ip-history-table'
@@ -61,9 +61,6 @@ export function IPHistory() {
       <Card className='flex flex-col'>
         <CardHeader>
           <CardTitle>{t('dashboard.addressLifetime')}</CardTitle>
-          <CardDescription>
-            {t('history.ipChartDescription', { count: CHART_BARS })}
-          </CardDescription>
         </CardHeader>
         <CardContent className='flex h-72 items-center justify-center'>
           {/* A failed refresh keeps the last chart on screen; only a failed

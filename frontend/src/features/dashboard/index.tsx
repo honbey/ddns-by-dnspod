@@ -227,11 +227,7 @@ export function Dashboard() {
           </Card>
 
           <div className='lg:col-span-3'>
-            <RecentChanges
-              entries={entries.slice(0, RECENT)}
-              loading={history.isPending}
-              total={history.data?.total ?? 0}
-            />
+            <RecentChanges entries={entries.slice(0, RECENT)} loading={history.isPending} />
           </div>
         </div>
       </Main>

@@ -125,7 +125,9 @@ export function useHistoryColumns(): ColumnDef<HistoryEntry>[] {
           className='flex items-center gap-1 font-mono text-xs'
           title={
             row.original.duration_sec != null
-              ? `previous address lasted ${formatDuration(row.original.duration_sec)}`
+              ? t('history.previousLifetime', {
+                  duration: formatDuration(row.original.duration_sec),
+                })
               : undefined
           }
         >

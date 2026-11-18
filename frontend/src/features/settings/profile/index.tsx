@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '@/stores/auth-store'
 import { displayName, profileOf, type LogoutScope } from '@/lib/auth'
 import { providerName } from '@/lib/config'
-import { getDisplayNameInitials } from '@/lib/utils'
+import { getDisplayNameInitial } from '@/lib/utils'
 import useDialogState from '@/hooks/use-dialog-state'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -27,7 +27,7 @@ export function SettingsProfile() {
   const profile = profileOf(user)
   const name = displayName(user)
   const email = profile.email ?? ''
-  const initials = getDisplayNameInitials(name)
+  const initials = getDisplayNameInitial(name)
   const provider = providerName()
 
   return (

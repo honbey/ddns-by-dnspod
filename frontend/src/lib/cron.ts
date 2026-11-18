@@ -85,11 +85,24 @@ export function isValidCron(expr: string): boolean {
 }
 
 /**
+ * A step of one schedules the same as a wildcard; the presets spell it short.
+ *
+ * Only the star form is rewritten: a range that spans its whole field means the
+ * same thing, and is left as written rather than half-recognised.
+ */
+function withoutUnitSteps(expr: string): string {
+  return expr
+    .split(/\s+/)
+    .map((field) => field.replace(/^\*\/(?:0*1)$/, '*'))
+    .join(' ')
+}
+
+/**
  * What a cron expression means, for the benefit of anyone who has not read one
  * this year. Unrecognised expressions are shown as written rather than guessed at.
  */
 export function describeCron(expr: string): string {
   const trimmed = expr.trim()
-  const preset = cronPresets.find((option) => option.value === trimmed)
+  const preset = cronPresets.find((option) => option.value === withoutUnitSteps(trimmed))
   return preset ? preset.label : trimmed
 }

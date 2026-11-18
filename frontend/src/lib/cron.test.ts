@@ -13,6 +13,17 @@ describe('describeCron', () => {
   it('ignores surrounding whitespace when matching a preset', () => {
     expect(describeCron('  */5 * * * *  ')).toBe('Every 5 minutes')
   })
+
+  it('reads a step of one as the wildcard it behaves like', () => {
+    expect(describeCron('*/1 * * * *')).toBe('Every minute')
+    expect(describeCron('*/01 * * * *')).toBe('Every minute')
+    expect(describeCron('0 */1 * * *')).toBe('Every hour')
+  })
+
+  it('collapses extra spaces between fields', () => {
+    expect(describeCron('*/5   * * * *')).toBe('Every 5 minutes')
+    expect(describeCron('*/1   * * * *')).toBe('Every minute')
+  })
 })
 
 // The dialog has to agree with the scheduler: telling someone a schedule is

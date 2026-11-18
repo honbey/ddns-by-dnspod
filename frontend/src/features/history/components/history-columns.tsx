@@ -114,7 +114,7 @@ export function useHistoryColumns(): ColumnDef<HistoryEntry>[] {
       id: 'domain',
       accessorFn: (entry) => entry.domain,
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
-      header: () => <div className='text-sm font-medium'>{t('history.domainColumn')}</div>,
+      header: () => <div className='text-sm font-medium'>{t('ui.domain')}</div>,
       cell: ({ row }) => <span>{row.original.domain}</span>,
     },
     {

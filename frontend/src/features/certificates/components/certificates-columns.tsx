@@ -85,9 +85,7 @@ export function useCertificatesColumns(
     {
       id: 'account_id',
       accessorFn: (cert) => accountNames.get(cert.account_id) ?? `#${cert.account_id}`,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('certificates.accountColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.account')} />,
       cell: ({ row }) => (
         <span className='text-muted-foreground truncate text-sm'>
           {accountNames.get(row.original.account_id) ?? `#${row.original.account_id}`}

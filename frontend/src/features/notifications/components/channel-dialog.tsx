@@ -588,7 +588,7 @@ export function ChannelDialog({
                 name='enabled'
                 render={({ field }) => (
                   <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
-                    <FormLabel>{t('records.enabledLabel')}</FormLabel>
+                    <FormLabel>{t('status.enabled')}</FormLabel>
                     <FormControl>
                       <Switch checked={field.value} onCheckedChange={field.onChange} />
                     </FormControl>

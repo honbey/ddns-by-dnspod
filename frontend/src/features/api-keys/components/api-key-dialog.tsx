@@ -146,8 +146,8 @@ export function APIKeyDialog({ open, onOpenChange, apiKey, saving, onSubmit }: A
               render={({ field }) => (
                 <FormItem>
                   <div className='flex items-center gap-1.5'>
-                    <FormLabel>{t('apiKeys.domainLabel')}</FormLabel>
-                    <FieldHelp field={t('apiKeys.domainLabel')}>
+                    <FormLabel>{t('ui.domain')}</FormLabel>
+                    <FieldHelp field={t('ui.domain')}>
                       {field.value === API_KEY_ANY_DOMAIN
                         ? t('apiKeys.scopeEveryDomain')
                         : t('apiKeys.scopeOneDomain')}
@@ -178,7 +178,7 @@ export function APIKeyDialog({ open, onOpenChange, apiKey, saving, onSubmit }: A
               name='account_id'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>{t('apiKeys.accountLabel')}</FormLabel>
+                  <FormLabel>{t('ui.account')}</FormLabel>
                   <Select
                     name={field.name}
                     value={field.value ? String(field.value) : ''}
@@ -215,7 +215,7 @@ export function APIKeyDialog({ open, onOpenChange, apiKey, saving, onSubmit }: A
               name='enabled'
               render={({ field }) => (
                 <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
-                  <FormLabel>{t('apiKeys.enabledLabel')}</FormLabel>
+                  <FormLabel>{t('status.enabled')}</FormLabel>
                   <FormControl>
                     <Switch checked={field.value} onCheckedChange={field.onChange} />
                   </FormControl>

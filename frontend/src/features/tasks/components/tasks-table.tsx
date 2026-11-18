@@ -109,7 +109,7 @@ export function TasksTable({
         searchPlaceholder={t('table.filter')}
         filters={[
           { columnId: 'record_type', title: t('ui.type'), options: typeOptions },
-          { columnId: 'enabled', title: t('tasks.stateColumn'), options: stateOptions },
+          { columnId: 'enabled', title: t('ui.status'), options: stateOptions },
         ]}
       />
       <div className='overflow-hidden rounded-md border'>

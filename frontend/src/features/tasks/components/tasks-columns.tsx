@@ -90,9 +90,7 @@ export function useTasksColumns(
     {
       id: 'account',
       accessorFn: (task) => accountNames.get(task.account_id) ?? `#${task.account_id}`,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('tasks.accountColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.account')} />,
       cell: ({ row }) => (
         <span className='text-muted-foreground truncate text-sm'>
           {accountNames.get(row.original.account_id) ?? `#${row.original.account_id}`}

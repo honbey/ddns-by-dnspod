@@ -75,7 +75,7 @@ export function DomainsTable({ data, loading, actions, groups }: DomainsTablePro
         table={table}
         searchPlaceholder={t('table.filter')}
         filters={[
-          { columnId: 'status', title: t('domains.statusColumn'), options: statusOptions },
+          { columnId: 'status', title: t('ui.status'), options: statusOptions },
           { columnId: 'group', title: t('domains.groupColumn'), options: groupOptions },
         ]}
       />

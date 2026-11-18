@@ -88,7 +88,7 @@ export function HistoryTable({ data, total, loading, domainOptions }: HistoryTab
         filters={[
           {
             columnId: 'domain',
-            title: t('history.domainColumn'),
+            title: t('ui.domain'),
             options: domainOptions,
           },
           {

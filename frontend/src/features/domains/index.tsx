@@ -81,7 +81,7 @@ export function Domains() {
             <>
               {accountList.length > 1 ? (
                 <Select value={picked} onValueChange={setPicked}>
-                  <SelectTrigger className='w-56' aria-label={t('domains.accountAria')}>
+                  <SelectTrigger className='w-56' aria-label={t('ui.account')}>
                     <SelectValue placeholder={t('domains.accountPlaceholder')} />
                   </SelectTrigger>
                   <SelectContent>
@@ -217,7 +217,7 @@ function ImportDialog({ domain, defaultAccountId, onClose, onDone }: ImportDialo
 
         <div className='flex-1 space-y-6 overflow-y-auto p-4'>
           <Field
-            label={t('domains.accountAria')}
+            label={t('ui.account')}
             hint={t('domains.importAccountHint')}
             htmlFor='import-account'
           >

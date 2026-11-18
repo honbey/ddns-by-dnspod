@@ -91,9 +91,7 @@ export function useApiKeysColumns(
     {
       id: 'account_id',
       accessorFn: (key) => accountNames.get(key.account_id) ?? `#${key.account_id}`,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('apiKeys.accountColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.account')} />,
       cell: ({ row }) => (
         <span className='text-muted-foreground truncate text-sm'>
           {accountNames.get(row.original.account_id) ?? `#${row.original.account_id}`}

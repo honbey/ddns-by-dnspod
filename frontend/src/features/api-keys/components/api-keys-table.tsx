@@ -97,7 +97,7 @@ export function APIKeysTable({
         filters={[
           {
             columnId: 'enabled',
-            title: t('tasks.stateColumn'),
+            title: t('ui.status'),
             options: stateOptions,
           },
         ]}

@@ -190,7 +190,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                 name='account_id'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('tasks.accountColumn')}</FormLabel>
+                    <FormLabel>{t('ui.account')}</FormLabel>
                     <Select
                       name={field.name}
                       value={field.value ? String(field.value) : ''}
@@ -227,7 +227,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                   name='domain'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('tasks.domainLabel')}</FormLabel>
+                      <FormLabel>{t('ui.domain')}</FormLabel>
                       {knownDomains.length > 0 ? (
                         <Select
                           name={field.name}
@@ -397,7 +397,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                     name='enabled'
                     render={({ field }) => (
                       <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
-                        <FormLabel>{t('tasks.enabledLabel')}</FormLabel>
+                        <FormLabel>{t('status.enabled')}</FormLabel>
                         <FormControl>
                           <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>

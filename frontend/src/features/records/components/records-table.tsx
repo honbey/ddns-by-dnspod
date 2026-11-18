@@ -149,7 +149,7 @@ export function RecordsTable({ data, loading, actions, onBulkDelete }: RecordsTa
           { columnId: 'record_type', title: t('ui.type'), options: TYPE_OPTIONS },
           {
             columnId: 'status',
-            title: t('records.statusColumn'),
+            title: t('ui.status'),
             options: statusOptions,
           },
         ]}

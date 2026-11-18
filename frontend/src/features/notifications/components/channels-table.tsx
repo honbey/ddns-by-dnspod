@@ -106,7 +106,7 @@ export function ChannelsTable({
           },
           {
             columnId: 'enabled',
-            title: t('tasks.stateColumn'),
+            title: t('ui.status'),
             options: stateOptions,
           },
         ]}

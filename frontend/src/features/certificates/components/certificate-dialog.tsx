@@ -167,7 +167,7 @@ export function CertificateDialog({
                   name='account_id'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t('certificates.accountColumn')}</FormLabel>
+                      <FormLabel>{t('ui.account')}</FormLabel>
                       <Select
                         name={field.name}
                         value={field.value ? String(field.value) : ''}

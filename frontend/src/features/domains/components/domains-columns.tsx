@@ -42,9 +42,7 @@ export function useDomainsColumns(
     {
       id: 'name',
       accessorFn: (domain) => domain.name,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('domains.domainColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.domain')} />,
       cell: ({ row }) => (
         <Button asChild variant='link' className='h-auto p-0 font-medium'>
           <Link
@@ -87,9 +85,7 @@ export function useDomainsColumns(
       id: 'status',
       accessorFn: (domain) => domain.status,
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('domains.statusColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.status')} />,
       cell: ({ row }) => (
         <Badge variant={row.original.status === 'enable' ? 'default' : 'secondary'}>
           {row.original.status}

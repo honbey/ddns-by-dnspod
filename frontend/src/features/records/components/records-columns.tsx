@@ -107,9 +107,7 @@ export function useRecordsColumns(actions: RecordRowActions): ColumnDef<DnsRecor
       id: 'status',
       accessorFn: (record) => record.status,
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('records.statusColumn')} />
-      ),
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.status')} />,
       cell: ({ row }) => (
         <Badge variant={row.original.status === 'ENABLE' ? 'default' : 'secondary'}>
           {row.original.status}

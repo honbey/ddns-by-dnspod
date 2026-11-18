@@ -422,7 +422,7 @@ export function RecordDialog({
                 render={({ field }) => (
                   <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
                     <div className='space-y-0.5'>
-                      <FormLabel>{t('records.enabledLabel')}</FormLabel>
+                      <FormLabel>{t('status.enabled')}</FormLabel>
                     </div>
                     <FormControl>
                       <Switch

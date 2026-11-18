@@ -174,7 +174,7 @@ export function Records() {
                 <BreadcrumbList>
                   <BreadcrumbItem>
                     <BreadcrumbLink asChild>
-                      <Link to='/domains'>{t('records.breadcrumbDomains')}</Link>
+                      <Link to='/domains'>{t('nav.domains')}</Link>
                     </BreadcrumbLink>
                   </BreadcrumbItem>
                   <BreadcrumbSeparator />

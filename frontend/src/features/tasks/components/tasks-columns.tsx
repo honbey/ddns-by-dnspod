@@ -14,8 +14,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { DataTableColumnHeader } from '@/components/data-table'
 import { RowSwitch } from '@/components/data-table/row-switch'
+import { hostOf } from '../subdomains'
 
 export type TaskRowActions = {
   onEdit: (task: DDNSTask) => void
@@ -23,11 +25,6 @@ export type TaskRowActions = {
   /** Resolves when the change has landed, so the switch knows it can let go. */
   onToggle: (task: DDNSTask) => Promise<unknown>
   onDelete: (task: DDNSTask) => void
-}
-
-/** The host a task keeps up to date, which is how people look tasks up. */
-export function hostOf(task: DDNSTask): string {
-  return task.sub_domain ? `${task.sub_domain}.${task.domain}` : task.domain
 }
 
 export function useTasksColumns(
@@ -121,15 +118,24 @@ export function useTasksColumns(
       id: 'cron_expr',
       accessorFn: (task) => task.cron_expr,
       header: () => <div className='text-sm font-medium'>{t('tasks.scheduleLabel')}</div>,
+      // The words are what the column is for; the expression itself is one
+      // hover away for anyone who wants to check the schedule as written.
       cell: ({ row }) => (
-        <div className='min-w-0'>
-          <div className='truncate'>{describeCron(row.original.cron_expr)}</div>
-          <div className='text-muted-foreground truncate font-mono text-xs'>
-            {row.original.cron_expr}
-          </div>
-        </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {/* Focusable, because the expression is otherwise a mouse-only detail. */}
+            <span
+              tabIndex={0}
+              className='block truncate rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none'
+            >
+              {describeCron(row.original.cron_expr)}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className='font-mono'>{row.original.cron_expr}</TooltipContent>
+        </Tooltip>
       ),
       enableSorting: false,
+      meta: { className: 'w-40' },
     },
     {
       id: 'last_run',
@@ -188,13 +194,13 @@ export function useTasksColumns(
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end' className='w-44'>
-            <DropdownMenuItem onClick={() => actions.onEdit(row.original)}>
-              <Pencil />
-              {t('common.edit')}
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => actions.onRun(row.original)}>
               <Play />
               {t('tasks.runNow')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => actions.onEdit(row.original)}>
+              <Pencil />
+              {t('common.edit')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant='destructive' onClick={() => actions.onDelete(row.original)}>

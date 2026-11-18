@@ -27,7 +27,8 @@ import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { TaskDialog } from './components/task-dialog'
-import { hostOf, type TaskRowActions } from './components/tasks-columns'
+import { type TaskRowActions } from './components/tasks-columns'
+import { hostOf } from './subdomains'
 import { TasksTable } from './components/tasks-table'
 
 /** Everything down to the account id is what the API takes; the rest is history. */
@@ -136,9 +137,7 @@ export function Tasks() {
         toast.success(message)
         return
       }
-      toast.success(
-        t('tasks.saved', { host: `${outcome.task.sub_domain || '@'}.${outcome.task.domain}` })
-      )
+      toast.success(t('tasks.saved', { host: hostOf(outcome.task) }))
     },
   })
 
@@ -148,9 +147,7 @@ export function Tasks() {
     onSuccess: async (task) => {
       await invalidate()
       toast.success(
-        task.enabled
-          ? `${task.sub_domain || '@'}.${task.domain} resumed`
-          : `${task.sub_domain || '@'}.${task.domain} paused`
+        t(task.enabled ? 'tasks.resumedFor' : 'tasks.pausedFor', { host: hostOf(task) })
       )
     },
   })
@@ -160,13 +157,18 @@ export function Tasks() {
     onSuccess: async (result) => {
       await Promise.all([invalidate(), queryClient.invalidateQueries({ queryKey: ['history'] })])
       if (result.status === 'FAIL') {
-        toast.error(`${result.sub_domain || '@'}.${result.domain}: ${result.message || 'failed'}`)
+        toast.error(
+          t('tasks.runFailedResult', {
+            host: hostOf(result),
+            reason: result.message || t('tasks.runFailedReason'),
+          })
+        )
         return
       }
       toast.success(
         result.changed
-          ? `${result.sub_domain || '@'}.${result.domain} now points at ${result.new_ip}`
-          : `${result.sub_domain || '@'}.${result.domain} was already right`
+          ? t('tasks.runChanged', { host: hostOf(result), ip: result.new_ip })
+          : t('tasks.runUnchanged', { host: hostOf(result) })
       )
     },
     // A manual run that fails on the wire has no other reporter: Run all

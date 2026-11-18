@@ -1,4 +1,5 @@
 import { fitsOneBatch } from '@/lib/limits'
+import { type DDNSTask } from '@/lib/types'
 
 /**
  * Splits the subdomain field into hosts, on spaces or English commas.
@@ -20,4 +21,15 @@ export function parseSubDomains(raw: string): string[] {
 /** Whether the field fits the batch limit before a request is made. */
 export function fitsSubDomainBatch(raw: string): boolean {
   return fitsOneBatch(parseSubDomains(raw).length)
+}
+
+/**
+ * The host a task keeps up to date, as a person reads it.
+ *
+ * The server stores an apex record as "@", which is a placeholder rather than a
+ * label: those tasks are about the domain itself, not a record called "@".
+ */
+export function hostOf(task: Pick<DDNSTask, 'sub_domain' | 'domain'>): string {
+  const sub = task.sub_domain === '@' ? '' : task.sub_domain
+  return sub ? `${sub}.${task.domain}` : task.domain
 }

@@ -8,6 +8,10 @@ export GOPROXY
 BINARY := bin/ddns-server
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
+# npm rewrites this on every install, so it doubles as the "dependencies are in
+# place" stamp: a clean clone builds with no separate install step, and a tree
+# that already has them is not reinstalled on every run.
+FRONTEND_STAMP := $(FRONTEND_DIR)/node_modules/.package-lock.json
 # The version is written in one place: info.version in backend/openapi.yml.
 # frontend/package.json carries the same number and CI checks they agree.
 VERSION ?= $(shell sed -n 's/^[[:space:]]*version: *"\([^"]*\)".*/\1/p' $(BACKEND_DIR)/openapi.yml)
@@ -35,11 +39,16 @@ help:
 	@echo "  make vet          static checks"
 	@echo "  make clean        remove build output"
 
-deps:
+deps: $(FRONTEND_STAMP)
 	cd $(BACKEND_DIR) && go mod download
+
+# `prebuild` runs the openapi-typescript CLI out of node_modules, so a tree
+# without them fails before the build starts. Depending on the stamp keeps the
+# first build after a clone working and later ones free.
+$(FRONTEND_STAMP): $(FRONTEND_DIR)/package-lock.json
 	cd $(FRONTEND_DIR) && npm install
 
-frontend:
+frontend: $(FRONTEND_STAMP)
 	cd $(FRONTEND_DIR) && npm run build
 
 # The SPA is embedded at compile time, so the backend cannot be built before it
@@ -59,15 +68,14 @@ run: build
 dev-backend:
 	cd $(BACKEND_DIR) && go run ./cmd/server
 
-dev-frontend:
+dev-frontend: $(FRONTEND_STAMP)
 	cd $(FRONTEND_DIR) && npm run dev
 
 # An explicit refresh, not a build prerequisite: `prebuild` and `pretypecheck`
 # already regenerate the types, so a build from a clean checkout is fine either
 # way. Run this after editing backend/openapi.yml when you want to see the
 # generated diff before committing it.
-types:
-	@test -d $(FRONTEND_DIR)/node_modules || { echo "frontend/node_modules is missing: run 'make deps' first"; exit 1; }
+types: $(FRONTEND_STAMP)
 	cd $(FRONTEND_DIR) && npm run types
 
 tidy:
@@ -83,7 +91,7 @@ vet:
 # Both suites: the frontend is embedded in the binary, so a change there is as
 # much a part of the server as the Go code is. --run because vitest otherwise
 # stays in watch mode outside a terminal.
-test:
+test: $(FRONTEND_STAMP)
 	cd $(BACKEND_DIR) && go test ./...
 	cd $(FRONTEND_DIR) && npm test -- --run
 

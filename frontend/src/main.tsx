@@ -1,3 +1,5 @@
+// First, so no parse can reach the CSP probe: see the module for the details.
+import '@/lib/zod-jitless'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'

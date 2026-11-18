@@ -12,40 +12,78 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
  * The button is next to the label, never inside it: a label that contains a
  * button is announced as one control, and its text is read twice.
  */
-export function FieldHelp({
+export function HelpTip({
   field,
   children,
   className,
 }: {
+  /** What the hint explains, named in the button's label. */
   field: string
   children: ReactNode
   className?: string
 }) {
   const { t } = useTranslation()
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type='button'
+          aria-label={t('common.fieldHelp', { field })}
+          className={cn(
+            'text-muted-foreground shrink-0 rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+            className
+          )}
+        >
+          <CircleHelp aria-hidden='true' className='size-3.5' />
+        </button>
+      </TooltipTrigger>
+      {/* Left-aligned with the icon and kept off the viewport edge: inside a
+          right-hand sheet a centred bubble reaches over the panel it explains. */}
+      <TooltipContent
+        className='max-w-xs'
+        side='top'
+        align='start'
+        sideOffset={6}
+        collisionPadding={12}
+      >
+        {children}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+/**
+ * The same button for a field that belongs to a form: it also fills the
+ * description slot, so the hint stays announced on the control itself rather
+ * than only behind the help button.
+ */
+export function FieldHelp({
+  field,
+  children,
+  className,
+  announce = true,
+}: {
+  field: string
+  children: ReactNode
+  className?: string
+  /**
+   * False when the field also renders a FormDescription: that element already
+   * carries the description id, and a second one with the same id would make
+   * the control's aria-describedby resolve to two elements.
+   */
+  announce?: boolean
+}) {
   const { formDescriptionId } = useFormField()
   return (
     <>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type='button'
-            aria-label={t('common.fieldHelp', { field })}
-            className={cn(
-              'text-muted-foreground shrink-0 rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-              className
-            )}
-          >
-            <CircleHelp aria-hidden='true' className='size-3.5' />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent className='max-w-xs'>{children}</TooltipContent>
-      </Tooltip>
-      {/* The control's aria-describedby still names the description slot; with
-          the visible text gone, this keeps the hint announced on the field
-          itself rather than only behind the help button. */}
-      <span id={formDescriptionId} className='sr-only'>
+      <HelpTip field={field} className={className}>
         {children}
-      </span>
+      </HelpTip>
+      {announce ? (
+        <span id={formDescriptionId} className='sr-only'>
+          {children}
+        </span>
+      ) : null}
     </>
   )
 }

@@ -30,7 +30,10 @@ export function DataTableColumnHeader<TData, TValue>({
     <div className={cn('flex items-center space-x-2', className)}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant='ghost' size='sm' className='h-8 data-[state=open]:bg-accent'>
+          {/* Zeroes the button's start padding so the title starts on the
+              cell's text edge; a negative margin would push the hover and
+              focus ring outside the table. */}
+          <Button variant='ghost' size='sm' className='h-8 ps-0! data-[state=open]:bg-accent'>
             <span>{title}</span>
             {column.getIsSorted() === 'desc' ? (
               <ArrowDownIcon className='ms-2 h-4 w-4' />

@@ -12,12 +12,17 @@ export function Header({ className, fixed, children, ...props }: HeaderProps) {
   const [offset, setOffset] = useState(0)
 
   useEffect(() => {
-    const onScroll = () => {
-      setOffset(document.body.scrollTop || document.documentElement.scrollTop)
+    const onScroll = (event: Event) => {
+      const target = event.target
+      setOffset(
+        target instanceof HTMLElement
+          ? target.scrollTop
+          : document.body.scrollTop || document.documentElement.scrollTop
+      )
     }
 
-    // Capture, because scroll does not bubble: without it nothing is heard once
-    // the scrolling happens inside a nested container rather than the page.
+    // Capture, because scroll does not bubble: the target is the element that
+    // scrolled, which may be a nested container rather than the page.
     document.addEventListener('scroll', onScroll, {
       passive: true,
       capture: true,

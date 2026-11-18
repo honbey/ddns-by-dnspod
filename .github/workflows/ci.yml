@@ -74,6 +74,33 @@ jobs:
         working-directory: backend
         run: go test -race ./...
 
+      - name: Coverage floor
+        working-directory: backend
+        run: |
+          set -euo pipefail
+          # A floor is not a target: it is a few points under what the suite
+          # reaches today, so a test file that stopped running or a package that
+          # lost its cases fails the build instead of passing quietly.
+          check() {
+            pkg="$1"
+            floor="$2"
+            # Split so a failing go test is reported as itself: piped straight
+            # into sed, its exit status would be sed's.
+            out=$(go test -cover "$pkg") || {
+              echo "::error::$pkg: go test failed"
+              exit 1
+            }
+            got=$(printf '%s\n' "$out" | sed -n 's/.*coverage: \([0-9.]*\)%.*/\1/p')
+            echo "$pkg: ${got}% (floor ${floor}%)"
+            awk -v g="$got" -v f="$floor" 'BEGIN { exit !(g + 0 >= f + 0) }' || {
+              echo "::error::$pkg coverage fell to ${got}%, floor is ${floor}%"
+              exit 1
+            }
+          }
+          check ./internal/api/ 60
+          check ./internal/acme/ 55
+          check ./internal/model/ 52
+
       - name: Frontend type check and unit tests
         working-directory: frontend
         run: |

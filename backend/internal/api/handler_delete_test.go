@@ -79,9 +79,9 @@ func newTestServer(t *testing.T, options ...func(*config.Config)) (*Server, *con
 	srv := NewServer(cfg, st, scheduler, detector, sender, auth.New(cfg.OIDC), certManager)
 	// The certificate checks ask which domains the account owns; answering here
 	// keeps the suite off the network. A test that cares overrides this again.
-	srv.ownedDomains = func(context.Context, uint) ([]string, error) {
+	srv.domains = stubDomains(func(context.Context, uint) ([]string, error) {
 		return []string{"example.com", "example.org"}, nil
-	}
+	})
 	return srv, cfg
 }
 
@@ -134,6 +134,13 @@ func errorCode(t *testing.T, rec *httptest.ResponseRecorder) string {
 		t.Fatalf("decode body %q: %v", rec.Body.String(), err)
 	}
 	return body.Code
+}
+
+// stubDomains answers the certificate name check without DNSPod.
+type stubDomains func(ctx context.Context, accountID uint) ([]string, error)
+
+func (f stubDomains) OwnedDomains(ctx context.Context, accountID uint) ([]string, error) {
+	return f(ctx, accountID)
 }
 
 // newTestAccount inserts an account with a properly encrypted secret.

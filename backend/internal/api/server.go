@@ -96,9 +96,34 @@ type Server struct {
 	verifier  *auth.Verifier
 	acme      *acme.Manager
 	clients   *clientCache
-	// ownedDomains reads the domains an account answers for. It is a field so a
-	// test can answer without reaching DNSPod; see NewServer for the real one.
-	ownedDomains func(ctx context.Context, accountID uint) ([]string, error)
+	// domains answers which domains an account holds, which is what a
+	// certificate name is checked against. An interface rather than a call into
+	// the client cache, so a test can answer it without reaching DNSPod.
+	domains domainCatalog
+}
+
+// domainCatalog is the one question the certificate name check asks.
+type domainCatalog interface {
+	OwnedDomains(ctx context.Context, accountID uint) ([]string, error)
+}
+
+// dnspodCatalog reads the answer through the account's own credentials.
+type dnspodCatalog struct{ server *Server }
+
+func (c dnspodCatalog) OwnedDomains(ctx context.Context, accountID uint) ([]string, error) {
+	cli, err := c.server.clientFor(accountID)
+	if err != nil {
+		return nil, err
+	}
+	domains, err := cli.ListDomains(ctx)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(domains))
+	for i := range domains {
+		names = append(names, domains[i].Name)
+	}
+	return names, nil
 }
 
 // NewServer builds the API server
@@ -113,21 +138,7 @@ func NewServer(cfg *config.Config, st *store.Store, sch *ddns.Scheduler, det *ip
 		acme:      certs,
 		clients:   newClientCache(clientCacheTTL),
 	}
-	s.ownedDomains = func(ctx context.Context, accountID uint) ([]string, error) {
-		cli, err := s.clientFor(accountID)
-		if err != nil {
-			return nil, err
-		}
-		domains, err := cli.ListDomains(ctx)
-		if err != nil {
-			return nil, err
-		}
-		names := make([]string, 0, len(domains))
-		for i := range domains {
-			names = append(names, domains[i].Name)
-		}
-		return names, nil
-	}
+	s.domains = dnspodCatalog{server: s}
 	return s
 }
 

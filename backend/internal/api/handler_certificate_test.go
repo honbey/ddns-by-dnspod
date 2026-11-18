@@ -591,9 +591,9 @@ func TestNormaliseCertificateNamesIDN(t *testing.T) {
 func TestCreateCertificateToleratesAnUnreadableDomainList(t *testing.T) {
 	srv, cfg := newTestServer(t)
 	account := newTestAccount(t, srv)
-	srv.ownedDomains = func(context.Context, uint) ([]string, error) {
+	srv.domains = stubDomains(func(context.Context, uint) ([]string, error) {
 		return nil, errors.New("dnspod is down")
-	}
+	})
 
 	rec := do(t, srv, cfg, http.MethodPost, "/api/certificates", certificatePayload(account.ID))
 	if rec.Code != http.StatusCreated {
@@ -611,9 +611,9 @@ func TestCreateCertificateToleratesAnUnreadableDomainList(t *testing.T) {
 func TestCreateCertificateRejectsAForeignName(t *testing.T) {
 	srv, cfg := newTestServer(t)
 	account := newTestAccount(t, srv)
-	srv.ownedDomains = func(context.Context, uint) ([]string, error) {
+	srv.domains = stubDomains(func(context.Context, uint) ([]string, error) {
 		return []string{"example.com"}, nil
-	}
+	})
 
 	// A subdomain and a wildcard over the owned domain are both fine.
 	for i, name := range []string{"www.example.com", "*.example.com", "a.b.example.com"} {
@@ -648,12 +648,12 @@ func TestUpdateCertificateChecksNamesAgainstANewAccount(t *testing.T) {
 	if err := srv.store.DB().Create(&second).Error; err != nil {
 		t.Fatalf("create the second account: %v", err)
 	}
-	srv.ownedDomains = func(_ context.Context, accountID uint) ([]string, error) {
+	srv.domains = stubDomains(func(_ context.Context, accountID uint) ([]string, error) {
 		if accountID == second.ID {
 			return []string{"other.example"}, nil
 		}
 		return []string{"example.com"}, nil
-	}
+	})
 
 	created := decodeCertificate(t, do(t, srv, cfg, http.MethodPost, "/api/certificates", certificatePayload(first.ID)))
 
@@ -668,5 +668,29 @@ func TestUpdateCertificateChecksNamesAgainstANewAccount(t *testing.T) {
 		map[string]interface{}{"account_id": first.ID})
 	if rec.Code == http.StatusBadRequest {
 		t.Fatalf("an account that owns the names was refused: %s", rec.Body.String())
+	}
+}
+
+// The name check runs once per name on every certificate write, and both sides
+// go through IDNA: this is where that cost shows. Run with
+//
+//	go test ./internal/api/ -bench CoveredByAccount -benchmem
+func BenchmarkCoveredByAccount(b *testing.B) {
+	domains := make([]string, 0, 200)
+	for i := 0; i < 200; i++ {
+		domains = append(domains, fmt.Sprintf("zone%d.example.com", i))
+	}
+	names := []string{
+		"a.b.zone150.example.com",
+		"www.zone42.example.com",
+		"*.zone199.example.com",
+		"例子.example.com",
+	}
+
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		for _, name := range names {
+			coveredByAccount(name, domains)
+		}
 	}
 }

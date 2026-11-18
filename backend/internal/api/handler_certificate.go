@@ -561,7 +561,15 @@ func (s *Server) rejectUncoveredNames(c *gin.Context, accountID uint, names []st
 	// request should not sit on them for as long as the provider feels like.
 	ctx, cancel := context.WithTimeout(c.Request.Context(), certificateNameLookup)
 	defer cancel()
-	owned, err := s.ownedDomains(ctx, accountID)
+	if s.domains == nil {
+		// A Server built without the catalog cannot answer the question. Failing
+		// open is the same trade the provider error takes: the row is stored and
+		// the issuance reports the problem.
+		slog.Warn("certificate name check skipped: no domain catalog on this server",
+			"account", accountID, "rid", middleware.RequestIDFrom(c))
+		return false
+	}
+	owned, err := s.domains.OwnedDomains(ctx, accountID)
 	if err != nil {
 		// Storing a certificate is a local operation otherwise, so a provider that
 		// cannot be reached must not block it: the issuance reports the same

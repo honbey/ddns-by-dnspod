@@ -68,6 +68,9 @@ func (s *Server) frontendConfig(c *gin.Context) {
 		// the answer is a public document either way - and the server keeps
 		// refusing whatever a stale bundle asks for.
 		"acmeEnabled": s.cfg.ACME.Enabled,
+		// The schedule the server gives a certificate that names none, so the
+		// form offers the deployment's own hour instead of a second copy of it.
+		"acmeDefaultRenewCron": s.cfg.ACME.DefaultRenewCron(),
 		"oidc": gin.H{
 			"issuer":            s.cfg.OIDC.Issuer,
 			"clientId":          s.cfg.OIDC.ClientID,

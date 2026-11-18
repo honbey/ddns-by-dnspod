@@ -75,11 +75,6 @@ export function CertificatesTable({
     { label: 'FAIL', value: 'FAIL' },
     { label: t('certificates.running'), value: 'RUNNING' },
   ]
-  const renewalOptions: FacetedOption[] = [
-    { label: t('certificates.automatic'), value: 'automatic' },
-    { label: t('certificates.manual'), value: 'manual' },
-  ]
-
   const table = useReactTable({
     data,
     columns,
@@ -96,7 +91,7 @@ export function CertificatesTable({
     globalFilterFn: (row, _columnId, filterValue) => {
       const needle = String(filterValue).toLowerCase()
       const cert = row.original
-      return [cert.name, ...cert.domains, cert.output_path, cert.last_message]
+      return [cert.name, ...cert.domains, cert.last_message]
         .join(' ')
         .toLowerCase()
         .includes(needle)
@@ -119,14 +114,7 @@ export function CertificatesTable({
       <DataTableToolbar
         table={table}
         searchPlaceholder={t('table.filter')}
-        filters={[
-          { columnId: 'last_status', title: t('ui.lastRun'), options: resultOptions },
-          {
-            columnId: 'auto_renew',
-            title: t('certificates.renewLabel'),
-            options: renewalOptions,
-          },
-        ]}
+        filters={[{ columnId: 'last_status', title: t('ui.lastRun'), options: resultOptions }]}
       />
       <div className='overflow-hidden rounded-md border'>
         <Table>

@@ -303,7 +303,8 @@ const certificates = [
     domains: ['*.example.com', 'example.com'],
     keyType: 'ec256',
     outputDir: 'home',
-    autoRenew: 1,
+    renewCron: '0 3 * * *',
+    renewBeforeDays: 30,
     notifyOnIssue: 1,
     lastIssuedAt: ts(-40 * DAY),
     notAfter: ts(50 * DAY),
@@ -319,7 +320,8 @@ const certificates = [
     domains: ['api.example.net'],
     keyType: 'rsa2048',
     outputDir: 'api',
-    autoRenew: 1,
+    renewCron: '0 4 * * *',
+    renewBeforeDays: 14,
     notifyOnIssue: 0,
     lastIssuedAt: ts(-78 * DAY),
     notAfter: ts(12 * DAY),
@@ -425,8 +427,8 @@ try {
 
   const insertCertificate = db.prepare(
     `INSERT INTO certificates
-      (id,name,account_id,domains,key_type,output_dir,auto_renew,notify_on_issue,last_issued_at,not_after,last_status,last_message,fail_count,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      (id,name,account_id,domains,key_type,output_dir,renew_cron,renew_before_days,notify_on_issue,last_issued_at,not_after,last_status,last_message,fail_count,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   )
   for (const c of certificates) {
     insertCertificate.run(
@@ -436,7 +438,8 @@ try {
       JSON.stringify(c.domains),
       c.keyType,
       c.outputDir,
-      c.autoRenew,
+      c.renewCron,
+      c.renewBeforeDays,
       c.notifyOnIssue,
       c.lastIssuedAt,
       c.notAfter,

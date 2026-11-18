@@ -138,6 +138,22 @@ export function Certificates() {
     },
   })
 
+  // The switch in the list edits one field, so it takes the same route the
+  // dialog does: a partial update, and the row is re-read from the answer.
+  const { mutateAsync: toggleNotify } = useMutation({
+    mutationFn: (cert: Certificate) =>
+      updateCertificate(cert.id, { notify_on_issue: !cert.notify_on_issue }),
+    onSuccess: async (cert) => {
+      await invalidate()
+      toast.success(
+        t(cert.notify_on_issue ? 'certificates.notifyOn' : 'certificates.notifyOff', {
+          name: cert.name,
+        })
+      )
+    },
+    onError: (error) => handleServerError(error, t('certificates.notifyFailed')),
+  })
+
   const actions = useMemo<CertificateRowActions>(
     () => ({
       onIssue: (cert) => issue(cert.id),
@@ -145,9 +161,10 @@ export function Certificates() {
         setEditing(cert)
         setDialogOpen(true)
       },
+      onToggleNotify: (cert) => toggleNotify(cert),
       onDelete: (cert) => setRemoving([cert]),
     }),
-    [issue]
+    [issue, toggleNotify]
   )
 
   return (

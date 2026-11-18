@@ -1,12 +1,12 @@
 import { type ColumnDef } from '@tanstack/react-table'
 import { useTranslation } from 'react-i18next'
-import { Loader2, MoreHorizontal, Pencil, Play, Trash2 } from 'lucide-react'
+import { MoreHorizontal, Pencil, Play, Trash2 } from 'lucide-react'
+import { describeCron } from '@/lib/cron'
 import { type Certificate } from '@/lib/types'
-import { formatTime, statusVariant } from '@/lib/format'
+import { formatTime } from '@/lib/format'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Paste } from '@/components/paste'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,12 +15,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { DataTableColumnHeader } from '@/components/data-table'
+import { LastRunCell } from '@/components/data-table/last-run-cell'
+import { RowSwitch } from '@/components/data-table/row-switch'
 import { expiryLabel, expiryOf, keyTypeLabel } from './certificate-types'
 
 export type CertificateRowActions = {
   /** Starts an issuance; from there the row reports the run. */
   onIssue: (cert: Certificate) => void
   onEdit: (cert: Certificate) => void
+  /** Resolves when the change has landed, so the switch knows it can let go. */
+  onToggleNotify: (cert: Certificate) => Promise<unknown>
   onDelete: (cert: Certificate) => void
 }
 
@@ -87,7 +91,7 @@ export function useCertificatesColumns(
       accessorFn: (cert) => accountNames.get(cert.account_id) ?? `#${cert.account_id}`,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.account')} />,
       cell: ({ row }) => (
-        <span className='text-muted-foreground truncate text-sm'>
+        <span className='text-muted-foreground block truncate text-sm'>
           {accountNames.get(row.original.account_id) ?? `#${row.original.account_id}`}
         </span>
       ),
@@ -113,17 +117,17 @@ export function useCertificatesColumns(
       meta: { className: 'w-40' },
     },
     {
-      id: 'auto_renew',
-      accessorFn: (cert) => (cert.auto_renew ? 'automatic' : 'manual'),
-      filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
-      header: () => <div className='text-sm font-medium'>{t('certificates.renewLabel')}</div>,
+      id: 'renew_cron',
+      header: () => <div className='text-sm font-medium'>{t('certificates.renewCronLabel')}</div>,
       cell: ({ row }) => (
-        <span className='text-muted-foreground text-sm'>
-          {row.original.auto_renew ? t('certificates.automatic') : t('certificates.manual')}
+        <span className='text-muted-foreground block truncate text-sm'>
+          {row.original.renew_cron
+            ? describeCron(row.original.renew_cron, t)
+            : t('certificates.renewManual')}
         </span>
       ),
       enableSorting: false,
-      meta: { className: 'w-28' },
+      meta: { className: 'w-32' },
     },
     {
       id: 'last_status',
@@ -131,46 +135,39 @@ export function useCertificatesColumns(
       filterFn: (row, id, value: string[]) => value.includes(row.getValue(id)),
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.lastRun')} />,
       cell: ({ row }) => (
-        // The message is the only place a failure explains itself in the list,
-        // so it sits under the badge and is repeated in full on hover.
-        <div className='space-y-0.5' title={row.original.last_message}>
-          <Badge variant={statusVariant(row.original.last_status)}>
-            {row.original.last_status === 'RUNNING' ? (
-              <Loader2 aria-hidden='true' className='size-3 animate-spin' />
-            ) : null}
-            {row.original.last_status || t('ui.neverRun')}
-          </Badge>
-          {row.original.fail_count > 0 ? (
-            <div className='text-muted-foreground text-xs'>
-              {t('ui.failedInRow', { count: row.original.fail_count })}
-            </div>
-          ) : null}
-          <div className='text-muted-foreground max-w-64 truncate text-xs'>
-            {row.original.last_message}
-          </div>
-        </div>
+        <LastRunCell
+          at={row.original.last_issued_at}
+          status={row.original.last_status}
+          message={row.original.last_message}
+          failCount={row.original.fail_count}
+        />
       ),
       meta: { className: 'w-56' },
     },
     {
+      id: 'notify_on_issue',
+      header: () => <div className='text-sm font-medium'>{t('certificates.notifyLabel')}</div>,
+      cell: ({ row }) => (
+        <RowSwitch
+          checked={row.original.notify_on_issue}
+          onToggle={() => actions.onToggleNotify(row.original)}
+          label={`${t(row.original.notify_on_issue ? 'ui.disable' : 'ui.enable')} ${
+            row.original.name
+          }`}
+        />
+      ),
+      enableSorting: false,
+      meta: { className: 'w-20' },
+    },
+    {
       id: 'key_type',
       accessorFn: (cert) => cert.key_type,
-      header: () => <div className='text-sm font-medium'>{t('ui.key')}</div>,
+      header: () => <div className='text-sm font-medium'>{t('certificates.keyTypeLabel')}</div>,
       cell: ({ row }) => (
         <span className='text-muted-foreground text-sm'>{keyTypeLabel(row.original.key_type)}</span>
       ),
       enableSorting: false,
       meta: { className: 'w-32' },
-    },
-    {
-      id: 'output_path',
-      accessorFn: (cert) => cert.output_path,
-      header: () => <div className='text-sm font-medium'>{t('certificates.filesLabel')}</div>,
-      cell: ({ row }) => (
-        <Paste value={row.original.output_path} label={t('certificates.directoryAria')} />
-      ),
-      enableSorting: false,
-      meta: { className: 'w-64' },
     },
     {
       id: 'actions',

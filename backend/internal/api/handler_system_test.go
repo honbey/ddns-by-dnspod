@@ -30,7 +30,9 @@ func TestFrontendConfigReportsTheCapabilities(t *testing.T) {
 	if _, wrapped := body["data"]; wrapped {
 		t.Fatalf("the answer is wrapped, which the bundle does not expect: %s", rec.Body.String())
 	}
-	for _, key := range []string{"appName", "apiBaseUrl", "authRequired", "acmeEnabled", "oidc"} {
+	for _, key := range []string{
+		"appName", "apiBaseUrl", "authRequired", "acmeEnabled", "acmeDefaultRenewCron", "oidc",
+	} {
 		if _, ok := body[key]; !ok {
 			t.Fatalf("%q is missing from the answer: %s", key, rec.Body.String())
 		}

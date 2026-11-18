@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { MoreHorizontal, Pencil, Play, Trash2 } from 'lucide-react'
 import { type DDNSTask } from '@/lib/types'
 import { describeCron } from '@/lib/cron'
-import { formatDuration, formatTime, statusVariant } from '@/lib/format'
+import { formatDuration } from '@/lib/format'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { DataTableColumnHeader } from '@/components/data-table'
+import { LastRunCell } from '@/components/data-table/last-run-cell'
 import { RowSwitch } from '@/components/data-table/row-switch'
 import { hostOf } from '../subdomains'
 
@@ -89,7 +90,7 @@ export function useTasksColumns(
       accessorFn: (task) => accountNames.get(task.account_id) ?? `#${task.account_id}`,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.account')} />,
       cell: ({ row }) => (
-        <span className='text-muted-foreground truncate text-sm'>
+        <span className='text-muted-foreground block truncate text-sm'>
           {accountNames.get(row.original.account_id) ?? `#${row.original.account_id}`}
         </span>
       ),
@@ -126,9 +127,9 @@ export function useTasksColumns(
             {/* Focusable, because the expression is otherwise a mouse-only detail. */}
             <span
               tabIndex={0}
-              className='block truncate rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none'
+              className='block cursor-help truncate rounded-sm focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none'
             >
-              {describeCron(row.original.cron_expr)}
+              {describeCron(row.original.cron_expr, t)}
             </span>
           </TooltipTrigger>
           <TooltipContent className='font-mono'>{row.original.cron_expr}</TooltipContent>
@@ -141,30 +142,14 @@ export function useTasksColumns(
       id: 'last_run',
       accessorFn: (task) => task.last_run_at ?? '',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('ui.lastRun')} />,
-      cell: ({ row }) => {
-        const task = row.original
-        return (
-          <div className='min-w-0'>
-            {task.last_run_at ? (
-              <>
-                <div className='truncate text-sm'>{formatTime(task.last_run_at)}</div>
-                <div className='truncate text-xs'>
-                  <Badge variant={statusVariant(task.last_status)}>
-                    {task.last_status || t('ui.neverRun')}
-                  </Badge>
-                  {task.fail_count > 0 ? (
-                    <span className='text-muted-foreground ms-1'>
-                      {t('ui.failedInRow', { count: task.fail_count })}
-                    </span>
-                  ) : null}
-                </div>
-              </>
-            ) : (
-              <span className='text-muted-foreground text-sm'>{t('ui.neverRun')}</span>
-            )}
-          </div>
-        )
-      },
+      cell: ({ row }) => (
+        <LastRunCell
+          at={row.original.last_run_at}
+          status={row.original.last_status}
+          message={row.original.last_message}
+          failCount={row.original.fail_count}
+        />
+      ),
     },
     {
       id: 'enabled',

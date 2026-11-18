@@ -689,6 +689,8 @@ export interface components {
             apiBaseUrl: string;
             authRequired: boolean;
             acmeEnabled: boolean;
+            /** @description Schedule a new certificate gets when it names none, e.g. "0 3 1 * *". */
+            acmeDefaultRenewCron: string;
             oidc: {
                 issuer: string;
                 clientId: string;
@@ -950,7 +952,10 @@ export interface components {
             key_type: string;
             output_dir: string;
             output_path: string;
-            auto_renew: boolean;
+            /** @description Five-field cron expression for the renewal check; empty renews by hand only. */
+            renew_cron: string;
+            /** @description Days before expiry to renew; 0 uses acme.renew_before_days. */
+            renew_before_days: number;
             notify_on_issue: boolean;
             last_issued_at?: string | null;
             not_after?: string | null;
@@ -966,7 +971,8 @@ export interface components {
             domains: string[];
             key_type: string;
             output_dir?: string;
-            auto_renew?: boolean;
+            renew_cron?: string;
+            renew_before_days?: number;
             notify_on_issue?: boolean;
         };
         APIKey: {

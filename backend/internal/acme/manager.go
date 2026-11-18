@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
 
 	"ddns-by-dnspod/internal/config"
@@ -38,6 +39,12 @@ import (
 
 // errWrite is the one failure that happens on this side of the wire.
 var errWrite = errors.New("the certificate could not be written to disk")
+
+// errIssuanceRunning is what Start answers when this certificate already has a
+// run in flight. The renewal check treats it as nothing to do: the minute tick
+// and the check at start can look at the same row, and whoever got there first
+// is enough.
+var errIssuanceRunning = errors.New("an issuance for this certificate is already running")
 
 // Manager owns the certificates: it runs issuance in the background, writes the
 // files where the TLS applications can reach them, and announces the outcome.
@@ -110,7 +117,7 @@ func (m *Manager) Start(id uint) error {
 		return err
 	}
 	if !m.tryStart(id) {
-		return fmt.Errorf("an issuance for this certificate is already running")
+		return errIssuanceRunning
 	}
 	// Written before the goroutine starts, so the caller that has just asked
 	// for a run reads RUNNING back rather than the status of the run before it.
@@ -176,25 +183,46 @@ func (m *Manager) Wait(ctx context.Context) bool {
 // RenewDue starts an issuance for every certificate that is due, and reports
 // how many it started.
 //
-// A certificate with no not_after has never been issued, and one that has is
-// due once it is inside the renewal window. A failure is left in the row and
-// announced; the next check tries again the following day, which is why the
-// window is a month wide.
+// The check runs every minute and each certificate carries its own expression,
+// so a check only looks at the rows whose schedule fires now. A certificate
+// with no not_after has never been issued, and one that has is due once it is
+// inside its renewal window - its own, or the deployment default. A failure is
+// left in the row and announced; the next matching check tries again, which is
+// why the window is weeks wide.
 func (m *Manager) RenewDue() (int, error) {
-	if !m.cfg.Enabled || m.cfg.RenewBeforeDays <= 0 {
+	return m.renewDue(true)
+}
+
+// RenewDueNow is the check that runs once at start.
+//
+// A schedule measured in days can fall inside a restart, and a certificate that
+// came due while the process was down would otherwise wait for the next tick -
+// up to a month with the default. This looks at every certificate inside its
+// window regardless of where its own expression points; the tick that follows
+// resumes the normal filtering.
+func (m *Manager) RenewDueNow() (int, error) {
+	return m.renewDue(false)
+}
+
+func (m *Manager) renewDue(scheduled bool) (int, error) {
+	if !m.cfg.Enabled {
 		return 0, nil
 	}
 
 	var certs []model.Certificate
-	if err := m.store.DB().Where("auto_renew = ?", true).Order("id").Find(&certs).Error; err != nil {
+	if err := m.store.DB().Where("renew_cron <> ''").Order("id").Find(&certs).Error; err != nil {
 		return 0, fmt.Errorf("read the certificates: %w", err)
 	}
 
 	started := 0
-	for _, cert := range dueForRenewal(certs, m.cfg.RenewBeforeDays, time.Now()) {
+	for _, cert := range dueForRenewal(certs, m.cfg.RenewBeforeDays, time.Now(), scheduled) {
 		if err := m.Start(cert); err != nil {
-			// Already running, or gone: neither is worth failing the check for.
-			slog.Error("renewal check could not read the certificate", "certificate", cert, "error", err)
+			if errors.Is(err, errIssuanceRunning) {
+				// Two checks met on the same row: not a failure, and saying so
+				// at error level every time they do would bury the real ones.
+				continue
+			}
+			slog.Error("could not start a renewal", "certificate", cert, "error", err)
 			continue
 		}
 		started++
@@ -204,24 +232,84 @@ func (m *Manager) RenewDue() (int, error) {
 
 // dueForRenewal picks the certificates a check at this moment should issue.
 //
-// A certificate that has never been issued counts as due: creating one with
-// automatic renewal on is how a certificate is asked for without pressing
-// anything, and the daily check is what presses it. One that is still inside
-// the window keeps its place, and the next check an hour later will try again.
-func dueForRenewal(certs []model.Certificate, renewBeforeDays int, now time.Time) []uint {
-	cutoff := now.AddDate(0, 0, renewBeforeDays)
+// A scheduled check only looks at the rows whose own expression fires now; the
+// check at start passes scheduled=false and looks at every row inside its
+// window, because a schedule measured in days can fall inside a restart. A
+// certificate that has never been issued counts as due either way, which is how
+// asking for one without pressing the button works.
+func dueForRenewal(certs []model.Certificate, fallbackDays int, now time.Time, scheduled bool) []uint {
 	var due []uint
 	for i := range certs {
 		cert := certs[i]
-		if !cert.AutoRenew {
+		if cert.RenewCron == "" {
 			continue
 		}
-		if cert.NotAfter != nil && cert.NotAfter.After(cutoff) {
+		if scheduled && !cronFires(cert.RenewCron, now) {
+			continue
+		}
+		window := cert.RenewBeforeDays
+		if window <= 0 {
+			window = fallbackDays
+		}
+		if window <= 0 {
+			// Automatic renewal is off deployment-wide and this row did not
+			// name a window of its own.
+			continue
+		}
+		if cert.NotAfter != nil && cert.NotAfter.After(now.AddDate(0, 0, window)) {
 			continue
 		}
 		due = append(due, cert.ID)
 	}
 	return due
+}
+
+// cronFires reports whether the expression is due in the minute now falls in.
+//
+// The check ticks every minute, so this is what turns one shared tick into a
+// schedule per certificate. An expression the parser rejects cannot have been
+// stored through the API; a row edited by hand answers false rather than
+// stopping the check.
+func cronFires(expr string, now time.Time) bool {
+	schedule, err := cron.ParseStandard(expr)
+	if err != nil {
+		return false
+	}
+	minute := now.Truncate(time.Minute)
+	return !schedule.Next(minute.Add(-time.Minute)).After(minute)
+}
+
+// AdoptLegacyAutoRenew gives the rows that had the old on/off switch the
+// schedule it stood for.
+//
+// Automatic renewal used to be a boolean checked once a day at the configured
+// hour; it is a schedule per certificate now. Without this, upgrading would
+// silently turn every automatic renewal into a manual one.
+//
+// The switch is consumed rather than re-read: this runs on every start, and a
+// certificate the operator later put back on manual - an empty schedule - must
+// stay that way instead of being handed a schedule again on the next boot.
+func (m *Manager) AdoptLegacyAutoRenew() error {
+	db := m.store.DB()
+	if !db.Migrator().HasColumn("certificates", "auto_renew") {
+		return nil
+	}
+	// A row written before the column existed has NULL rather than an empty
+	// string, so both spellings of "no schedule" are covered.
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec(
+			`UPDATE certificates SET renew_cron = ?
+			 WHERE auto_renew = ? AND (renew_cron IS NULL OR renew_cron = '')`,
+			m.cfg.DefaultRenewCron(), true,
+		).Error; err != nil {
+			return err
+		}
+		return tx.Exec(`UPDATE certificates SET auto_renew = ? WHERE auto_renew = ?`, false, true).Error
+	})
+	if err != nil {
+		return fmt.Errorf("adopt the legacy auto_renew switch: %w", err)
+	}
+	return nil
 }
 
 // run performs one issuance and records what came of it.

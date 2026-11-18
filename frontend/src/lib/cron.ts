@@ -1,26 +1,82 @@
 /** Schedules and the DNSPod options shared by the task dialog and its tables. */
+import { type TFunction } from 'i18next'
+import { type MessageKey } from '@/i18n'
 
-export const cronPresets = [
-  { label: 'Every minute', value: '* * * * *' },
-  { label: 'Every 5 minutes', value: '*/5 * * * *' },
-  { label: 'Every 10 minutes', value: '*/10 * * * *' },
-  { label: 'Every 30 minutes', value: '*/30 * * * *' },
-  { label: 'Every hour', value: '0 * * * *' },
-  { label: 'Every 6 hours', value: '0 */6 * * *' },
-  { label: 'Once a day', value: '0 3 * * *' },
+/** A shortcut offered beside a schedule field: a dictionary key and the expression. */
+export type CronPreset = { key: MessageKey; value: string }
+
+/**
+ * The shortcuts a DDNS task offers. Minutes, because that is the unit a record
+ * following an address moves in.
+ */
+export const taskCronPresets: CronPreset[] = [
+  { key: 'cron.everyMinute', value: '* * * * *' },
+  { key: 'cron.every5Minutes', value: '*/5 * * * *' },
+  { key: 'cron.every10Minutes', value: '*/10 * * * *' },
+  { key: 'cron.every30Minutes', value: '*/30 * * * *' },
+  { key: 'cron.hourly', value: '0 * * * *' },
+]
+
+/**
+ * The shortcuts a certificate offers, at the hour this deployment checks.
+ *
+ * Days, because a ninety-day certificate is looked at a few times rather than
+ * continuously; the hour is the one `acme.check_hour` gives new certificates,
+ * so a shortcut does not quietly move the schedule to a different hour.
+ */
+export function certificateCronPresets(hour: number): CronPreset[] {
+  return [
+    { key: 'cron.daily', value: `0 ${hour} * * *` },
+    { key: 'cron.every7Days', value: `0 ${hour} */7 * *` },
+    { key: 'cron.monthly', value: `0 ${hour} 1 * *` },
+  ]
+}
+
+/** A clock hour that the shape tests accept. */
+function isHour(field: string | undefined): boolean {
+  if (!field || !/^\d{1,2}$/.test(field)) return false
+  const hour = Number(field)
+  return hour >= 0 && hour <= 23
+}
+
+/**
+ * The certificate schedules, recognised whatever hour they name.
+ *
+ * They are shapes rather than fixed values because the hour follows the
+ * deployment: `0 3 * * *` and `0 5 * * *` are the same schedule to a reader,
+ * and a table column should say "every day" for both.
+ */
+const CRON_SHAPES: { key: MessageKey; match: (fields: string[]) => boolean }[] = [
+  {
+    key: 'cron.daily',
+    match: ([minute, hour, dom, month, dow]) =>
+      minute === '0' && isHour(hour) && dom === '*' && month === '*' && dow === '*',
+  },
+  {
+    key: 'cron.every7Days',
+    match: ([minute, hour, dom, month, dow]) =>
+      minute === '0' && isHour(hour) && dom === '*/7' && month === '*' && dow === '*',
+  },
+  {
+    // Not "every 30 days": day-of-month 1 is 28-31 days apart, and the label
+    // says the day rather than a step it does not keep.
+    key: 'cron.monthly',
+    match: ([minute, hour, dom, month, dow]) =>
+      minute === '0' && isHour(hour) && dom === '1' && month === '*' && dow === '*',
+  },
 ]
 
 /** Record types that point at an address; DNSPod has others, DDNS cannot use them. */
 export const RECORD_TYPES = ['A', 'AAAA'] as const
 
 /** The TTLs DNSPod offers most hosts, labelled in words rather than seconds. */
-export const TTL_OPTIONS = [
-  { label: '10 minutes', value: 600 },
-  { label: '30 minutes', value: 1800 },
-  { label: '1 hour', value: 3600 },
-  { label: '6 hours', value: 21600 },
-  { label: '12 hours', value: 43200 },
-  { label: '1 day', value: 86400 },
+export const TTL_OPTIONS: { key: MessageKey; value: number }[] = [
+  { key: 'ttl.minutes10', value: 600 },
+  { key: 'ttl.minutes30', value: 1800 },
+  { key: 'ttl.hour1', value: 3600 },
+  { key: 'ttl.hours6', value: 21600 },
+  { key: 'ttl.hours12', value: 43200 },
+  { key: 'ttl.day1', value: 86400 },
 ]
 
 /** The bounds of each field: minute, hour, day of month, month, day of week. */
@@ -101,8 +157,13 @@ function withoutUnitSteps(expr: string): string {
  * What a cron expression means, for the benefit of anyone who has not read one
  * this year. Unrecognised expressions are shown as written rather than guessed at.
  */
-export function describeCron(expr: string): string {
+export function describeCron(expr: string, t: TFunction): string {
   const trimmed = expr.trim()
-  const preset = cronPresets.find((option) => option.value === withoutUnitSteps(trimmed))
-  return preset ? preset.label : trimmed
+  const normalised = withoutUnitSteps(trimmed)
+
+  const preset = taskCronPresets.find((option) => option.value === normalised)
+  if (preset) return t(preset.key)
+
+  const shape = CRON_SHAPES.find((option) => option.match(normalised.split(/\s+/)))
+  return shape ? t(shape.key) : trimmed
 }

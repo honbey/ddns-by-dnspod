@@ -217,6 +217,20 @@ func main() {
 	// The certificate manager answers ACME challenges through the same DNSPod
 	// accounts and announces the outcome through the same channels.
 	certManager := acme.NewManager(st, cfg.ACME, cfg.DNSPod, sender)
+	// Certificates used to carry an on/off switch for renewal; the rows that had
+	// it on get the schedule it stood for, so upgrading does not quietly turn
+	// automatic renewal into a manual one.
+	if err := certManager.AdoptLegacyAutoRenew(); err != nil {
+		// Starting without it would leave every upgraded certificate renewing by
+		// hand, with nothing on the surface to say so.
+		slog.Error("could not adopt the legacy auto_renew switch", "error", err)
+		// os.Exit skips deferred cleanup, so the store is closed here explicitly,
+		// the way the two scheduler starts below do it.
+		if err := st.Close(); err != nil {
+			slog.Error("failed to close the database", "error", err)
+		}
+		os.Exit(1)
+	}
 	certScheduler := acme.NewScheduler(certManager)
 	// How long shutdown gives a run in flight before it stops waiting for it.
 	const issuanceShutdownWait = 10 * time.Second

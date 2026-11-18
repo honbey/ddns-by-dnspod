@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, ListTree, RefreshCw } from 'lucide-react'
+import { Loader2, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { listAccounts } from '@/features/accounts/api'
@@ -8,8 +8,9 @@ import { listDomainGroups, listDomains } from '@/features/domains/api'
 import { listRecordGroups } from '@/features/records/api'
 import { importTasksFromGroup } from '@/features/tasks/api'
 import { handleServerError } from '@/lib/handle-server-error'
-import { cronPresets, RECORD_TYPES, describeCron } from '@/lib/cron'
+import { RECORD_TYPES, taskCronPresets } from '@/lib/cron'
 import { type Domain } from '@/lib/types'
+import { HelpTip } from '@/components/field-help'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -211,7 +212,7 @@ function ImportDialog({ domain, defaultAccountId, onClose, onDone }: ImportDialo
         <SheetHeader className='border-b pe-10'>
           <SheetTitle>{t('domains.importFromGroup')}</SheetTitle>
           <SheetDescription>
-            Every address record of that group in {domain?.name} becomes a task.
+            {t('domains.importDescription', { domain: domain?.name ?? '' })}
           </SheetDescription>
         </SheetHeader>
 
@@ -229,7 +230,10 @@ function ImportDialog({ domain, defaultAccountId, onClose, onDone }: ImportDialo
                 setGroupId('')
               }}
             >
-              <SelectTrigger id='import-account' className='w-full'>
+              {/* Focused on open: without it the sheet lands on the hint
+                  button beside the label, and its tooltip pops open by
+                  itself. */}
+              <SelectTrigger id='import-account' autoFocus className='w-full'>
                 <SelectValue placeholder={t('domains.whichAccount')} />
               </SelectTrigger>
               <SelectContent>
@@ -278,7 +282,7 @@ function ImportDialog({ domain, defaultAccountId, onClose, onDone }: ImportDialo
             </Field>
             <Field
               label={t('domains.schedule')}
-              hint={describeCron(cronExpr)}
+              hint={<span className='font-mono'>{cronExpr}</span>}
               htmlFor='import-schedule'
             >
               <Select value={cronExpr} onValueChange={setCronExpr}>
@@ -286,9 +290,9 @@ function ImportDialog({ domain, defaultAccountId, onClose, onDone }: ImportDialo
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {cronPresets.map((preset) => (
+                  {taskCronPresets.map((preset) => (
                     <SelectItem key={preset.value} value={preset.value}>
-                      {preset.label}
+                      {t(preset.key)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -302,8 +306,8 @@ function ImportDialog({ domain, defaultAccountId, onClose, onDone }: ImportDialo
             {t('common.close')}
           </Button>
           <Button size='sm' disabled={!ready || isPending} onClick={() => mutate()}>
-            {isPending ? <Loader2 className='animate-spin' /> : <ListTree className='size-4' />}
-            {t('domains.import')}
+            {isPending ? <Loader2 className='animate-spin' /> : null}
+            {t('common.confirm')}
           </Button>
         </SheetFooter>
       </SheetContent>
@@ -321,17 +325,18 @@ function Field({
   children,
 }: {
   label: string
-  hint?: string
+  /** Behind the help button: the sheet keeps the same height for every field. */
+  hint?: React.ReactNode
   htmlFor: string
   children: React.ReactNode
 }) {
   return (
     <div className='space-y-2'>
-      <div className='space-y-0.5'>
+      <div className='flex items-center gap-1.5'>
         <label htmlFor={htmlFor} className='text-sm font-medium'>
           {label}
         </label>
-        {hint ? <p className='text-muted-foreground text-xs'>{hint}</p> : null}
+        {hint ? <HelpTip field={label}>{hint}</HelpTip> : null}
       </div>
       {children}
     </div>

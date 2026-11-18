@@ -45,6 +45,14 @@ export interface AppConfig {
    * renewed there, so no page offers a button the API would answer 503 for.
    */
   acmeEnabled: boolean
+  /**
+   * Schedule a new certificate gets when it names none.
+   *
+   * The server seeds this from acme.check_hour; the form offers it as the
+   * starting value so the deployment's hour is not repeated and then overridden
+   * by a copy of it in the bundle.
+   */
+  acmeDefaultRenewCron: string
   oidc: OidcConfig
 }
 
@@ -56,6 +64,7 @@ const DEFAULTS: AppConfig = {
   // server has the last word: it refuses an issuance it has been told not to
   // make whatever this document claims.
   acmeEnabled: true,
+  acmeDefaultRenewCron: '0 3 1 * *',
   oidc: {
     issuer: 'https://auth.example.com',
     clientId: 'ddns-by-dnspod',
@@ -156,6 +165,24 @@ export function authRequired(): boolean {
  */
 export function acmeEnabled(): boolean {
   return getConfig().acmeEnabled
+}
+
+/** The schedule the server gives a certificate that names none. */
+export function defaultRenewCron(): string {
+  return getConfig().acmeDefaultRenewCron
+}
+
+/**
+ * The hour that schedule runs at.
+ *
+ * Read out of the expression rather than configured twice: the shortcuts a
+ * certificate form offers are built from it, so they name the same hour the
+ * deployment does. Falls back to 03:00 if the document carries something the
+ * parser cannot read.
+ */
+export function defaultRenewHour(): number {
+  const hour = Number(defaultRenewCron().trim().split(/\s+/)[1])
+  return Number.isInteger(hour) && hour >= 0 && hour <= 23 ? hour : 3
 }
 
 /**

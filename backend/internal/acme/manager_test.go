@@ -81,17 +81,21 @@ func TestDueForRenewal(t *testing.T) {
 		return &when
 	}
 
+	const daily = "0 3 * * *"
 	certs := []model.Certificate{
-		{ID: 1, AutoRenew: true, NotAfter: at(10)},   // inside the window
-		{ID: 2, AutoRenew: true, NotAfter: at(31)},   // not yet
-		{ID: 3, AutoRenew: true, NotAfter: nil},      // never issued
-		{ID: 4, AutoRenew: false, NotAfter: at(1)},   // manual only
-		{ID: 5, AutoRenew: true, NotAfter: at(-2)},   // already expired
-		{ID: 6, AutoRenew: true, NotAfter: at(30)},   // exactly on the edge
-		{ID: 7, AutoRenew: false, NotAfter: at(-30)}, // manual, and long expired
+		{ID: 1, RenewCron: daily, NotAfter: at(10)},                     // inside the default window
+		{ID: 2, RenewCron: daily, NotAfter: at(31)},                     // not yet
+		{ID: 3, RenewCron: daily, NotAfter: nil},                        // never issued
+		{ID: 4, RenewCron: "", NotAfter: at(1)},                         // manual only
+		{ID: 5, RenewCron: daily, NotAfter: at(-2)},                     // already expired
+		{ID: 6, RenewCron: daily, NotAfter: at(30)},                     // exactly on the edge
+		{ID: 7, RenewCron: "", NotAfter: at(-30)},                       // manual, and long expired
+		{ID: 8, RenewCron: daily, RenewBeforeDays: 5, NotAfter: at(10)}, // its own, tighter window
+		{ID: 9, RenewCron: "0 4 * * *", NotAfter: at(1)},                // another hour: not now
+		{ID: 10, RenewCron: "not a schedule", NotAfter: at(1)},          // unreadable: skipped
 	}
 
-	got := dueForRenewal(certs, 30, now)
+	got := dueForRenewal(certs, 30, now, true)
 	want := []uint{1, 3, 5, 6}
 	if len(got) != len(want) {
 		t.Fatalf("dueForRenewal = %v, want %v", got, want)
@@ -103,10 +107,38 @@ func TestDueForRenewal(t *testing.T) {
 	}
 }
 
-// A certificate with no expiry has never been issued, and creating one with
-// renewal on is how it is asked for without pressing anything.
+// The check at start ignores the schedules: a monthly expression can fall
+// inside a restart, and what matters then is the window, not the minute.
+func TestDueForRenewalAtStart(t *testing.T) {
+	now := time.Date(2026, 10, 15, 3, 0, 0, 0, time.UTC)
+	at := func(days int) *time.Time {
+		when := now.AddDate(0, 0, days)
+		return &when
+	}
+
+	certs := []model.Certificate{
+		{ID: 1, RenewCron: "0 5 1 * *", NotAfter: at(10)},     // another day: still caught
+		{ID: 2, RenewCron: "0 3 1 * *", NotAfter: at(45)},     // outside the window
+		{ID: 3, RenewCron: "not a schedule", NotAfter: at(1)}, // unreadable, but due
+		{ID: 4, RenewCron: "", NotAfter: at(1)},               // manual only
+	}
+
+	got := dueForRenewal(certs, 30, now, false)
+	want := []uint{1, 3}
+	if len(got) != len(want) {
+		t.Fatalf("dueForRenewal = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("dueForRenewal = %v, want %v", got, want)
+		}
+	}
+}
+
+// A certificate with no expiry has never been issued, and creating one with a
+// schedule is how it is asked for without pressing anything.
 func TestDueForRenewalWithNoCertificates(t *testing.T) {
-	if got := dueForRenewal(nil, 30, time.Now()); len(got) != 0 {
+	if got := dueForRenewal(nil, 30, time.Now(), true); len(got) != 0 {
 		t.Fatalf("dueForRenewal = %v, want nothing", got)
 	}
 }
@@ -282,5 +314,109 @@ func TestIssuanceSlotsBoundTheConcurrency(t *testing.T) {
 	}
 	if !strings.Contains(stored.LastMessage, "before it could start") {
 		t.Fatalf("message = %q, want it to say the run never started", stored.LastMessage)
+	}
+}
+
+// Upgrading must not turn automatic renewal into a manual one: the rows that
+// had the old switch on get the schedule it stood for.
+func TestAdoptLegacyAutoRenew(t *testing.T) {
+	manager, st := newTestManager(t, config.ACMEConfig{Enabled: true, OutputDir: t.TempDir(), CheckHour: 4})
+	db := st.DB()
+
+	// What a database that predates the change carries: the switch, no
+	// schedule, and NULL rather than an empty string in the new column.
+	if err := db.Exec(`ALTER TABLE certificates ADD COLUMN auto_renew numeric`).Error; err != nil {
+		t.Fatalf("add the legacy column: %v", err)
+	}
+	for _, row := range []struct {
+		name      string
+		autoRenew int
+	}{{"on", 1}, {"off", 0}} {
+		if err := db.Exec(
+			`INSERT INTO certificates
+			   (name, account_id, domains, key_type, auto_renew, notify_on_issue, created_at, updated_at)
+			 VALUES (?, 1, '["example.com"]', 'ec256', ?, 1, '2026-01-01 00:00:00', '2026-01-01 00:00:00')`,
+			row.name, row.autoRenew,
+		).Error; err != nil {
+			t.Fatalf("seed %s: %v", row.name, err)
+		}
+	}
+
+	if err := manager.AdoptLegacyAutoRenew(); err != nil {
+		t.Fatalf("AdoptLegacyAutoRenew: %v", err)
+	}
+
+	var certs []model.Certificate
+	if err := db.Order("id").Find(&certs).Error; err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if len(certs) != 2 {
+		t.Fatalf("got %d certificates, want 2", len(certs))
+	}
+	if certs[0].RenewCron != "0 4 1 * *" {
+		t.Fatalf("the row that renewed daily got %q, want the configured hour", certs[0].RenewCron)
+	}
+	if certs[1].RenewCron != "" {
+		t.Fatalf("the row that did not renew got %q, want no schedule", certs[1].RenewCron)
+	}
+
+	// The switch is consumed, not re-read on every start: otherwise a
+	// certificate the operator later put back on manual would be given a
+	// schedule again on the next boot.
+	var flags []struct {
+		ID        uint
+		AutoRenew int
+	}
+	if err := db.Table("certificates").Select("id, auto_renew").Order("id").Scan(&flags).Error; err != nil {
+		t.Fatalf("read the switch: %v", err)
+	}
+	for _, flag := range flags {
+		if flag.AutoRenew != 0 {
+			t.Fatalf("certificate %d still carries auto_renew = %d", flag.ID, flag.AutoRenew)
+		}
+	}
+
+	// What the operator does next: back to manual.
+	if err := db.Exec(`UPDATE certificates SET renew_cron = '' WHERE id = ?`, certs[0].ID).Error; err != nil {
+		t.Fatalf("clear the schedule: %v", err)
+	}
+	if err := manager.AdoptLegacyAutoRenew(); err != nil {
+		t.Fatalf("second run: %v", err)
+	}
+	var after []model.Certificate
+	if err := db.Order("id").Find(&after).Error; err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if after[0].RenewCron != "" {
+		t.Fatalf("a manual certificate was given %q on the next start", after[0].RenewCron)
+	}
+}
+
+// The scheduler asks each expression whether it names the current minute. A
+// five-field schedule and a calendar descriptor both can; @every cannot, which
+// is why the API refuses it rather than storing one that never fires.
+func TestCronFires(t *testing.T) {
+	at := func(hour, minute int) time.Time {
+		return time.Date(2026, 10, 15, hour, minute, 30, 0, time.UTC)
+	}
+
+	cases := []struct {
+		expr string
+		now  time.Time
+		want bool
+	}{
+		{"0 3 * * *", at(3, 0), true},
+		{"0 3 * * *", at(3, 1), false},
+		{"0 4 1 * *", at(4, 0), false}, // another day of the month
+		{"@daily", at(0, 0), true},
+		{"@daily", at(0, 1), false},
+		{"@every 2h", at(3, 0), false},
+		{"not a schedule", at(3, 0), false},
+	}
+
+	for _, c := range cases {
+		if got := cronFires(c.expr, c.now); got != c.want {
+			t.Errorf("cronFires(%q, %s) = %v, want %v", c.expr, c.now.Format("15:04"), got, c.want)
+		}
 	}
 }

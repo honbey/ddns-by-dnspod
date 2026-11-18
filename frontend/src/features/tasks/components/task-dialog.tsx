@@ -10,7 +10,7 @@ import { listAccounts } from '@/features/accounts/api'
 import { listDomains } from '@/features/domains/api'
 import { listRecordLines } from '@/features/records/api'
 import { type TaskInput } from '@/features/tasks/api'
-import { cronPresets, describeCron, isValidCron, RECORD_TYPES, TTL_OPTIONS } from '@/lib/cron'
+import { describeCron, isValidCron, RECORD_TYPES, taskCronPresets, TTL_OPTIONS } from '@/lib/cron'
 import { MAX_BATCH_ITEMS } from '@/lib/limits'
 import { type DDNSTask } from '@/lib/types'
 import { fitsSubDomainBatch } from '../subdomains'
@@ -282,7 +282,9 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                 />
               </div>
 
-              <div className='grid items-start gap-4 sm:grid-cols-2'>
+              {/* The host, its line and its TTL belong to one record; the last
+                  column is the same width as the type select above it. */}
+              <div className='grid items-start gap-4 sm:grid-cols-[1fr_1fr_9rem]'>
                 <FormField
                   control={form.control}
                   name='sub_domain'
@@ -321,48 +323,6 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                     </FormItem>
                   )}
                 />
-              </div>
-
-              <div className='grid items-start gap-4 sm:grid-cols-2'>
-                <FormField
-                  control={form.control}
-                  name='cron_expr'
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('tasks.scheduleLabel')}</FormLabel>
-                      <FormControl>
-                        <Input {...field} className='font-mono' />
-                      </FormControl>
-                      <FormDescription>{describeCron(field.value)}</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className='space-y-2'>
-                  <span className='text-muted-foreground text-sm leading-none'>
-                    {t('tasks.presets')}
-                  </span>
-                  <div className='flex flex-wrap gap-2'>
-                    {cronPresets.map((preset) => (
-                      <Button
-                        key={preset.value}
-                        type='button'
-                        size='sm'
-                        variant='outline'
-                        onClick={() =>
-                          form.setValue('cron_expr', preset.value, {
-                            shouldValidate: true,
-                          })
-                        }
-                      >
-                        {preset.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className='grid items-start gap-4 sm:grid-cols-2'>
                 <FormField
                   control={form.control}
                   name='ttl'
@@ -382,7 +342,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                         <SelectContent>
                           {TTL_OPTIONS.map((option) => (
                             <SelectItem key={option.value} value={String(option.value)}>
-                              {option.label}
+                              {t(option.key)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -391,32 +351,73 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                     </FormItem>
                   )}
                 />
-                <div className='space-y-4'>
-                  <FormField
-                    control={form.control}
-                    name='enabled'
-                    render={({ field }) => (
-                      <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
-                        <FormLabel>{t('status.enabled')}</FormLabel>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name='notify_on_change'
-                    render={({ field }) => (
-                      <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
-                        <FormLabel>{t('tasks.notifyLabel')}</FormLabel>
-                        <FormControl>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
+              </div>
+
+              {/* The schedule is one block: the expression, what it means, and
+                  the presets that fill it in, in the order a person reads them. */}
+              <FormField
+                control={form.control}
+                name='cron_expr'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('tasks.scheduleLabel')}</FormLabel>
+                    <FormControl>
+                      <Input {...field} className='font-mono' />
+                    </FormControl>
+                    <FormDescription>{describeCron(field.value, t)}</FormDescription>
+                    <div className='space-y-2 pt-1'>
+                      <span className='text-muted-foreground text-sm leading-none'>
+                        {t('tasks.presets')}
+                      </span>
+                      <div className='flex flex-wrap gap-2'>
+                        {taskCronPresets.map((preset) => (
+                          <Button
+                            key={preset.value}
+                            type='button'
+                            size='sm'
+                            variant='outline'
+                            onClick={() =>
+                              form.setValue('cron_expr', preset.value, {
+                                shouldValidate: true,
+                              })
+                            }
+                          >
+                            {t(preset.key)}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Two switches of the same kind, side by side. */}
+              <div className='grid items-start gap-4 sm:grid-cols-2'>
+                <FormField
+                  control={form.control}
+                  name='enabled'
+                  render={({ field }) => (
+                    <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
+                      <FormLabel>{t('status.enabled')}</FormLabel>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name='notify_on_change'
+                  render={({ field }) => (
+                    <FormItem className='flex items-center justify-between gap-3 rounded-md border p-3'>
+                      <FormLabel>{t('tasks.notifyLabel')}</FormLabel>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
 
@@ -432,7 +433,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
               </Button>
               <Button type='submit' size='sm' disabled={saving}>
                 {saving && <Loader2 className='animate-spin' />}
-                {task ? t('common.saveChanges') : t('tasks.add')}
+                {t('common.confirm')}
               </Button>
             </SheetFooter>
           </form>

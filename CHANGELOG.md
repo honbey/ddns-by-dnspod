@@ -7,6 +7,28 @@ v1.1.0 及更早版本是 Python 实现，变更记录以各自 tag 为准。
 
 ## [Unreleased]
 
+### 新增
+
+- 证书检查周期：`Certificate` 新增 `renew_cron`（五段 cron，空表示只手动续期）与
+  `renew_before_days`（到期前几天续期，0 表示用 `acme.renew_before_days`，上限 60）。
+  调度器改为每分钟一次 tick，只处理表达式命中当分钟的证书；进程启动约一分钟后额外补查
+  一次（不看表达式、只看剩余天数），避免按月的检查正好落在重启里。新建证书默认每月 1 号
+  `acme.check_hour`。
+- 证书列表新增「通知」列，可直接开关 `notify_on_issue`；`/config.json` 新增
+  `acmeDefaultRenewCron`，弹窗用它作为新证书的默认表达式，不再自带一份时刻。
+
+### 变更（不兼容）
+
+- `Certificate.auto_renew` 移除，改用 `renew_cron`。升级时旧开关只消费一次：`auto_renew=1`
+  的行补上默认表达式后清零，之后用户改回「手动」不会再被重新打开。请求里仍发送
+  `auto_renew` 会返回 400 并提示改用 `renew_cron`。
+- 证书列表不再显示服务端的输出目录：那是部署配置，`output_path` 仍在接口里。
+
+### 修复
+
+- 消除严格 CSP 下的违规报告：zod 首次解析会探测 `Function('')`，异常虽被吞掉，浏览器
+  仍记为 `script-src` 违规。入口处 `z.config({ jitless: true })` 关掉 JIT，走非 JIT 解析。
+
 ## [2.1.0] - 2026-11-10
 
 ### 新增

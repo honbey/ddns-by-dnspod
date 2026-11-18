@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
 
 	"ddns-by-dnspod/internal/acme"
@@ -32,13 +33,18 @@ const maxCertificateNames = 20
 // OutputDir and the booleans are pointers so "not sent" can be told apart from
 // an empty value, which is how a field is cleared or turned off.
 type certificateInput struct {
-	Name          string   `json:"name"`
-	AccountID     uint     `json:"account_id"`
-	Domains       []string `json:"domains"`
-	KeyType       string   `json:"key_type"`
-	OutputDir     *string  `json:"output_dir"`
-	AutoRenew     *bool    `json:"auto_renew"`
-	NotifyOnIssue *bool    `json:"notify_on_issue"`
+	Name            string   `json:"name"`
+	AccountID       uint     `json:"account_id"`
+	Domains         []string `json:"domains"`
+	KeyType         string   `json:"key_type"`
+	OutputDir       *string  `json:"output_dir"`
+	RenewCron       *string  `json:"renew_cron"`
+	RenewBeforeDays *int     `json:"renew_before_days"`
+	NotifyOnIssue   *bool    `json:"notify_on_issue"`
+	// AutoRenew is the switch renew_cron replaced. A caller still sending it has
+	// not been updated, and ignoring it would leave them with a schedule they
+	// never asked for; the field is read only to refuse it.
+	AutoRenew *bool `json:"auto_renew"`
 }
 
 // certificateView is a certificate as the API hands it out: the row, plus the
@@ -46,22 +52,23 @@ type certificateInput struct {
 // root, which only the server knows, and it is the one thing a person needs to
 // mount into whatever reads the certificate.
 type certificateView struct {
-	ID            uint       `json:"id"`
-	Name          string     `json:"name"`
-	AccountID     uint       `json:"account_id"`
-	Domains       []string   `json:"domains"`
-	KeyType       string     `json:"key_type"`
-	OutputDir     string     `json:"output_dir"`
-	OutputPath    string     `json:"output_path"`
-	AutoRenew     bool       `json:"auto_renew"`
-	NotifyOnIssue bool       `json:"notify_on_issue"`
-	LastIssuedAt  *time.Time `json:"last_issued_at"`
-	NotAfter      *time.Time `json:"not_after"`
-	LastStatus    string     `json:"last_status"`
-	LastMessage   string     `json:"last_message"`
-	FailCount     int        `json:"fail_count"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	ID              uint       `json:"id"`
+	Name            string     `json:"name"`
+	AccountID       uint       `json:"account_id"`
+	Domains         []string   `json:"domains"`
+	KeyType         string     `json:"key_type"`
+	OutputDir       string     `json:"output_dir"`
+	OutputPath      string     `json:"output_path"`
+	RenewCron       string     `json:"renew_cron"`
+	RenewBeforeDays int        `json:"renew_before_days"`
+	NotifyOnIssue   bool       `json:"notify_on_issue"`
+	LastIssuedAt    *time.Time `json:"last_issued_at"`
+	NotAfter        *time.Time `json:"not_after"`
+	LastStatus      string     `json:"last_status"`
+	LastMessage     string     `json:"last_message"`
+	FailCount       int        `json:"fail_count"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 // certificateViewOf renders one row for the API, including the directory its
@@ -78,22 +85,23 @@ func (s *Server) certificateViewOf(cert *model.Certificate) certificateView {
 		names = []string{}
 	}
 	return certificateView{
-		ID:            cert.ID,
-		Name:          cert.Name,
-		AccountID:     cert.AccountID,
-		Domains:       names,
-		KeyType:       cert.KeyType,
-		OutputDir:     cert.OutputDir,
-		OutputPath:    s.acme.OutputPath(cert),
-		AutoRenew:     cert.AutoRenew,
-		NotifyOnIssue: cert.NotifyOnIssue,
-		LastIssuedAt:  cert.LastIssuedAt,
-		NotAfter:      cert.NotAfter,
-		LastStatus:    cert.LastStatus,
-		LastMessage:   cert.LastMessage,
-		FailCount:     cert.FailCount,
-		CreatedAt:     cert.CreatedAt,
-		UpdatedAt:     cert.UpdatedAt,
+		ID:              cert.ID,
+		Name:            cert.Name,
+		AccountID:       cert.AccountID,
+		Domains:         names,
+		KeyType:         cert.KeyType,
+		OutputDir:       cert.OutputDir,
+		OutputPath:      s.acme.OutputPath(cert),
+		RenewCron:       cert.RenewCron,
+		RenewBeforeDays: cert.RenewBeforeDays,
+		NotifyOnIssue:   cert.NotifyOnIssue,
+		LastIssuedAt:    cert.LastIssuedAt,
+		NotAfter:        cert.NotAfter,
+		LastStatus:      cert.LastStatus,
+		LastMessage:     cert.LastMessage,
+		FailCount:       cert.FailCount,
+		CreatedAt:       cert.CreatedAt,
+		UpdatedAt:       cert.UpdatedAt,
 	}
 }
 
@@ -113,10 +121,15 @@ func (s *Server) listCertificates(c *gin.Context) {
 }
 
 // createCertificate stores a certificate. Nothing is issued yet: the first
-// issuance is the button, or the daily check when automatic renewal is on.
+// issuance is the button, or the check when this certificate's own schedule
+// comes round.
 func (s *Server) createCertificate(c *gin.Context) {
 	var input certificateInput
 	if !bindJSON(c, &input) {
+		return
+	}
+	if input.AutoRenew != nil {
+		badRequest(c, "auto_renew is gone: send renew_cron instead (an empty expression renews by hand)")
 		return
 	}
 
@@ -162,9 +175,15 @@ func (s *Server) createCertificate(c *gin.Context) {
 		serverError(c, err)
 		return
 	}
-	autoRenew := true
-	if input.AutoRenew != nil {
-		autoRenew = *input.AutoRenew
+	renewCron, err := normaliseRenewCron(input.RenewCron, s.acme.Config().DefaultRenewCron())
+	if err != nil {
+		badRequest(c, err.Error())
+		return
+	}
+	renewBeforeDays, err := normaliseRenewBeforeDays(input.RenewBeforeDays)
+	if err != nil {
+		badRequest(c, err.Error())
+		return
 	}
 	notify := true
 	if input.NotifyOnIssue != nil {
@@ -172,13 +191,14 @@ func (s *Server) createCertificate(c *gin.Context) {
 	}
 
 	cert := model.Certificate{
-		Name:          name,
-		AccountID:     account.ID,
-		Domains:       encoded,
-		KeyType:       keyType,
-		OutputDir:     output,
-		AutoRenew:     autoRenew,
-		NotifyOnIssue: notify,
+		Name:            name,
+		AccountID:       account.ID,
+		Domains:         encoded,
+		KeyType:         keyType,
+		OutputDir:       output,
+		RenewCron:       renewCron,
+		RenewBeforeDays: renewBeforeDays,
+		NotifyOnIssue:   notify,
 	}
 	if err := s.store.DB().Create(&cert).Error; err != nil {
 		if isUniqueViolation(err) {
@@ -209,6 +229,10 @@ func (s *Server) updateCertificate(c *gin.Context) {
 
 	var input certificateInput
 	if !bindJSON(c, &input) {
+		return
+	}
+	if input.AutoRenew != nil {
+		badRequest(c, "auto_renew is gone: send renew_cron instead (an empty expression renews by hand)")
 		return
 	}
 
@@ -259,8 +283,21 @@ func (s *Server) updateCertificate(c *gin.Context) {
 		}
 		updates["output_dir"] = output
 	}
-	if input.AutoRenew != nil {
-		updates["auto_renew"] = *input.AutoRenew
+	if input.RenewCron != nil {
+		renewCron, err := normaliseRenewCron(input.RenewCron, "")
+		if err != nil {
+			badRequest(c, err.Error())
+			return
+		}
+		updates["renew_cron"] = renewCron
+	}
+	if input.RenewBeforeDays != nil {
+		days, err := normaliseRenewBeforeDays(input.RenewBeforeDays)
+		if err != nil {
+			badRequest(c, err.Error())
+			return
+		}
+		updates["renew_before_days"] = days
 	}
 	if input.NotifyOnIssue != nil {
 		updates["notify_on_issue"] = *input.NotifyOnIssue
@@ -456,4 +493,42 @@ func normaliseOutputDir(sub *string) (string, error) {
 		return "", fmt.Errorf("output_dir must be a relative path inside the certificate directory")
 	}
 	return cleaned, nil
+}
+
+// normaliseRenewCron accepts an empty expression, which means the check never
+// touches this row, or one the scheduler can match against a minute. A nil
+// pointer keeps the fallback: on create that is the deployment's default
+// schedule, so saying nothing still means "renew it for me".
+func normaliseRenewCron(raw *string, fallback string) (string, error) {
+	if raw == nil {
+		return fallback, nil
+	}
+	trimmed := strings.TrimSpace(*raw)
+	if trimmed == "" {
+		return "", nil
+	}
+	// @every is an interval measured from the moment it is parsed, not a
+	// schedule: the check ticks once a minute and asks whether the expression
+	// names this minute, which an interval whose phase is arbitrary can never
+	// answer - @every 2h would never fire, @every 30s would fire every minute.
+	// The calendar descriptors (@daily and friends) parse into ordinary fields.
+	if strings.HasPrefix(trimmed, "@every") {
+		return "", fmt.Errorf("renew_cron cannot use @every: name a five-field schedule or @daily")
+	}
+	if _, err := cron.ParseStandard(trimmed); err != nil {
+		return "", fmt.Errorf("renew_cron must be a five-field cron expression or a calendar descriptor")
+	}
+	return trimmed, nil
+}
+
+// normaliseRenewBeforeDays keeps the window inside what a 90-day certificate
+// can use. 0 means the deployment default.
+func normaliseRenewBeforeDays(raw *int) (int, error) {
+	if raw == nil {
+		return 0, nil
+	}
+	if *raw < 0 || *raw > 60 {
+		return 0, fmt.Errorf("renew_before_days must be between 0 and 60")
+	}
+	return *raw, nil
 }

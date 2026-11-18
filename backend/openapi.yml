@@ -982,12 +982,16 @@ components:
 
     FrontendConfig:
       type: object
-      required: [appName, apiBaseUrl, authRequired, acmeEnabled, oidc]
+      required: [appName, apiBaseUrl, authRequired, acmeEnabled, acmeDefaultRenewCron, oidc]
       properties:
         appName: { type: string }
         apiBaseUrl: { type: string }
         authRequired: { type: boolean }
         acmeEnabled: { type: boolean }
+        acmeDefaultRenewCron:
+          type: string
+          description: Schedule a new certificate gets when it names none, e.g. "0 3 1 * *".
+
         oidc:
           type: object
           required: [issuer, clientId, scope, redirectPath, providerName, logoutUrlTemplate]
@@ -1310,7 +1314,7 @@ components:
 
     Certificate:
       type: object
-      required: [id, name, account_id, domains, key_type, output_dir, output_path, auto_renew, notify_on_issue, last_status, last_message, fail_count, created_at, updated_at]
+      required: [id, name, account_id, domains, key_type, output_dir, output_path, renew_cron, renew_before_days, notify_on_issue, last_status, last_message, fail_count, created_at, updated_at]
       properties:
         id: { type: integer }
         name: { type: string }
@@ -1319,7 +1323,12 @@ components:
         key_type: { type: string }
         output_dir: { type: string }
         output_path: { type: string }
-        auto_renew: { type: boolean }
+        renew_cron:
+          type: string
+          description: Five-field cron expression for the renewal check; empty renews by hand only.
+        renew_before_days:
+          type: integer
+          description: Days before expiry to renew; 0 uses acme.renew_before_days.
         notify_on_issue: { type: boolean }
         last_issued_at: { type: string, nullable: true }
         not_after: { type: string, nullable: true }
@@ -1337,7 +1346,8 @@ components:
         domains: { type: array, items: { type: string } }
         key_type: { type: string }
         output_dir: { type: string }
-        auto_renew: { type: boolean }
+        renew_cron: { type: string }
+        renew_before_days: { type: integer }
         notify_on_issue: { type: boolean }
 
     APIKey:

@@ -66,8 +66,8 @@ func TestCreateCertificate(t *testing.T) {
 	if view.NotAfter != nil || view.LastStatus != "" {
 		t.Fatalf("a new certificate should be unissued, got %+v", view)
 	}
-	if !view.AutoRenew || !view.NotifyOnIssue {
-		t.Fatalf("renewal and notification should default on, got %+v", view)
+	if view.RenewCron != cfg.ACME.DefaultRenewCron() || !view.NotifyOnIssue {
+		t.Fatalf("renewal should default to the deployment schedule and notify on, got %+v", view)
 	}
 	if want := filepath.Join(cfg.ACME.OutputDir, "site"); view.OutputPath != want {
 		t.Fatalf("output path = %q, want %q", view.OutputPath, want)
@@ -176,14 +176,14 @@ func TestUpdateCertificate(t *testing.T) {
 		"domains":    []string{"example.org"},
 		"key_type":   "rsa2048",
 		"output_dir": filepath.Join("shared", "tls"),
-		"auto_renew": false,
+		"renew_cron": "",
 	})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("want 200, got %d (%s)", rec.Code, rec.Body.String())
 	}
 
 	view := decodeCertificate(t, rec)
-	if view.Name != "renamed" || view.AutoRenew {
+	if view.Name != "renamed" || view.RenewCron != "" {
 		t.Fatalf("update did not land: %+v", view)
 	}
 	if view.KeyType != "rsa2048" || len(view.Domains) != 1 || view.Domains[0] != "example.org" {
@@ -208,14 +208,42 @@ func TestUpdateCertificate(t *testing.T) {
 	// A field that is not sent is left alone, which is what an edit of one
 	// setting from a form that carries the others needs.
 	rec = do(t, srv, cfg, http.MethodPut, "/api/certificates/"+itoa(created.ID), map[string]interface{}{
-		"auto_renew": true,
+		"renew_cron":        "0 1 * * *",
+		"renew_before_days": 14,
 	})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("want 200, got %d (%s)", rec.Code, rec.Body.String())
 	}
 	view = decodeCertificate(t, rec)
-	if !view.AutoRenew || view.KeyType != "rsa2048" || len(view.Domains) != 1 {
+	if view.RenewCron != "0 1 * * *" || view.RenewBeforeDays != 14 {
+		t.Fatalf("the schedule did not land: %+v", view)
+	}
+	if view.KeyType != "rsa2048" || len(view.Domains) != 1 {
 		t.Fatalf("an untouched field changed: %+v", view)
+	}
+
+	// The switch this replaced is refused rather than ignored: a caller still
+	// sending it expects an on/off, not a schedule it never asked for.
+	rec = do(t, srv, cfg, http.MethodPut, "/api/certificates/"+itoa(created.ID), map[string]interface{}{
+		"auto_renew": false,
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("want 400 for the removed auto_renew, got %d (%s)", rec.Code, rec.Body.String())
+	}
+
+	// What the scheduler cannot parse is refused rather than stored: a row that
+	// fires never is indistinguishable from one nobody asked to renew.
+	rec = do(t, srv, cfg, http.MethodPut, "/api/certificates/"+itoa(created.ID), map[string]interface{}{
+		"renew_cron": "every other tuesday",
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("want 400 for an unparseable schedule, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	rec = do(t, srv, cfg, http.MethodPut, "/api/certificates/"+itoa(created.ID), map[string]interface{}{
+		"renew_before_days": 61,
+	})
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("want 400 for a window past 60 days, got %d (%s)", rec.Code, rec.Body.String())
 	}
 }
 
@@ -442,5 +470,44 @@ func TestCertificateDirectoryConflicts(t *testing.T) {
 		map[string]interface{}{"name": "taken-dir"})
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("renaming into a taken directory: want 409, got %d (%s)", rec.Code, rec.Body.String())
+	}
+}
+
+// What the form and the scheduler can both live with: five fields, or a
+// calendar descriptor that parses into five fields. @every is neither.
+func TestNormaliseRenewCron(t *testing.T) {
+	fallback := "0 3 1 * *"
+	str := func(v string) *string { return &v }
+
+	cases := []struct {
+		name string
+		in   *string
+		want string
+		ok   bool
+	}{
+		{"nothing sent keeps the deployment default", nil, fallback, true},
+		{"an empty expression means manual", str(""), "", true},
+		{"five fields", str("0 3 1 * *"), "0 3 1 * *", true},
+		{"a calendar descriptor", str("@daily"), "@daily", true},
+		{"an interval has no minute to match", str("@every 2h"), "", false},
+		{"nor does a short one", str("@every 30s"), "", false},
+		{"plain text", str("every other tuesday"), "", false},
+	}
+
+	for _, c := range cases {
+		got, err := normaliseRenewCron(c.in, fallback)
+		if c.ok && err != nil {
+			t.Errorf("%s: %v", c.name, err)
+			continue
+		}
+		if !c.ok {
+			if err == nil {
+				t.Errorf("%s: want an error, got %q", c.name, got)
+			}
+			continue
+		}
+		if got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
+		}
 	}
 }

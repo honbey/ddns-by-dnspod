@@ -237,13 +237,13 @@ type ACMEConfig struct {
 	// subdirectory named after it, holding the four PEM files; a certificate may
 	// name a subdirectory of its own, but never a path outside this root.
 	OutputDir string `mapstructure:"output_dir"`
-	// RenewBeforeDays is how long before notAfter a certificate is renewed.
-	// 0 turns automatic renewal off, leaving only the manual button.
+	// RenewBeforeDays is how long before notAfter a certificate is renewed,
+	// unless the certificate names its own window. 0 turns automatic renewal
+	// off, leaving only the manual button.
 	RenewBeforeDays int `mapstructure:"renew_before_days"`
-	// CheckHour is the local hour of the daily renewal check, 0-23.
-	//
-	// A check also runs about a minute after start, so a process that was down
-	// at that hour does not skip a day of renewals.
+	// CheckHour is the local hour of the daily check a new certificate starts
+	// with, 0-23. The check itself runs every minute and each certificate
+	// carries the schedule it was given, so this only seeds new rows.
 	CheckHour int `mapstructure:"check_hour"`
 	// KeyMode is the permission of privkey.pem, in octal. 0600 keeps the key to
 	// this process, and that is normally enough: the image runs as root, which a
@@ -262,6 +262,16 @@ type ACMEConfig struct {
 	// KeyFileMode is KeyMode parsed into the type the file writer needs. Load
 	// sets it; the configuration file only carries the text.
 	KeyFileMode os.FileMode `mapstructure:"-"`
+}
+
+// DefaultRenewCron is the schedule a certificate starts with when it names
+// none: the check on the first of the month, at the configured hour.
+//
+// Monthly rather than daily because a ninety-day certificate only has to be
+// looked at a few times; a minute tick is cheap but the CA is not the only
+// thing being polite to. The check at start covers the day a restart swallows.
+func (a ACMEConfig) DefaultRenewCron() string {
+	return fmt.Sprintf("0 %d 1 * *", a.CheckHour)
 }
 
 // NotifierConfig holds the delivery settings of notification channels

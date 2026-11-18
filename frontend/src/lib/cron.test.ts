@@ -1,28 +1,55 @@
+import { type TFunction } from 'i18next'
 import { describe, expect, it } from 'vitest'
-import { cronPresets, describeCron, isValidCron, RECORD_TYPES, TTL_OPTIONS } from './cron'
+import {
+  certificateCronPresets,
+  describeCron,
+  isValidCron,
+  RECORD_TYPES,
+  taskCronPresets,
+  TTL_OPTIONS,
+} from './cron'
+
+// The dictionary is not loaded here: what the mapping decides is which key it
+// asks for, and that key is enough to see the answer.
+const t = ((key: string) => key) as TFunction
 
 describe('describeCron', () => {
-  it.each(cronPresets)('names $value in words', ({ value, label }) => {
-    expect(describeCron(value)).toBe(label)
+  it.each([...taskCronPresets, ...certificateCronPresets(3)])(
+    'names $value by its key',
+    ({ value, key }) => {
+      expect(describeCron(value, t)).toBe(key)
+    }
+  )
+
+  it('names a certificate schedule whatever hour it runs at', () => {
+    expect(describeCron('0 5 * * *', t)).toBe('cron.daily')
+    expect(describeCron('0 23 */7 * *', t)).toBe('cron.every7Days')
+    expect(describeCron('0 7 1 * *', t)).toBe('cron.monthly')
+  })
+
+  it('leaves a schedule that only looks like one as written', () => {
+    // Same day-of-month, but not on the hour: not the shortcut's shape.
+    expect(describeCron('30 5 * * *', t)).toBe('30 5 * * *')
+    expect(describeCron('0 24 * * *', t)).toBe('0 24 * * *')
   })
 
   it('shows anything else as written rather than guessing', () => {
-    expect(describeCron('*/7 2 * * 1')).toBe('*/7 2 * * 1')
+    expect(describeCron('*/7 2 * * 1', t)).toBe('*/7 2 * * 1')
   })
 
   it('ignores surrounding whitespace when matching a preset', () => {
-    expect(describeCron('  */5 * * * *  ')).toBe('Every 5 minutes')
+    expect(describeCron('  */5 * * * *  ', t)).toBe('cron.every5Minutes')
   })
 
   it('reads a step of one as the wildcard it behaves like', () => {
-    expect(describeCron('*/1 * * * *')).toBe('Every minute')
-    expect(describeCron('*/01 * * * *')).toBe('Every minute')
-    expect(describeCron('0 */1 * * *')).toBe('Every hour')
+    expect(describeCron('*/1 * * * *', t)).toBe('cron.everyMinute')
+    expect(describeCron('*/01 * * * *', t)).toBe('cron.everyMinute')
+    expect(describeCron('0 */1 * * *', t)).toBe('cron.hourly')
   })
 
   it('collapses extra spaces between fields', () => {
-    expect(describeCron('*/5   * * * *')).toBe('Every 5 minutes')
-    expect(describeCron('*/1   * * * *')).toBe('Every minute')
+    expect(describeCron('*/5   * * * *', t)).toBe('cron.every5Minutes')
+    expect(describeCron('*/1   * * * *', t)).toBe('cron.everyMinute')
   })
 })
 
@@ -65,6 +92,6 @@ describe('the option lists', () => {
   it('labels every TTL in words, in ascending order', () => {
     const values = TTL_OPTIONS.map((option) => option.value)
     expect(values).toEqual([...values].sort((a, b) => a - b))
-    expect(TTL_OPTIONS.every((option) => option.label.length > 0)).toBe(true)
+    expect(TTL_OPTIONS.every((option) => option.key.length > 0)).toBe(true)
   })
 })

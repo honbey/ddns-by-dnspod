@@ -10,7 +10,10 @@ export interface CertificateInput {
   domains: string[]
   key_type: string
   output_dir?: string
-  auto_renew?: boolean
+  /** Five-field schedule for the renewal check; empty renews by hand only. */
+  renew_cron?: string
+  /** Days before expiry to renew; 0 uses the deployment default. */
+  renew_before_days?: number
   notify_on_issue?: boolean
 }
 

@@ -206,8 +206,13 @@ type Certificate struct {
 	// OutputDir is the subdirectory of acme.output_dir the files are written
 	// to. Empty means one named after the certificate.
 	OutputDir string `json:"output_dir" gorm:"size:128"`
-	// AutoRenew has the daily check renew this certificate before it expires.
-	AutoRenew bool `json:"auto_renew"`
+	// RenewCron is when the renewal check looks at this certificate, in the same
+	// five-field form a DDNS task uses. Empty means it never does: only the
+	// button renews, which is what "manual" is now.
+	RenewCron string `json:"renew_cron" gorm:"size:64"`
+	// RenewBeforeDays is how long before not_after it is renewed. 0 means the
+	// deployment default, acme.renew_before_days.
+	RenewBeforeDays int `json:"renew_before_days" gorm:"default:0"`
 	// NotifyOnIssue announces a renewal the way a DDNS change is announced; a
 	// failure is always announced.
 	NotifyOnIssue bool `json:"notify_on_issue"`

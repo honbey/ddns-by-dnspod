@@ -10,7 +10,7 @@ import { currentIP } from '@/features/system/api'
 import { RECORD_TYPES, TTL_OPTIONS } from '@/lib/cron'
 import { MAX_BATCH_ITEMS } from '@/lib/limits'
 import { type DnsRecord } from '@/lib/types'
-import { FieldHelp } from '@/components/field-help'
+import { FieldHelp, HelpTip } from '@/components/field-help'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -290,7 +290,7 @@ export function RecordDialog({
                           className='text-muted-foreground text-sm underline underline-offset-4'
                           onClick={() => field.onChange(detected.data?.ip)}
                         >
-                          Use this host&apos;s address ({detected.data.ip})
+                          {t('records.useHostAddress', { ip: detected.data.ip })}
                         </button>
                       </div>
                     ) : null}
@@ -368,7 +368,7 @@ export function RecordDialog({
                         <SelectContent>
                           {TTL_OPTIONS.map((option) => (
                             <SelectItem key={option.value} value={String(option.value)}>
-                              {option.label}
+                              {t(option.key)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -449,7 +449,7 @@ export function RecordDialog({
               </Button>
               <Button type='submit' size='sm' disabled={saving}>
                 {saving && <Loader2 className='animate-spin' />}
-                {record ? t('common.saveChanges') : t('records.addRecord')}
+                {t('common.confirm')}
               </Button>
             </SheetFooter>
           </form>
@@ -506,9 +506,11 @@ export function BatchDialog({ open, onOpenChange, saving, onSubmit }: BatchDialo
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className='w-full gap-0 p-0 sm:max-w-lg'>
         <SheetHeader className='pe-10'>
-          <SheetTitle>{t('records.batchTitle')}</SheetTitle>
+          <SheetTitle>{t('records.addToDdns')}</SheetTitle>
           <SheetDescription>
-            One host per line, each pointed at {detected.data?.ip || 'this host'}.
+            {detected.data?.ip
+              ? t('records.batchHint', { ip: detected.data.ip })
+              : t('records.batchHintPending')}
           </SheetDescription>
         </SheetHeader>
 
@@ -526,17 +528,20 @@ export function BatchDialog({ open, onOpenChange, saving, onSubmit }: BatchDialo
             />
             <p className='text-muted-foreground text-xs'>
               {dropped > 0
-                ? `Only the first ${MAX_BATCH_ITEMS} of ${pasted.length} will be created.`
+                ? t('records.batchDropped', { max: MAX_BATCH_ITEMS, total: pasted.length })
                 : names.length
-                  ? `${names.length} record${names.length === 1 ? '' : 's'} to create`
-                  : 'Nothing yet.'}
+                  ? t('records.batchCount', { count: names.length })
+                  : t('records.batchEmpty')}
             </p>
           </div>
 
           <div className='space-y-2'>
-            <label htmlFor='batch-type' className='text-sm font-medium'>
-              {t('records.typeLabel')}
-            </label>
+            <div className='flex items-center gap-1.5'>
+              <label htmlFor='batch-type' className='text-sm font-medium'>
+                {t('records.typeLabel')}
+              </label>
+              <HelpTip field={t('records.typeLabel')}>{t('records.typeHint')}</HelpTip>
+            </div>
             <Select
               value={recordType}
               onValueChange={(value) => setRecordType(value as 'A' | 'AAAA')}
@@ -552,7 +557,6 @@ export function BatchDialog({ open, onOpenChange, saving, onSubmit }: BatchDialo
                 ))}
               </SelectContent>
             </Select>
-            <p className='text-muted-foreground text-xs'>{t('records.typeHint')}</p>
           </div>
         </div>
 
@@ -585,7 +589,7 @@ export function BatchDialog({ open, onOpenChange, saving, onSubmit }: BatchDialo
             }
           >
             {saving && <Loader2 className='animate-spin' />}
-            Create {names.length || ''}
+            {t('common.confirm')}
           </Button>
         </SheetFooter>
       </SheetContent>

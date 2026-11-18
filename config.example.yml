@@ -136,9 +136,11 @@ acme:
   # Each certificate gets a subdirectory with cert.pem, chain.pem, fullchain.pem
   # and privkey.pem (certbot names). The image sets this to /certs.
   output_dir: "certs"
-  # Renew once this many days are left; 0 turns automatic renewal off.
+  # Renew once this many days are left, unless the certificate names its own
+  # window; 0 turns automatic renewal off.
   renew_before_days: 30
-  # Local hour of the daily check; a check also runs shortly after start.
+  # Local hour of the daily check a new certificate starts with. The check runs
+  # every minute and each certificate carries its own schedule.
   check_hour: 3
   # Permission of privkey.pem, in octal. 0640 plus a shared group is needed only
   # when a different user reads the files.

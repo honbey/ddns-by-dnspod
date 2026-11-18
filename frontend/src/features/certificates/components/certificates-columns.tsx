@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { DataTableColumnHeader } from '@/components/data-table'
-import { expiryOf, keyTypeLabel } from './certificate-types'
+import { expiryLabel, expiryOf, keyTypeLabel } from './certificate-types'
 
 export type CertificateRowActions = {
   /** Starts an issuance; from there the row reports the run. */
@@ -103,7 +103,7 @@ export function useCertificatesColumns(
         const expiry = expiryOf(row.original)
         return (
           <div className='space-y-0.5'>
-            <Badge variant={expiry.variant}>{expiry.label}</Badge>
+            <Badge variant={expiry.variant}>{expiryLabel(expiry, t)}</Badge>
             <div className='text-muted-foreground text-xs'>
               {row.original.not_after ? formatTime(row.original.not_after) : '-'}
             </div>
@@ -119,7 +119,7 @@ export function useCertificatesColumns(
       header: () => <div className='text-sm font-medium'>{t('certificates.renewLabel')}</div>,
       cell: ({ row }) => (
         <span className='text-muted-foreground text-sm'>
-          {row.original.auto_renew ? 'automatic' : 'manual'}
+          {row.original.auto_renew ? t('certificates.automatic') : t('certificates.manual')}
         </span>
       ),
       enableSorting: false,
@@ -190,7 +190,7 @@ export function useCertificatesColumns(
               disabled={!canIssue || row.original.last_status === 'RUNNING'}
             >
               <Play />
-              {row.original.not_after ? t('certificates.renewNow') : t('certificates.issueNow')}
+              {row.original.not_after ? t('certificates.renewNow') : t('certificates.requestNow')}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => actions.onEdit(row.original)}>
               <Pencil />

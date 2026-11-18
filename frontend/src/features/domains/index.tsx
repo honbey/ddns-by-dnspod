@@ -88,7 +88,7 @@ export function Domains() {
                     {accountList.map((account) => (
                       <SelectItem key={account.id} value={String(account.id)}>
                         {account.name}
-                        {account.is_default ? t('domains.defaultSuffix') : ''}
+                        {account.is_default ? t('common.defaultSuffix') : ''}
                       </SelectItem>
                     ))}
                   </SelectContent>

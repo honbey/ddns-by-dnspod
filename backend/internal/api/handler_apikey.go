@@ -139,7 +139,7 @@ func (s *Server) updateAPIKey(c *gin.Context) {
 	ok(c, key)
 }
 
-// deleteAPIKey revokes a key
+// deleteAPIKey deletes a key
 func (s *Server) deleteAPIKey(c *gin.Context) {
 	id := parseID(c)
 	if id == 0 {

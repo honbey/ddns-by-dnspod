@@ -211,7 +211,7 @@ export function TaskDialog({ open, onOpenChange, task, saving, onSubmit }: TaskD
                         {(accounts.data ?? []).map((account) => (
                           <SelectItem key={account.id} value={String(account.id)}>
                             {account.name}
-                            {account.is_default ? ' (default)' : ''}
+                            {account.is_default ? t('common.defaultSuffix') : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>

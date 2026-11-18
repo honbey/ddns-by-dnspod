@@ -107,7 +107,9 @@ export function useApiKeysColumns(
       ),
       cell: ({ row }) => (
         <span className='text-muted-foreground whitespace-nowrap text-sm'>
-          {row.original.last_used_at ? formatTime(row.original.last_used_at) : 'never'}
+          {row.original.last_used_at
+            ? formatTime(row.original.last_used_at)
+            : t('apiKeys.neverUsed')}
         </span>
       ),
     },
@@ -120,7 +122,7 @@ export function useApiKeysColumns(
         <RowSwitch
           checked={row.original.enabled}
           onToggle={() => actions.onToggle(row.original)}
-          label={`${row.original.enabled ? t('records.disable') : t('records.enable')} ${row.original.name}`}
+          label={`${row.original.enabled ? t('ui.disable') : t('ui.enable')} ${row.original.name}`}
         />
       ),
       enableSorting: false,

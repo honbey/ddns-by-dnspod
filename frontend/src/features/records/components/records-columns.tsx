@@ -132,7 +132,7 @@ export function useRecordsColumns(actions: RecordRowActions): ColumnDef<DnsRecor
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => actions.onToggle(row.original)}>
               <Power />
-              {row.original.status === 'ENABLE' ? t('records.disable') : t('records.enable')}
+              {row.original.status === 'ENABLE' ? t('ui.disable') : t('ui.enable')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant='destructive' onClick={() => actions.onDelete(row.original)}>

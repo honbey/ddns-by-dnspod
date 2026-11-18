@@ -107,7 +107,7 @@ export function useChannelsColumns(actions: ChannelRowActions): ColumnDef<Notify
         <RowSwitch
           checked={row.original.enabled}
           onToggle={() => actions.onToggle(row.original)}
-          label={`${row.original.enabled ? t('records.disable') : t('records.enable')} ${row.original.name}`}
+          label={`${row.original.enabled ? t('ui.disable') : t('ui.enable')} ${row.original.name}`}
         />
       ),
       enableSorting: false,

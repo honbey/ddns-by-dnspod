@@ -203,7 +203,7 @@ export function ChannelsTable({
           }
         >
           <Power />
-          {t('records.enable')}
+          {t('ui.enable')}
         </Button>
         <Button
           variant='outline'
@@ -216,7 +216,7 @@ export function ChannelsTable({
           }
         >
           <PowerOff />
-          {t('records.disable')}
+          {t('ui.disable')}
         </Button>
         <Button
           variant='destructive'

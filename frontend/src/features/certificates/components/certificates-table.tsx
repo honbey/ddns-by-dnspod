@@ -206,7 +206,7 @@ export function CertificatesTable({
           onClick={() => onBulkIssue(selectedRows.map((row) => row.original))}
         >
           <Play />
-          {t('certificates.issueSelected')}
+          {t('certificates.requestSelected')}
         </Button>
         <Button
           variant='destructive'

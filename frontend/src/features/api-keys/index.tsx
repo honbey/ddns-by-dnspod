@@ -31,7 +31,7 @@ import { APIKeysTable } from './components/api-keys-table'
 /**
  * Credentials for scripts.
  *
- * Issued rather than edited into existence: the plaintext comes back once, at
+ * Created rather than edited into existence: the plaintext comes back once, at
  * creation, because only a prefix is stored.
  */
 export function APIKeys() {
@@ -42,7 +42,7 @@ export function APIKeys() {
 
   const [editing, setEditing] = useState<APIKey | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [issued, setIssued] = useState<{ name: string; domain: string; secret: string } | null>(
+  const [created, setCreated] = useState<{ name: string; domain: string; secret: string } | null>(
     null
   )
   const [removing, setRemoving] = useState<APIKey[] | null>(null)
@@ -63,7 +63,7 @@ export function APIKeys() {
       if ('key' in result) {
         // The one moment the plaintext exists, so it is surfaced before the list
         // is even looked at again.
-        setIssued({
+        setCreated({
           name: result.api_key.name,
           domain: result.api_key.domain,
           secret: result.key,
@@ -87,7 +87,7 @@ export function APIKeys() {
     mutationFn: async (selected: APIKey[]) => {
       for (const apiKey of selected) await deleteAPIKey(apiKey.id)
     },
-    onSuccess: () => toast.success(t('apiKeys.removed')),
+    onSuccess: () => toast.success(t('apiKeys.deleted')),
     onSettled: async () => {
       // Runs on failure too; see removeSelected in records for the reasoning.
       await invalidate()
@@ -166,12 +166,12 @@ export function APIKeys() {
       />
 
       <APIKeyCreatedDialog
-        open={issued !== null}
+        open={created !== null}
         onOpenChange={(open) => {
-          if (!open) setIssued(null)
+          if (!open) setCreated(null)
         }}
-        domain={issued?.domain ?? ''}
-        secret={issued?.secret ?? ''}
+        domain={created?.domain ?? ''}
+        secret={created?.secret ?? ''}
       />
 
       <ConfirmDialog
@@ -183,11 +183,11 @@ export function APIKeys() {
         isLoading={removingPending}
         title={
           removing?.length === 1
-            ? `Revoke ${removing[0]?.name}?`
-            : `Revoke ${removing?.length ?? 0} keys?`
+            ? t('apiKeys.deleteOne', { name: removing[0]?.name ?? '' })
+            : t('apiKeys.deleteMany', { count: removing?.length ?? 0 })
         }
-        desc={t('apiKeys.revokeDescription')}
-        confirmText={t('apiKeys.revoke')}
+        desc={t('apiKeys.deleteDescription')}
+        confirmText={t('common.delete')}
         // Toasted by the global mutation handler; caught only so the rejection
         // is not left unhandled.
         handleConfirm={() => void remove(removing ?? []).catch(() => {})}

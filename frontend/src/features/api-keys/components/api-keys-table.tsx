@@ -186,7 +186,7 @@ export function APIKeysTable({
           }
         >
           <Power />
-          {t('records.enable')}
+          {t('ui.enable')}
         </Button>
         <Button
           variant='outline'
@@ -199,7 +199,7 @@ export function APIKeysTable({
           }
         >
           <PowerOff />
-          {t('records.disable')}
+          {t('ui.disable')}
         </Button>
         <Button
           variant='destructive'

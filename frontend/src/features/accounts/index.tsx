@@ -84,10 +84,11 @@ export function Accounts() {
       // here surface one toast each rather than one aggregated error.
       const results = await Promise.allSettled(selected.map((account) => verifyAccount(account.id)))
       results.forEach((result, index) => {
+        const name = selected[index].name
         if (result.status === 'fulfilled') {
-          toast.success(`${selected[index].name}: credentials accepted.`)
+          toast.success(t('accounts.verifiedFor', { name }))
         } else {
-          handleServerError(result.reason, `${selected[index].name}: refused.`)
+          handleServerError(result.reason, t('accounts.refusedFor', { name }))
         }
       })
     },

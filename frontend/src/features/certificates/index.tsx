@@ -84,9 +84,9 @@ export function Certificates() {
       await invalidate()
       setDialogOpen(false)
       toast.success(
-        `Saved ${cert.name}. ${
-          cert.not_after ? t('certificates.renewHint') : t('certificates.issueHint')
-        }`
+        t(cert.not_after ? 'certificates.savedRenew' : 'certificates.savedRequest', {
+          name: cert.name,
+        })
       )
     },
   })
@@ -95,9 +95,9 @@ export function Certificates() {
     mutationFn: (id: number) => issueCertificate(id),
     onSuccess: async (cert) => {
       await invalidate()
-      toast.success(`Issuing ${cert.name}...`)
+      toast.success(t('certificates.requesting', { name: cert.name }))
     },
-    onError: (error) => handleServerError(error, t('certificates.issueFailed')),
+    onError: (error) => handleServerError(error, t('certificates.requestFailed')),
   })
 
   const { mutateAsync: issueMany, isPending: issuing } = useMutation({
@@ -120,8 +120,8 @@ export function Certificates() {
       await invalidate()
       // One summary rather than one toast per certificate; the server's own
       // wording still gets through for the first failure.
-      if (started > 0) toast.success(t('certificates.issueStarted', { count: started }))
-      if (failed > 0) handleServerError(firstError, t('certificates.issueFailed'))
+      if (started > 0) toast.success(t('certificates.requestStarted', { count: started }))
+      if (failed > 0) handleServerError(firstError, t('certificates.requestFailed'))
     },
   })
 
@@ -179,8 +179,8 @@ export function Certificates() {
         {!canIssue && (
           <Alert>
             <PowerOff />
-            <AlertTitle>{t('certificates.issuerOffTitle')}</AlertTitle>
-            <AlertDescription>{t('certificates.issuerOffDescription')}</AlertDescription>
+            <AlertTitle>{t('certificates.managementOffTitle')}</AlertTitle>
+            <AlertDescription>{t('certificates.managementOffDescription')}</AlertDescription>
           </Alert>
         )}
 

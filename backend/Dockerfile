@@ -1,7 +1,7 @@
 # BuildKit cache mounts work in `docker build` and compose v2. No `# syntax`
 # directive: the built-in frontend understands `RUN --mount`.
 
-FROM node:24-slim AS frontend
+FROM node:26-slim AS frontend
 ARG NPM_REGISTRY=https://registry.npmjs.org
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./

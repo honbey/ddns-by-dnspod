@@ -179,13 +179,13 @@ export function useTasksColumns(
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end' className='w-44'>
-            <DropdownMenuItem onClick={() => actions.onRun(row.original)}>
-              <Play />
-              {t('tasks.runNow')}
-            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => actions.onEdit(row.original)}>
               <Pencil />
               {t('common.edit')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => actions.onRun(row.original)}>
+              <Play />
+              {t('tasks.runNow')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant='destructive' onClick={() => actions.onDelete(row.original)}>

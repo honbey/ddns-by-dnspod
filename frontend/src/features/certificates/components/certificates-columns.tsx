@@ -180,6 +180,10 @@ export function useCertificatesColumns(
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align='end' className='w-44'>
+            <DropdownMenuItem onClick={() => actions.onEdit(row.original)}>
+              <Pencil />
+              {t('common.edit')}
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => actions.onIssue(row.original)}
               // A disabled item takes no hover, so the reason it is off is
@@ -188,10 +192,6 @@ export function useCertificatesColumns(
             >
               <Play />
               {row.original.not_after ? t('certificates.renewNow') : t('certificates.requestNow')}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => actions.onEdit(row.original)}>
-              <Pencil />
-              {t('common.edit')}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant='destructive' onClick={() => actions.onDelete(row.original)}>

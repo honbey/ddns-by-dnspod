@@ -33,7 +33,7 @@ export const LOCALE_KEY = 'app_locale'
 
 export const LOCALE_LABELS: Record<Locale, string> = {
   en: 'English',
-  zh: '中文',
+  zh: '简体中文',
 }
 
 /**

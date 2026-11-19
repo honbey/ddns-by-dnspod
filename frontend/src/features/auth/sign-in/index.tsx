@@ -9,6 +9,7 @@ import signInIllustration from '@/assets/sign-in-illustration.svg'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AuthLayout } from '../auth-layout'
+import { AuthPreferences } from '../auth-preferences'
 
 /**
  * One way in: the browser signs in on its own and carries the answer.
@@ -33,11 +34,11 @@ export function SignIn() {
 
   return (
     <AuthLayout>
-      <Card className='w-full max-w-sm gap-6'>
-        <CardHeader className='items-center text-center'>
+      <Card className='w-full max-w-sm gap-0 overflow-hidden py-0'>
+        <CardHeader className='items-center px-6 pt-6 pb-0 text-center'>
           <CardTitle className='text-2xl font-bold tracking-tight'>{t('signIn.welcome')}</CardTitle>
         </CardHeader>
-        <CardContent className='space-y-4'>
+        <CardContent className='space-y-4 px-6 py-6'>
           <img src={signInIllustration} alt='' aria-hidden='true' className='mx-auto h-48 w-auto' />
           {authRequired() ? (
             <Button variant='outline' className='w-full' disabled={pending} onClick={handleSignIn}>
@@ -56,6 +57,7 @@ export function SignIn() {
             {t('signIn.blurb', { app: appName })}
           </p>
         </CardContent>
+        <AuthPreferences />
       </Card>
     </AuthLayout>
   )

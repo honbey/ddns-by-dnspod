@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "openapi-typescript ../backend/openapi.yml -o src/api-types.gen.ts",
+    "prebuild": "node scripts/clean-dist.mjs && openapi-typescript ../backend/openapi.yml -o src/api-types.gen.ts",
     "types": "openapi-typescript ../backend/openapi.yml -o src/api-types.gen.ts",
     "build": "tsc -b && vite build",
     "postbuild": "node scripts/write-runtime-config.mjs",

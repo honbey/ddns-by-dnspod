@@ -49,7 +49,9 @@ export default defineConfig({
   build: {
     // Output straight into the Go embed directory; rebuild the backend to pick it up
     outDir: '../backend/internal/frontend/dist',
-    emptyOutDir: true,
+    // clean-dist.mjs owns deletion: it keeps .gitkeep, which Vite would
+    // otherwise remove and leave go:embed without a directory to match.
+    emptyOutDir: false,
     target: 'es2020',
     sourcemap: false,
     assetsInlineLimit: 0,

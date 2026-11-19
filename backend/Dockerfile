@@ -10,8 +10,10 @@ RUN NPM_CONFIG_REPLACE_REGISTRY_HOST=always npm ci --no-audit --no-fund --regist
 COPY frontend/ ./
 # prebuild regenerates the SPA types from the contract at this relative path.
 COPY backend/openapi.yml /src/backend/openapi.yml
-# BUILD_OUT_DIR aims postbuild at the directory vite just wrote.
-RUN BUILD_OUT_DIR=dist npm run build -- --outDir dist --emptyOutDir
+# BUILD_OUT_DIR aims clean-dist and postbuild at the directory vite writes.
+# No --emptyOutDir: that flag would override vite.config.ts and delete the
+# .gitkeep that clean-dist keeps for the Go embed directory.
+RUN BUILD_OUT_DIR=dist npm run build -- --outDir dist
 
 # Keep in step with the `go` directive in backend/go.mod.
 ARG GOPROXY=https://goproxy.cn,direct

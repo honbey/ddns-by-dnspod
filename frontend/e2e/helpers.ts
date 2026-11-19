@@ -20,7 +20,7 @@ export async function signIn(
   landing = '/'
 ): Promise<void> {
   await page.goto('/')
-  const loginButton = page.getByRole('button', { name: /^Login with/ })
+  const loginButton = page.getByRole('button', { name: /^Continue with/ })
   await expect(loginButton).toBeVisible()
   await loginButton.click()
   await completeSignIn(page, username)

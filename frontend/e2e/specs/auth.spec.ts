@@ -10,7 +10,7 @@ test.describe('sign in', () => {
     // The card title is a div, not a heading: the page's one h1 is the app
     // name, so the button is what says the sign-in form rendered.
     await expect(page.getByText('Welcome back')).toBeVisible()
-    await expect(page.getByRole('button', { name: /^Login with/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Continue with/ })).toBeVisible()
 
     // Nothing on this page needs an account, so a console error means the
     // bundle or the runtime config is broken.
